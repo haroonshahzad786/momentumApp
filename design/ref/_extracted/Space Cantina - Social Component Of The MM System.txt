@@ -1,0 +1,388 @@
+Space Cantina - Social Component Of The MM System
+
+The Space Cantina
+Social Component & Community Hub — Comprehensive Feature Spec
+ 
+1. Purpose
+The Space Cantina exists to harness the science-proven power of social connection, accountability, and friendly competition to accelerate habit transformation. It provides a dedicated community where like-minded individuals come together to crowdsource habits, support one another, and compete in ways that make the journey toward firing on all cylinders across the 5 Core Areas of Life both exciting and sustainable.
+By activating players’ competitive instincts while providing deep social accountability, the Space Cantina transforms habit formation from a solitary grind into a shared adventure—reducing friction, boosting motivation, and creating the kind of ethical addiction to growth that keeps players coming back.
+ 
+2. Overview
+The Space Cantina serves as the cosmic hub of the MM System—a dynamic social layer where players connect, collaborate, and compete with others who are working on the same cores, habits, and gamification methods. It’s not just about earning momentum points; it’s about being part of a living community that keeps you accountable and surfaces the best habits and strategies from the collective wisdom of the player base.
+Unlock Trigger: The Space Cantina is introduced and unlocked in Phase 1, Stage 2 once the player establishes at least one Momentum Boosting Method (MBM). From that point forward, it remains always accessible from the main dashboard.
+MVP Approach: The initial MVP version will link to the MM Reddit community while the full internal system is built out. This allows community engagement to begin immediately while the in-app experience is developed.
+At its core, the Space Cantina enables players to:
+•   	Crowdsource: Discover and share the most effective golden habits and momentum methods through community upvoting
+•   	Collaborate: Form or join “Space Tribes” with fellow players aligned around shared pain points, cores, and goals
+•   	Compete: Engage in friendly competition for cosmic bragging rights, ship upgrades, and real-life rewards
+•   	Connect: Find accountability partners, engage in discussion forums, and access professional guidance
+•   	Continually Refine: Revisit and deepen AI-driven personalization anytime strategies aren’t delivering, leveraging community insights alongside system intelligence
+ 
+3. Key Components
+The Four Pillars of the Space Cantina
+1. Crowdsourced Idea Sharing — Collective wisdom through upvoting and discovery
+2. Interstellar Collaboration — Space Tribes, accountability partners, and support networks
+3. Leaderboards — Anti-shame competitive rankings with aspirational modeling
+4. Weekly Competitions & Rewards — Challenges for cosmic bragging rights and real-life benefits
+ 
+ 
+4. Detailed Component Specifications
+4.1 Crowdsourced Idea Sharing
+What It Is
+A Reddit-style upvoting system where the global MM community surfaces the most effective golden habits and momentum boosting methods for each of the 5 Core Areas of Life. Players share what’s working, vote on the best ideas, and discover new approaches they hadn’t considered—all organized by core, pain point, and method type.
+Why It Matters
+•   	Eliminates guesswork by showing players what’s actually working for real people with similar challenges
+•   	Leverages collective intelligence to surface the highest-impact habits and methods
+•   	Provides social proof that reinforces commitment (“If this worked for 500 other players in my core, it can work for me”)
+•   	Keeps the system fresh with constantly evolving, community-validated content
+How It Works
+1. 	Organized by Core & Pain Point: Content is categorized across all 5 Core Areas, with sub-filters for specific pain points (e.g., “struggling with consistent exercise” under Physical Health Core, or “difficulty maintaining deep friendships” under Relationships Core).
+2. 	Upvoting System: Players upvote the golden habits and MBMs that have been most helpful. The highest-voted content rises to the top, creating a constantly curated “best of” library.
+3. 	Click-to-Adopt: Players can click on any habit or MBM they discover and add it directly to their own system, with the ability to customize and edit it to fit their unique circumstances.
+4. 	Tech & App Recommendations: The community also votes on the best technology and apps that help automate and reduce friction for common pain points. For example, players might upvote a gamified budgeting app as the top tool for the Career & Finances Core’s “auto-saving and spending tracking” pain point.
+5. 	Rating & Feedback Culture: Players can give and receive feedback on tips and ideas, encouraging a culture of positivity, constructive input, and excellence.
+Example Use Case
+A player struggling with maintaining a healthy social life navigates to the Relationships Core section. They see the top-upvoted golden habits (e.g., “Weekly 1-on-1 coffee with a different friend”) and the most popular MBMs other players are using to stick with them (e.g., “Calendar-block Sunday nights for social planning”). They click to add it to their system and customize the frequency to fit their schedule.
+ 
+4.2 Interstellar Collaboration
+What It Is
+The collaboration layer of the Space Cantina where players form meaningful connections with fellow momentum builders. Through Space Tribes, accountability partnerships, discussion forums, and access to wellness professionals, players build the support networks that behavioral science shows are critical for lasting habit change.
+Why It Matters
+•   	Social accountability is one of the strongest predictors of long-term habit formation success
+•   	Connection with others on the same journey combats the isolation that often derails self-improvement efforts
+•   	Shared experiences create emotional investment that keeps players engaged long-term
+•   	Access to professionals provides expert guidance within the ecosystem
+Key Features
+Space Tribes
+•   	Form or join groups of players aligned around the same cores, golden habits, momentum methods, or pain points
+•   	Tribes can be public (discoverable) or private (invite-only)
+•   	Tribe members share progress updates, challenges, and wins within a dedicated space
+•   	Tribes create a sense of belonging and shared mission that reinforces commitment
+Accountability Partners
+•   	Built-in matching system to pair players working on similar goals and cores
+•   	Partners check in with each other, celebrate wins, and provide support during setbacks
+•   	Structured accountability cadence options (daily check-ins, weekly syncs, etc.)
+Discussion Forums
+•   	Topic-based forums organized by Core Area, habit type, and general community discussion
+•   	Players can ask questions, share insights, post wins, and seek advice
+•   	Moderated to maintain the positive, growth-oriented culture
+Professional Connections
+•   	Opportunity to connect with verified wellness professionals, coaches, and mentors within the community
+•   	Professionals can share expert content, offer guidance, and provide additional support for players on their journey
+ 
+4.3 Leaderboards
+What It Is
+A multi-factor ranking system that showcases player progress through momentum scores, ship upgrades, and achievements—all designed with an anti-shame philosophy that celebrates every player’s journey, not just those at the top.
+Why It Matters
+•   	Social proof: Seeing others succeed makes success feel achievable and normalizes the growth journey
+•   	Friendly competition: Creates cosmic bragging rights similar to showing off upgraded villages in Clash of Clans—visual proof of dedication that’s also functional
+•   	Aspirational modeling and crowdsourcing: Top players’ habits and methods are visible, providing ideas and inspiration
+•   	Community building: A shared journey creates genuine connection among players
+•   	Motivation boost: Watching your rank rise provides tangible, visible evidence of progress
+Player Ship Display
+Each player’s avatar on the leaderboard is their visual rocket ship, showing:
+•   	Ship upgrades: Wings, thrusters, and armor enhancements earned through progress
+•   	Current streak count
+•   	Planet (level) they’ve reached
+•   	Trophies and achievements earned
+Ranking Criteria
+Primary Factor — Momentum Score/Level
+•   	Total Momentum Points earned determines rank
+•   	Current planet/level achieved (directly tied to points)
+•   	This ensures rankings reflect sustained effort and overall progress
+Secondary Factor — Ship Upgrades
+•   	Wings upgrades (speed/agility)
+•   	Armor upgrades (resilience/streaks)
+•   	Thruster upgrades (acceleration/momentum)
+•   	Ship visual state reflects the investment and progress a player has made
+Tertiary Factor — Additional Achievements
+•   	Number of formed habits (pulled from Trophy Room)
+•   	Current active streak counter
+•   	All-time highest streak count
+•   	Other achievement metrics (TBD as system evolves)
+Aspirational Modeling Integration
+Leaderboards aren’t just about rank—they’re a discovery tool. Players can browse top-ranked players and see:
+•   	Their top Golden Habits broken out by Core Area (with upvote counts from the community)
+•   	Their most effective Momentum Boosting Methods
+•   	Players can click on any habit or MBM to add it to their own system and customize it
+This turns the leaderboard into a living resource library powered by the most successful players in the community.
+Anti-Shame Design Philosophy
+The leaderboard is designed to inspire, never to shame. Every design decision is filtered through the question: “Does this motivate growth, or does it create anxiety?”
+ 
+What We DON’T Do
+What We DO
+❌ Highlight “worst performer”
+✅ Use positive language for all positions
+❌ Use red/negative colors for bottom ranks
+✅ Show trending arrows (“You’re moving up!”)
+❌ Send notifications about falling behind
+✅ Emphasize learning over competing
+❌ Show “days since last check-in” (shames absence)
+✅ Private option (can hide from leaderboard)
+❌ Display public failures or slip-ups
+✅ Celebrate all progress, regardless of position
+❌ Use comparative language (“Jordan is beating you”)
+✅ Frame as “Tribe” not “Competitors”
+ 
+4.4 Weekly Competitions & Rewards
+What It Is
+Regularly scheduled challenges and competitions that give players structured opportunities to earn bonus momentum points, space credits for ship upgrades, and real-life rewards—all while deepening engagement and accountability through the power of friendly competition.
+Why It Matters
+•   	Creates recurring engagement loops that keep players returning to the system
+•   	Provides short-term motivation spikes that complement the long-term momentum journey
+•   	Transforms abstract habit goals into concrete, time-bound challenges
+•   	Offers tangible rewards (both in-game and real-life) that reinforce positive behavior
+How It Works
+1. 	Regular Challenge Cadence: Competitions run on a weekly cycle, giving players fresh goals and motivation consistently.
+2. 	Competition Types: Challenges may focus on specific cores (e.g., “Physical Health Sprint Week”), habit streaks, momentum point accumulation, or special themed events.
+3. 	In-Game Rewards: Top performers earn additional space credits to upgrade their ship (wings, armor, thrusters), unlock exclusive visual enhancements, and gain cosmic bragging rights.
+4. 	Real-Life Benefits: Competitions are designed so that the act of competing inherently produces real-life positive results—the habit improvements themselves are the ultimate reward.
+5. 	Show Off Your Progress: Competition results are reflected in ship visual enhancements and leaderboard standings, giving players tangible proof of their dedication.
+Implementation Note
+Rollout Timing
+Weekly competitions will be introduced in a later stage of platform development, after the core Space Cantina features (Crowdsourced Idea Sharing, Interstellar Collaboration, and Leaderboards) are established and the community has reached critical mass.
+ 
+ 
+5. Continual Refinement Loop
+The Space Cantina isn’t a “set it and forget it” social layer—it’s deeply integrated with the MM System’s adaptive AI engine. If a player’s current strategies aren’t delivering results, they can revisit the system at any time. By answering more personalized questions, the AI deepens its understanding of the player, refining their approach to overcome obstacles, seize opportunities, and make forming their golden habits simple, rewarding, and inevitable.
+Community insights from the Space Cantina feed back into this refinement process: upvoted habits and methods that align with a player’s profile may be surfaced as AI recommendations, creating a powerful feedback loop between collective wisdom and individual personalization.
+ 
+6. Summary: How the Space Cantina Drives the MM Mission
+The Space Cantina at a Glance
+Crowdsourced Idea Sharing → Eliminates guesswork through collective wisdom
+Interstellar Collaboration → Provides accountability and support that sustains change
+Leaderboards → Inspires through aspirational modeling without shame
+Weekly Competitions → Creates recurring engagement with tangible rewards
+ 
+Together, these four pillars activate the social science of habit formation—making the journey toward firing on all cylinders across the 5 Core Areas of Life not just effective, but genuinely exciting.
+ 
+The Space Cantina transforms the MM System from a powerful individual tool into a thriving community movement. Every feature is designed to reduce friction, increase motivation, and create the kind of ethical addiction to growth that turns temporary effort into permanent transformation.
+Ready Player One. 🚀
+
+____________________________________________________________________________
+____________________________________________________________________________
+
+Space Cantina Implementation Analysis & Technical Roadmap
+
+ 
+1. Implementation Overview
+This document outlines the phased technical strategy for building the Space Cantina—the social component of the MM System. The implementation follows a three-stage rollout: an MVP Reddit bridge for immediate community engagement, a native V1 built within the FlutterFlow/Firebase/Voiceflow stack, and an advanced V2 with full gamification and competition features.
+Key Architecture Decision
+The Space Cantina is unlocked in Phase 1, Stage 2 once a player establishes at least one Momentum Boosting Method (MBM). From that point forward, it remains always accessible from the main dashboard. All implementation stages must respect this unlock trigger.
+ 
+1.1 Rollout Phases at a Glance
+ 
+Component
+MVP (Reddit Bridge)
+V1 (Native In-App)
+V2 (Advanced)
+Crowdsourced Idea Sharing
+Reddit upvoting + organized threads
+In-app upvoting by Core/pain point
+AI-surfaced recommendations from community data
+Interstellar Collaboration
+Reddit flairs + Discord-style threads
+Space Tribes, accountability partner matching
+Professional connections marketplace
+Leaderboards
+Manual showcases / flair badges
+Full multi-factor ranking with ship display
+Dynamic filtering, cross-Tribe boards
+Weekly Competitions
+— (not in MVP)
+— (not in V1)
+Full challenge system with rewards engine
+ 
+ 
+2. MVP Implementation: Reddit Bridge
+2.1 Platform Decision
+Primary Platform: Reddit. Reddit’s native upvoting system, subreddit organization, and flair capabilities map directly to the Space Cantina’s core needs. Unlike Discord (which excels at real-time chat but lacks structured content curation), Reddit’s threaded format naturally supports the crowdsourced idea sharing and aspirational modeling that define the Space Cantina.
+Why not both Reddit + Discord? Running parallel communities splits attention and fragments the player base during the critical early-adoption window. A single platform concentrates engagement and makes moderation manageable. Discord can be evaluated as a supplemental real-time layer once the Reddit community reaches critical mass, but it is not part of the MVP scope.
+2.2 Subreddit Structure
+The MM subreddit should be organized to mirror the 4 pillars of the Space Cantina and the 5 Core Areas of Life:
+Post Flair System (Content Organization)
+•   	Core Area Flairs: 🧠 Mindset | 💰 Career & Finances | 👥 Relationships | 💪 Physical Health | 🧘 Emotional & Mental Health
+•   	Content Type Flairs: 🌟 Golden Habit | 🚀 Momentum Method | 💡 Tech/App Rec | 🏆 Win Share | ❓ Help/Question
+•   	Tribe Flairs: Allow players to self-identify their active Space Tribe for community clustering
+Recurring Thread Templates
+1. 	Weekly Golden Habit Spotlight (per Core): Pinned thread where players share and upvote the most effective golden habit they’ve discovered that week. Organized by Core Area with the top-voted habit featured in the following week’s summary.
+2. 	MBM Strategy Exchange: Bi-weekly thread for sharing momentum boosting methods. Players describe what they’re doing, which Core/pain point it addresses, and why it’s working. Community upvotes surface the best.
+3. 	Accountability Partner Matchmaking: Monthly sticky thread where players post which Cores they’re focused on, their current level, and what they’re looking for in a partner. Other players reply to connect.
+4. 	Space Tribe Recruitment: Open thread for forming and advertising Tribes—groups organized around shared pain points, Cores, or goals.
+5. 	Tech/App Recommendations: Quarterly thread where the community votes on the best tools and apps that reduce friction for common pain points in each Core.
+Moderation Framework
+•   	Establish 3–5 volunteer moderators from early adopters who embody the growth-owner mindset
+•   	Community guidelines centered on the anti-shame philosophy: positive language, no comparative shaming, celebrate all progress
+•   	Automod rules to flag negative/comparative language (“you’re behind,” “why can’t you,” etc.)
+•   	Flair-gating: only players who’ve unlocked the Space Cantina in-app can receive verified flair (manual process in MVP)
+2.3 In-App Integration (MVP)
+Within the FlutterFlow app, the MVP Space Cantina screen is a simple gateway:
+•   	A branded Space Cantina landing card on the dashboard (visible only after MBM unlock trigger)
+•   	Tapping opens a WebView or deep link to the MM subreddit
+•   	Brief onboarding tooltip explaining what the Space Cantina is and how to use it
+•   	Optional: pull the top 3–5 upvoted posts from Reddit via the Reddit API and display them as a preview card on the dashboard to drive click-through
+MVP Technical Requirements
+•   	FlutterFlow WebView component or URL launcher for Reddit deep link
+•   	Firebase flag to track Space Cantina unlock status per user (triggered when first MBM is saved)
+•   	Optional: Reddit API integration (read-only) to surface top posts in-app. Requires Reddit app registration and OAuth.
+ 
+ 
+3. V1 Native Implementation: In-App Space Cantina
+Once the Reddit community has validated engagement patterns and the core app has stabilized, the Space Cantina moves in-house. V1 builds the first three pillars natively: Crowdsourced Idea Sharing, Interstellar Collaboration, and Leaderboards. Weekly Competitions are deferred to V2.
+3.1 Crowdsourced Idea Sharing (Native)
+Data Model
+Each shared item is a document in Firebase with the following structure:
+•   	Content fields: title, description, core_area (enum of 5), pain_point_tag, content_type (golden_habit | mbm | tech_app_rec), author_uid
+•   	Engagement fields: upvote_count, upvoters (array of UIDs to prevent duplicates), comment_count, created_at, last_activity_at
+•   	Adoption fields: times_adopted (count of players who clicked “Add to My System”)
+Key Screens
+1. 	Browse/Discover Feed: Filterable by Core Area, pain point, and content type. Default sort by upvote_count (with recency weighting so fresh content can surface). Search bar for keyword lookup.
+2. 	Detail View: Full post with description, author ship avatar, upvote button, comment thread, and a prominent “Add to My System” button that lets the player adopt the habit/MBM and customize it.
+3. 	Submit New Post: Form to share a golden habit, MBM, or tech recommendation. Auto-tags the player’s Core Area and pain point. Preview before publishing.
+Upvoting Logic
+•   	One upvote per user per post (toggle on/off). No downvoting—aligned with anti-shame philosophy.
+•   	Upvoting earns the voter a small momentum point bonus (encourages participation)
+•   	Posts that receive upvotes earn the author momentum points (incentivizes quality contributions)
+•   	Firebase Cloud Function to increment/decrement counters atomically and prevent race conditions
+3.2 Interstellar Collaboration (Native)
+Space Tribes
+Data Model: Each Tribe is a Firestore collection with: tribe_name, description, core_focus (array), pain_point_tags, visibility (public | private), members (array of UIDs with roles: founder, moderator, member), max_members (default 20 for V1), created_at.
+•   	Tribe Feed: Members post updates, share wins, ask for support. Simple threaded comments.
+•   	Discovery: Public Tribes appear in a browsable directory filterable by Core Area. Private Tribes require an invite link.
+•   	Tribe Limit: Players can join up to 3 Tribes in V1 to prevent overextension.
+Accountability Partners
+Matching System: V1 uses a lightweight questionnaire-based match: which Cores are you focused on, what’s your current level, what cadence do you prefer (daily/weekly). System suggests 3 potential matches. Both players must accept.
+•   	Partner Dashboard: Shared view of each other’s active golden habits and current streaks (opt-in data sharing)
+•   	Check-In Nudges: Optional push notification reminders for partner check-ins at the agreed cadence
+•   	One active partner at a time in V1 (expandable in V2)
+Discussion Forums
+•   	Organized by Core Area with a General category
+•   	Threaded comments with upvoting (same logic as Crowdsourced Idea Sharing)
+•   	Moderation tools: report button, auto-flag for anti-shame language violations, moderator queue in Firebase
+3.3 Leaderboards (Native)
+Ranking Engine
+Leaderboard rankings are computed from a weighted composite score:
+1. 	Primary (60%): Momentum Score/Level — Total momentum points earned and current planet/level reached.
+2. 	Secondary (25%): Ship Upgrades — Aggregate upgrade level across wings, armor, and thrusters.
+3. 	Tertiary (15%): Achievements — Formed habit count (from Trophy Room), current streak, all-time highest streak.
+Ranking is recalculated on a scheduled basis (e.g., every 6 hours via Firebase Cloud Function) rather than real-time, to manage compute costs.
+Leaderboard Views
+•   	Global Leaderboard: All players, default view
+•   	Core Area Leaderboard: Filter by which Core a player is most active in
+•   	Tribe Leaderboard: Rankings within your Space Tribe(s)
+•   	Friends Leaderboard: Players you’ve connected with or your accountability partner
+Player Card Display
+Each entry on the leaderboard shows:
+•   	Rocket ship avatar with current visual upgrades (wings, armor, thrusters)
+•   	Player name and current planet/level
+•   	Current streak count and trophy count
+•   	Trending indicator (up arrow, steady, new entry) — never a down arrow
+•   	Tap to expand: shows their top upvoted Golden Habits and MBMs (the aspirational modeling feature)
+Anti-Shame Implementation
+•   	No negative indicators anywhere in the UI — no red colors, no falling arrows, no “days since” counters
+•   	Bottom-rank players see “Rising Explorer” or similar positive tier labels, never numeric last-place indicators
+•   	Privacy toggle: players can opt out of the public leaderboard entirely while still seeing their own stats
+•   	Push notifications only celebrate positive events (“You moved up 3 spots!”), never alert to drops
+•   	Language audit: all UI copy reviewed against the anti-shame do’s/don’ts from the feature spec
+3.4 V1 Technical Architecture
+Firebase Collections
+•   	space_cantina_posts — Crowdsourced content (habits, MBMs, tech recs)
+•   	space_cantina_comments — Comments on posts and forum threads
+•   	tribes — Space Tribe definitions and membership
+•   	tribe_posts — Tribe-internal feed content
+•   	accountability_partners — Partner pairings and preferences
+•   	leaderboard_cache — Pre-computed ranking snapshots (refreshed on schedule)
+Cloud Functions Required
+1. 	onUpvote: Atomic increment of upvote count, duplicate prevention, momentum point award to voter and author.
+2. 	onAdopt: When a player adds a community habit/MBM to their system, increment the adoption counter and log the event for analytics.
+3. 	computeLeaderboard: Scheduled function (every 6 hrs) that reads player stats, computes weighted composite score, writes to leaderboard_cache.
+4. 	matchAccountabilityPartner: Takes a player’s preferences, queries eligible players, returns top 3 matches by Core overlap and level proximity.
+5. 	moderationQueue: Auto-flags content containing negative/comparative language patterns. Pushes to a moderator review queue.
+FlutterFlow Screens
+•   	Space Cantina Hub (tabbed: Discover | Tribes | Leaderboard | Forums)
+•   	Post Detail / Comment Thread
+•   	Submit New Post
+•   	Tribe Detail / Tribe Feed
+•   	Tribe Discovery / Create Tribe
+•   	Accountability Partner Setup / Partner Dashboard
+•   	Leaderboard (with filter tabs: Global | Core | Tribe | Friends)
+•   	Player Card Expanded View (aspirational modeling)
+Migration Strategy: Reddit to Native
+The transition from the Reddit MVP to the native V1 should be handled carefully to preserve community momentum:
+1. 	Announce the migration 4–6 weeks in advance on the subreddit with a countdown and preview of the in-app experience.
+2. 	Run a 2-week overlap period where both Reddit and in-app are active. Pin a subreddit post directing traffic to the app.
+3. 	Manually migrate the top 50 most-upvoted golden habits and MBMs from Reddit into the native system as seed content.
+4. 	Award early Reddit community members a special “Founder’s Badge” ship cosmetic when they create their in-app profile (incentivizes migration).
+5. 	Archive the subreddit (read-only) with a permanent pinned post directing new visitors to the app.
+ 
+ 
+4. V2 Advanced Implementation
+V2 introduces the fourth pillar—Weekly Competitions & Rewards—and enhances all existing pillars with deeper intelligence and engagement features. V2 should only begin after V1 metrics confirm strong community engagement.
+4.1 Weekly Competitions & Rewards Engine
+Competition Framework
+1. 	Challenge Types: Core Sprints (focus on one Core Area for a week), Streak Challenges (maintain X-day streak), Momentum Races (earn the most points in a period), Themed Events (seasonal or community-voted themes).
+2. 	Entry: Players opt in to a competition from the Space Cantina hub. Some challenges are individual, others are Tribe-based (Tribe vs. Tribe).
+3. 	Scoring: Competition-specific scoring rubric. E.g., a Core Sprint might award points for check-ins, habit completions, and streak maintenance within the target Core.
+4. 	Rewards Distribution: Top performers earn bonus space credits (ship upgrades), exclusive cosmetic unlocks, and leaderboard badges. All participants earn a participation reward to reinforce the anti-shame philosophy.
+Technical Requirements
+•   	competitions collection in Firebase with: type, start_date, end_date, scoring_rules, participants, results
+•   	Real-time score tracking via Firebase listeners (more compute-intensive than V1 leaderboards)
+•   	Push notification system for competition start/end, milestone alerts, and results
+•   	Admin panel for creating and managing competitions (could be a simple Retool or FlutterFlow admin app)
+4.2 AI-Powered Community Intelligence
+V2 connects the Space Cantina’s community data to the MM System’s AI personalization engine:
+•   	AI scans upvoted habits/MBMs and cross-references with a player’s profile to surface personalized recommendations from community content (“Players with similar pain points found this habit effective”)
+•   	Tribe recommendations based on player profile similarity and Core Area focus
+•   	Accountability partner matching upgraded from questionnaire-based to AI-scored compatibility
+•   	Community trend detection: AI identifies emerging pain points or popular methods and surfaces them to relevant players
+4.3 Professional Connections Marketplace
+•   	Verified wellness professionals, coaches, and mentors can create profiles and offer guidance
+•   	Verification process to ensure quality and alignment with MM principles
+•   	Players can book sessions, ask questions in dedicated AMA-style threads, or join professional-led Tribes
+•   	Revenue opportunity: professionals pay for verified listing; players access basic connections for free
+4.4 Enhanced Leaderboard Features
+•   	Dynamic filtering: filter leaderboards by time period (this week, this month, all-time), Core Area, geography
+•   	Cross-Tribe competition boards for Tribe vs. Tribe challenges
+•   	Historical tracking: players can see their own rank trajectory over time
+•   	Achievement galleries: expanded player cards showing full Trophy Room and formed habit history
+ 
+ 
+5. Outstanding Decisions & Open Questions
+5.1 Platform & Architecture
+1. 	What is the target community size before triggering V1 native build? (Recommended: 500+ active Reddit members.)
+2. 	Should the Reddit API integration (for surfacing top posts in-app) be part of MVP or deferred to reduce initial scope?
+3. 	Will Space Tribe chat use Firebase Realtime Database (real-time but costly at scale) or Firestore with polling (cheaper but less instant)?
+4. 	How will Voiceflow AI interact with Space Cantina data? Direct Firestore reads, or a separate API layer?
+5.2 Engagement & Moderation
+1. 	What momentum point values should be awarded for community actions (upvoting, posting, adopting)? These need to be balanced against the main Phase 2 scoring system.
+2. 	How many moderators are needed at each stage? What’s the moderator recruitment and training process?
+3. 	Should there be a minimum engagement threshold before a player can post (e.g., must have completed X check-ins)? This prevents spam but could reduce early participation.
+4. 	How will content quality be maintained as the community scales? Algorithmic curation, human moderation, or hybrid?
+5.3 Privacy & Data
+•   	What player data is shared by default vs. opt-in on leaderboards and player cards?
+•   	How much of a player’s habit/streak data is visible to accountability partners vs. Tribe members vs. the public?
+•   	Data retention policy for community posts if a player deletes their account?
+ 
+ 
+6. Recommended Next Steps
+Immediate Actions (MVP Sprint)
+1. Set up the MM subreddit with the flair system, recurring thread templates, and community guidelines outlined in Section 2.2.
+2. Recruit 3–5 founding moderators from the existing MM community or early testers.
+3. Build the in-app Space Cantina gateway card in FlutterFlow (unlock trigger + WebView/deep link to Reddit).
+4. Seed the subreddit with 15–20 starter posts across all 5 Cores (golden habits, MBMs, and tech recs from existing MM content).
+5. Define the moderation playbook: anti-shame language guide, escalation process, and Automod rules.
+ 
+V1 Planning (Post-MVP)
+1. Finalize Firebase data model for all Space Cantina collections.
+2. Design the Space Cantina Hub screen in FlutterFlow (tabbed layout: Discover | Tribes | Leaderboard | Forums).
+3. Build and test the upvoting Cloud Function with atomic counters and momentum point distribution.
+4. Prototype the leaderboard ranking engine and validate the 60/25/15 weighting against test data.
+5. Plan the Reddit-to-native migration timeline and communication strategy.
+ 
+V2 Scoping (Future)
+1. Evaluate V1 engagement metrics to determine readiness for competitions (target: 70%+ weekly active rate among Space Cantina users).
+2. Scope the AI community intelligence integration with Voiceflow.
+3. Research professional connections marketplace viability and revenue model.
+4. Design the competition framework and rewards economy (ensure it doesn’t inflate the core momentum point system).
+ 
+

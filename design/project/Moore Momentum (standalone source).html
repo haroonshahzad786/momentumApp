@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Moore Momentum — Cockpit</title>
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- ext-resource-dependency: PNGs referenced as strings in JSX/JS -->
+  <meta name="ext-resource-dependency" content="assets/rocket.png"             data-resource-id="rocket" />
+  <meta name="ext-resource-dependency" content="assets/intro-cores.png"        data-resource-id="introCores" />
+  <meta name="ext-resource-dependency" content="assets/core-mindset.png"       data-resource-id="coreMindset" />
+  <meta name="ext-resource-dependency" content="assets/core-career.png"        data-resource-id="coreCareer" />
+  <meta name="ext-resource-dependency" content="assets/core-relationships.png" data-resource-id="coreRelationships" />
+  <meta name="ext-resource-dependency" content="assets/core-physical.png"      data-resource-id="corePhysical" />
+  <meta name="ext-resource-dependency" content="assets/core-emotional.png"     data-resource-id="coreEmotional" />
+
+  <!-- Splash thumbnail (shown while assets unpack) -->
+  <template id="__bundler_thumbnail" data-bg-color="#06070d">
+    <svg viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <radialGradient id="bg" cx="50%" cy="40%" r="60%">
+          <stop offset="0%"  stop-color="#1a2860" />
+          <stop offset="100%" stop-color="#06070d" />
+        </radialGradient>
+        <linearGradient id="flame" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%"  stop-color="#fff5b3" />
+          <stop offset="45%" stop-color="#ffce3a" />
+          <stop offset="100%" stop-color="#ea0029" />
+        </linearGradient>
+      </defs>
+      <rect width="1200" height="1200" fill="url(#bg)" />
+      <!-- stars -->
+      <g fill="#ffffff">
+        <circle cx="180" cy="180" r="3" />
+        <circle cx="300" cy="460" r="2" opacity=".7" />
+        <circle cx="940" cy="260" r="3" />
+        <circle cx="1020" cy="640" r="2" />
+        <circle cx="220" cy="880" r="2.5" />
+        <circle cx="760" cy="940" r="2" opacity=".6" />
+      </g>
+      <!-- rocket silhouette -->
+      <g transform="translate(600 620)">
+        <!-- nose -->
+        <path d="M 0 -380 Q -140 -200 -180 -60 L 180 -60 Q 140 -200 0 -380 Z" fill="#ea0029" />
+        <!-- hull -->
+        <path d="M -180 -60 L -180 220 Q -150 270 -100 280 L 100 280 Q 150 270 180 220 L 180 -60 Z" fill="#e5e9ee" />
+        <!-- panel -->
+        <path d="M -130 -40 L 130 -40 L 130 220 L 100 250 L -100 250 L -130 220 Z" fill="#2c3140" />
+        <!-- porthole circles -->
+        <circle cx="0"    cy="30"  r="60" fill="#2a7de1" />
+        <circle cx="-80"  cy="140" r="50" fill="#FFC629" />
+        <circle cx="80"   cy="140" r="50" fill="#ff3d8b" />
+        <circle cx="-80"  cy="240" r="38" fill="#00a98f" />
+        <circle cx="80"   cy="240" r="38" fill="#9b5cff" />
+        <!-- fins -->
+        <path d="M -180 100 Q -280 180 -290 320 L -180 300 Z" fill="#c41d1d" />
+        <path d="M  180 100 Q  280 180  290 320 L  180 300 Z" fill="#c41d1d" />
+        <!-- flame -->
+        <path d="M -60 290 Q -90 360 0 460 Q 90 360 60 290 Z" fill="url(#flame)" />
+      </g>
+      <!-- wordmark -->
+      <text x="600" y="1100" text-anchor="middle" font-family="Orbitron, system-ui, sans-serif"
+            font-size="48" letter-spacing="8" fill="#FFC629" font-weight="700">MOORE MOMENTUM</text>
+    </svg>
+  </template>
+  <style>
+    /* Page chrome */
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 50% -20%, #1a2860 0%, #06070d 60%),
+        #06070d;
+      display: flex; align-items: center; justify-content: center;
+      padding: 32px 16px;
+      overflow: auto;
+    }
+    .stage {
+      display: flex; align-items: center; justify-content: center;
+      gap: 32px; flex-wrap: wrap;
+      max-width: 1400px; width: 100%;
+    }
+    .device-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+    }
+    .device-label {
+      font-family: 'Orbitron', system-ui, sans-serif;
+      font-size: 10px; letter-spacing: .24em; text-transform: uppercase;
+      color: rgba(241,241,241,.4);
+    }
+    .device-label .num {
+      color: rgba(255,198,41,.85); margin-right: 8px;
+    }
+    /* Hide tweaks fps */
+  </style>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="rocket.standalone.jsx"></script>
+  <script type="text/babel" src="dashboard.jsx"></script>
+  <script type="text/babel" src="checkin.jsx"></script>
+  <script type="text/babel" src="summary.jsx"></script>
+  <script type="text/babel" src="screens.jsx"></script>
+  <script type="text/babel" src="auth.standalone.jsx"></script>
+
+  <script type="text/babel">
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "streak": 47,
+      "planet": "mars",
+      "level": "navigator",
+      "activeCores": ["mindset", "career", "physical"],
+      "momentumScore": 8420,
+      "balance": 78,
+      "showMysteryBox": true,
+      "scanlineIntensity": "subtle"
+    }/*EDITMODE-END*/;
+
+    function App() {
+      const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+      // Each device shows a different screen of the daily loop.
+      const screens = [
+        { key: 'auth',      label: 'Auth',        n: '1.1' },
+        { key: 'dashboard', label: 'Cockpit',     n: '3.1' },
+        { key: 'checkin',   label: 'Check-in',    n: '3.3' },
+        { key: 'summary',   label: 'Recap',       n: '3.5' },
+      ];
+
+      // Auth state — shared across devices. account=null means signed out.
+      const [account, setAccount] = React.useState(null);
+      const [authStage, setAuthStage] = React.useState('intro');
+      const onAuth = (acc) => { setAccount(acc); };
+      const signOut = () => { setAccount(null); setAuthStage('signin'); };
+
+      // Per-device active screen
+      const [active, setActive] = React.useState({
+        auth:      'auth',
+        dashboard: 'dashboard',
+        checkin:   'checkin',
+        summary:   'summary',
+      });
+      const [menuOpen, setMenuOpen] = React.useState({});
+      const [chatOpen, setChatOpen] = React.useState({});
+
+      const setScreen = (deviceKey, screen) => {
+        setActive((a) => ({ ...a, [deviceKey]: screen }));
+      };
+
+      const renderScreen = (screen, deviceKey) => {
+        const tweaks = {
+          streak: t.streak,
+          planet: t.planet,
+          activeCores: t.activeCores,
+          level: t.level,
+          momentumScore: t.momentumScore,
+          balance: t.balance,
+          showMysteryBox: t.showMysteryBox,
+        };
+        const back = () => setScreen(deviceKey, 'dashboard');
+        const openChat = () => setChatOpen((c) => ({ ...c, [deviceKey]: true }));
+        const navProps = {
+          onBack: back,
+          onChat: openChat,
+          onNav: (k) => {
+            if (k === 'habits') setScreen(deviceKey, 'habits');
+            else if (k === 'cantina') setScreen(deviceKey, 'cantina');
+            else if (k === 'trophy') setScreen(deviceKey, 'trophy');
+            else if (k === 'profile') setScreen(deviceKey, 'profile');
+          },
+        };
+        if (screen === 'auth') {
+          // Show auth flow on the dedicated auth device; once signed in,
+          // flip to dashboard so the rest of the app reflects the new state.
+          if (account) return <Dashboard tweaks={tweaks}
+                                onCheckIn={() => setScreen(deviceKey, 'checkin')}
+                                onNav={(k) => setScreen(deviceKey, k)}
+                                onMenu={() => setMenuOpen((m) => ({ ...m, [deviceKey]: true }))}
+                                onChat={openChat} />;
+          return <AuthFlow stage={authStage} setStage={setAuthStage} onAuth={onAuth} />;
+        }
+        if (screen === 'dashboard') {
+          return <Dashboard tweaks={tweaks}
+                            onCheckIn={() => setScreen(deviceKey, 'checkin')}
+                            onNav={(k) => setScreen(deviceKey, k)}
+                            onMenu={() => setMenuOpen((m) => ({ ...m, [deviceKey]: true }))}
+                            onChat={openChat} />;
+        }
+        if (screen === 'checkin') return <CheckIn tweaks={tweaks} onClose={back} onComplete={() => setScreen(deviceKey, 'summary')} />;
+        if (screen === 'summary') return <Summary tweaks={tweaks} onClose={back} />;
+        if (screen === 'lists')    return <ListsScreen    {...navProps} />;
+        if (screen === 'routines') return <RoutinesScreen {...navProps} />;
+        if (screen === 'habits')   return <HabitsScreen   {...navProps} />;
+        if (screen === 'tasks')    return <TasksScreen    {...navProps} />;
+        if (screen === 'cantina')  return <CantinaScreen  {...navProps} />;
+        if (screen === 'trophy')   return <TrophyScreen   {...navProps} />;
+        if (screen === 'profile')  return <ProfileScreen  tweaks={tweaks} {...navProps} />;
+      };
+
+      const cycle = (deviceKey) => {
+        const order = ['dashboard','lists','routines','habits','tasks','cantina','trophy','profile','checkin','summary'];
+        const cur = active[deviceKey];
+        const next = order[(order.indexOf(cur) + 1) % order.length];
+        setScreen(deviceKey, next);
+      };
+
+      return (
+        <>
+          <div className="stage">
+            {screens.map((s) => (
+              <div key={s.key} className="device-wrap" data-screen-label={`${s.n} ${s.label}`}>
+                <IOSDevice width={372} height={806} dark={true}>
+                  <div style={{ position:'relative', width:'100%', height:'100%' }}>
+                    {chatOpen[s.key]
+                      ? <ChatScreen onBack={() => setChatOpen((c) => ({ ...c, [s.key]: false }))} />
+                      : renderScreen(active[s.key], s.key)}
+                    {menuOpen[s.key] && !chatOpen[s.key] && (
+                      <MenuDrawer
+                        account={account}
+                        onAuth={() => { setMenuOpen((m) => ({ ...m, [s.key]: false })); setActive((a) => ({ ...a, [s.key]: 'auth' })); setAuthStage('signup'); }}
+                        onSignOut={() => { signOut(); setMenuOpen((m) => ({ ...m, [s.key]: false })); setActive((a) => ({ ...a, [s.key]: 'auth' })); }}
+                        onNav={(k) => setScreen(s.key, k)}
+                        onChat={() => setChatOpen((c) => ({ ...c, [s.key]: true }))}
+                        onClose={() => setMenuOpen((m) => ({ ...m, [s.key]: false }))} />
+                    )}
+                  </div>
+                </IOSDevice>
+                <div className="device-label" onClick={() => cycle(s.key)} style={{ cursor: 'pointer' }}>
+                  <span className="num">{s.n}</span>
+                  {(screens.find(x => x.key === active[s.key]) || { label: active[s.key].charAt(0).toUpperCase() + active[s.key].slice(1) }).label}
+                  <span style={{ marginLeft: 8, opacity: .5 }}>↻ tap to cycle</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <TweaksPanel title="Moore Momentum">
+            <TweakSection label="Player state" />
+            <TweakSlider label="Streak (days)" value={t.streak} min={1} max={365} unit="d"
+                         onChange={(v) => setTweak('streak', v)} />
+            <TweakSelect label="Planet" value={t.planet}
+                         options={[
+                           {value:'earth',name:'Earth'},
+                           {value:'moon',name:'Moon'},
+                           {value:'mars',name:'Mars'},
+                           {value:'jupiter',name:'Jupiter'},
+                           {value:'saturn',name:'Saturn'},
+                           {value:'pluto',name:'Pluto'},
+                         ].map(p => ({ value: p.value, label: p.name }))}
+                         onChange={(v) => setTweak('planet', v)} />
+            <TweakRadio label="Level" value={t.level}
+                        options={[
+                          {value:'cadet',label:'Cadet'},
+                          {value:'navigator',label:'Navig.'},
+                          {value:'commander',label:'Cmdr'},
+                        ]}
+                        onChange={(v) => setTweak('level', v)} />
+            <TweakNumber label="Momentum" value={t.momentumScore} min={0} max={99999} step={50}
+                         onChange={(v) => setTweak('momentumScore', v)} />
+
+            <TweakSection label="Active Cores" />
+            {[
+              {id:'mindset',name:'🧠 Mindset'},
+              {id:'career',name:'💰 Career & Finances'},
+              {id:'relationships',name:'👥 Relationships'},
+              {id:'physical',name:'💪 Physical Health'},
+              {id:'emotional',name:'🧘 Emotional & Mental'},
+            ].map((c) => (
+              <TweakToggle key={c.id} label={c.name}
+                           value={t.activeCores.includes(c.id)}
+                           onChange={(on) => {
+                             const next = on
+                               ? [...t.activeCores, c.id]
+                               : t.activeCores.filter(x => x !== c.id);
+                             setTweak('activeCores', next);
+                           }} />
+            ))}
+
+            <TweakSection label="Reward sequence" />
+            <TweakToggle label="Mystery Box" value={t.showMysteryBox}
+                         onChange={(v) => setTweak('showMysteryBox', v)} />
+
+            <TweakSection label="Presets" />
+            <div style={{ display:'flex', gap:6 }}>
+              <TweakButton label="Cadet · early"
+                onClick={() => setTweak({ streak: 4, planet:'moon', level:'cadet',
+                  activeCores:['mindset'], momentumScore: 240 })} />
+              <TweakButton label="Navigator · mid" secondary
+                onClick={() => setTweak({ streak: 47, planet:'mars', level:'navigator',
+                  activeCores:['mindset','career','physical'], momentumScore: 8420 })} />
+            </div>
+            <TweakButton label="Commander · veteran"
+              onClick={() => setTweak({ streak: 180, planet:'saturn', level:'commander',
+                activeCores:['mindset','career','relationships','physical','emotional'],
+                momentumScore: 42600 })} />
+          </TweaksPanel>
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

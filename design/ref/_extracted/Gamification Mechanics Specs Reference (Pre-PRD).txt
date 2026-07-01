@@ -1,0 +1,702 @@
+Gamification Mechanics Specs Reference (Pre-PRD)
+Moore Momentum  |  Product Build & Validation  |  Pre-PRD Staging Document
+
+TABLE OF CONTENTS
+Document Overview
+Purpose
+What This Doc Covers
+What This Doc Does Not Cover
+How to Use This Doc With the PRD
+How to Read Feature Entries
+Note on PRD Migration
+Section 1  —  Space Narrative & Theme
+→ Feeds PRD Section 17.1
+Section 2  —  Progressive Leveling System: Cadet → Navigator → Commander
+→ Feeds PRD Section 17.2
+Section 3  —  Dual Currency Economy: Momentum Points & Space Credits
+→ Feeds PRD Section 17.3
+Section 4  —  Planet Journey & Exploration
+Includes: Space Quests & Journey Challenges  →  Feeds PRD Section 17.4
+Section 5  —  Ship Upgrades System
+→ Feeds PRD Section 17.5
+Section 6  —  Streaks & Accountability
+Includes: Ship Warnings / Progressive Accountability  →  Feeds PRD Section 17.6
+Section 7  —  Variable Rewards & Mystery Box
+→ Feeds PRD Section 17.7
+Section 8  —  Trophy Room & Habit Formation Milestones
+Includes: Habit Formation Goals / Dynamic Progression  →  Feeds PRD Section 17.8
+Section 9  —  Badges & Achievements
+→ Feeds PRD Section 17.9
+Section 10  —  Core Balance & "Firing on All Cylinders"
+→ Feeds PRD Section 16
+Section 11  —  Space Cantina & Social Features
+→ Feeds PRD Section 18
+Section 12  —  Sustaining Long-Term Engagement
+→ Feeds PRD Section 17 (cross-cutting)
+Cross-Document References
+
+Document Overview
+Purpose
+This document is the gamification mechanics staging layer for the Moore Momentum PRD. It contains the detailed feature specifications — exact thresholds, rules, economy values, reward structures, and system behaviors — for every gamification feature in the MM System.
+Its job is to hold these specs in a clean, organized, PRD-ready format so that when the relevant PRD sections are being written or updated, the content can be pulled directly without re-research or reconstruction.
+
+What This Doc Covers
+Exact mechanic specifications for every gamification feature: values, thresholds, rules, reward structures, economy balances, edge cases, and visual behaviors
+Phase activation notes for each feature — how the feature behaves across Phase 1 Stage 1, Phase 1 Stage 2, and Phase 2
+AI dependencies embedded in gamification features — only the AI logic inseparable from building that specific feature
+PRD destination mapping — every section is tagged with the PRD section it feeds
+Flagged placeholders (in bold red) identifying Phase 1 mechanic gaps where detail still needs to be confirmed before PRD authoring
+
+What This Doc Does Not Cover
+Full AI architecture and strategy. For the unified AI engine, Data Learning Effects, and competitive advantage framing, see the AI-First Strategy & Data Learning Guide.
+Scientific or theoretical foundations. For why these mechanics work, see MM Science & Expert Foundations (Three-Layer Framework, Doc 1).
+Design rationale and tradeoffs. For why specific design choices were made, see Product Design Rationale & Decision Log (Three-Layer Framework, Doc 3).
+Player-facing walkthroughs or visual specifications. For step-by-step player experience and screen-level detail, see Phase 1 & 2 Sequence (Simplest for Coders).
+Conceptual descriptions of what each mechanic is. For the what and why of each feature at a conceptual level, see Gamification, AI & Science: System Implementation (Three-Layer Framework, Doc 2).
+
+How to Use This Doc With the PRD
+Each section in this document is tagged with the PRD section it feeds. When writing or updating a PRD section, open the corresponding section here to pull exact specs. The PRD uses the A-G format (Current State, Issues, MVP Features, Post-MVP, Exploratory, Decisions, Technical) — this doc feeds primarily into C (MVP Features) and D (Post-MVP Features) of each relevant PRD section.
+
+How to Read Feature Entries
+Each section follows a consistent structure:
+Feature Description — what it is and its primary purpose in the system
+MVP Specs — exact rules, thresholds, values, and behaviors for launch
+Post-MVP Specs — confirmed planned enhancements after launch
+Phase Activation — how this feature behaves across Phase 1 Stage 1, Phase 1 Stage 2, and Phase 2. Pointers to the Phase 1 & 2 Sequence doc for visual/walkthrough detail
+AI Dependency — AI logic inseparable from building this feature, with pointer to PRD Section 15 for the full AI spec
+
+Note on PRD Migration
+When a section of this document has been fully integrated into its corresponding PRD section, note the migration date next to the PRD destination tag and retain this document as a historical reference. Do not delete content after migration — this doc serves as the source record.
+Placeholder items flagged in bold red must be resolved before the corresponding PRD section can be considered complete.
+
+Section 1 — Space Narrative & Theme
+→ Feeds PRD: PRD Section 17.1
+Feature Description
+The space narrative is the container for all gamification in the MM System. It is not a theme layered on top of the product — it is the product. Every mechanic, interface, and interaction is expressed through the lens of a cosmic mission. This framing elevates habit building from a chore into an epic personal journey with stakes, identity, and adventure.
+
+MVP Specs
+Core Narrative Premise
+Planet Earth is in danger from the failure habits epidemic. The player must launch into the cosmos, discover universal principles, and return to save humanity.
+Tagline: "Save Yourself, Save the Planet."
+The player is the pilot. Their growth IS the mission.
+Visual Metaphor Mapping
+Rocket dashboard = the daily scoring interface — 5 Core sections are the ship's systems
+Asteroid fields = obstacles in the player's path (low scores, missed check-ins)
+Planets = milestones earned through sustained effort
+Ship appearance = reflects real earned progress through upgrades purchased
+Alien Guides = characters who deliver Universal Principles at planet milestones
+Space Cantina = the social hub where players connect, compete, and collaborate
+Narrative Integration Rules
+Every reward, celebration, and alert uses space-language framing (e.g., "relaunching" not "failing," "checkpoint" not "setback")
+Progress Summary after each check-in zooms out to show current position in the solar system and distance to next planet
+All level names, achievement titles, and milestone language must be consistent with the space theme
+
+Post-MVP Specs
+Star Jump Engine unlocked after completing Pluto — opens future star system content beyond the solar system
+Expanded alien character roster with distinct personalities and lore
+Seasonal cosmic events tied to real-world calendar moments
+
+Phase Activation
+Phase 1, Stage 1:  Cinematic intro launches the narrative: rocket hovering in space, 5 Core icons visible then greyed/locked, Earth establishing shot, cosmic mission briefing. "Ready Player One?" and "Continue Game 🎮?" CTAs establish game language from the first moment. The Habits Hierarchy Pyramid morphs into the rocket at completion — rocket shown breaking Earth's gravitational pull. See Phase 1 & 2 Sequence doc for full visual walkthrough.
+Phase 1, Stage 2:  Narrative continues as "Level 2." Opening visual shows rocket in orbit with the player's activated Core. Mission reframe: "Transform your habit from something you TRY to do into something AUTOMATIC." Space Cantina unlocks as the reward for completing Stage 2 — cosmic fanfare animation, doors opening to reveal the social hub.
+Phase 2:  Full narrative activation. Rocket dashboard IS the daily interface. Planet progress shows after every check-in. Alien encounters trigger at planet arrivals. The mission is live and continuous — every check-in is a navigation session.
+
+AI Dependency
+AI Dependency:  Alien Guide messages at planet milestones are personalized — AI references the player's active Core focus and Momentum List data to contextualize the Universal Principle delivered. Generic messages are not permitted. See PRD Section 15 for full AI spec.
+
+Section 2 — Progressive Leveling System: Cadet → Navigator → Commander
+→ Feeds PRD: PRD Section 17.2
+Post-MVP feature
+Feature Description
+The leveling system controls which features and capabilities players can access, scaling complexity with earned momentum. Players cannot access advanced features before building the habits and consistency required to use them well. Levels are permanent once earned — they can never be lost.
+
+MVP Specs
+Level Advancement Requirements
+All three criteria must be met simultaneously — no single metric can be gamed:
+Minimum number of habits moved to the Trophy Room (formed status)
+Planet journey milestone reached (specific planet arrival)
+Streak achievement threshold met (consecutive weekday check-ins at 4+ average)
+[PLACEHOLDER — DETAIL NEEDED: Exact numeric thresholds for each criterion at each level transition (e.g., X formed habits, Y planet, Z streak days to advance from Cadet → Navigator) — REVIEW AND CONFIRM]
+Level Benefits
+Cadet (Level 1 — Starting Level):
+1x Space Credit earning rate
+Access to Common-tier ship upgrades only
+Basic feature set — core daily loop, Phase 1 HHS and MBS, Command Center
+1 active Golden Habit per Core (expandable through progression)
+Navigator (Level 2):
+1.25x Space Credit earning rate on all credit earnings
+Rare-tier ship upgrades unlocked
+More habits per Core permitted
+Optional daily challenges unlocked
+Commander (Level 3):
+1.5x Space Credit earning rate on all credit earnings
+Epic-tier ship upgrades unlocked (Commander-only items)
+Full feature access — all Momentum Lists, all system capabilities
+Maximum habits per Core
+Level Permanence Rule
+Levels can never be lost or downgraded once earned — regardless of missed check-ins, low scores, or rocket regression
+This removes anxiety during rough patches and reflects the Endowed Progress Effect: progress already earned creates commitment to continue
+
+Post-MVP Specs
+Level-specific challenges and achievements that only appear at each tier
+Commander-exclusive cosmetic items and narrative content
+
+Phase Activation
+Phase 1, Stage 1:  Players begin as Cadets. The level framework is introduced conceptually — the player understands they are at Level 1 and that the journey ahead will unlock more. No level advancement occurs during Phase 1.
+Phase 1, Stage 2:  Still Cadet. Space Cantina preview at Stage 2 completion includes a brief introduction to the leveling concept (players can see what Navigator and Commander unlock).
+Phase 2:  All level advancement occurs here. Level-up triggers are monitored continuously. Level-up celebration triggers when all three criteria are met simultaneously.
+[PLACEHOLDER — DETAIL NEEDED: Level-up celebration animation spec and exact messaging for each level transition — REVIEW AND CONFIRM]
+
+AI Dependency
+AI Dependency:  AI monitors the three advancement criteria continuously and notifies the player proactively when they are close to a level-up (e.g., "You're 2 formed habits away from Navigator"). See PRD Section 15.
+
+Section 3 — Dual Currency Economy: Momentum Points & Space Credits
+→ Feeds PRD: PRD Section 17.3
+Feature Description
+Two separate currencies serve distinct psychological functions: Momentum Points are the progress engine tied purely to behavior (cannot be purchased or skipped), and Space Credits are the reward currency used to purchase upgrades and bonuses. Separating the two ensures that no player can buy their way through the journey — progression must be earned.
+
+MVP Specs
+Momentum Points — Progress Engine
+Move the rocket forward through space toward the next planet
++10 points per completed weekday check-in regardless of scores — consistency matters most, not perfection
+Cannot be purchased with Space Credits
+Cannot be hoarded or banked to skip ahead — each check-in earns and applies in real time
+Missing 2+ consecutive weekday check-ins triggers regression to previous checkpoint (see Section 6)
+Progression pace by level:
+Beginner (Cadet, first planet): Just 1 check-in reaches the first space station
+Building Momentum (mid-journey): 3–5 check-ins to reach the next planet
+Expert Mode (later planets): 7–10+ check-ins as challenges increase
+[PLACEHOLDER — DETAIL NEEDED: Exact Momentum Point values required to reach each planet (Moon, Mars, Jupiter, Saturn, Pluto) and the checkpoint thresholds within each journey leg — REVIEW AND CONFIRM]
+Space Credits — Reward Currency
+How Space Credits are earned:
+Completing a daily check-in: base credit award
+Hitting streak milestones (see Section 6 for milestone schedule)
+Forming a habit — 🟠 → 🟢 transition (Trophy Room entry)
+High score bonus: scoring 5/5 in any Core
+Mystery Box rewards (see Section 7)
+Quest completions (see Section 4)
+Optional daily challenge completions (see Section 4)
+What Credits Buy (Rocket Upgrades):
+
+Wings (Unlocks Content):
+
+Common Wings: Basic Momentum Lists at planets
+Rare Wings: Advanced Momentum Lists + faster travel
+Very Rare Wings: Elite content access
+Epic Wings: All content + special abilities
+Armor (Protects Progress):
+
+Common Armor: 1-day grace period on streaks
+Rare Armor: 2-day grace period
+Very Rare Armor: 3-day grace + missed check-in protection
+Epic Armor: Full week protection (emergency mode)
+Thrusters (Accelerates Growth):
+
+Common Thrusters: +25% Core Power gain per check-in
+Rare Thrusters: +50% Core Power gain
+Very Rare Thrusters: +75% Core Power gain
+Epic Thrusters: +100% Core Power (2x speed)
+Required Progression:
+Must purchase in order: Wings → Armor → Thrusters
+Must upgrade each tier before next tier unlocks
+Can't buy Epic items until Commander level
+Creates clear upgrade path and goals
+Level Multipliers:
+Cadet (Level 1): 1x credit earning
+Navigator (Level 2): 1.25x credit earning
+Commander (Level 3): 1.5x credit earning
+
+[PLACEHOLDER — DETAIL NEEDED: Exact Space Credit amounts for each earning trigger above — REVIEW AND CONFIRM]
+Level multipliers applied to all Space Credit earnings:
+Cadet: 1x
+Navigator: 1.25x
+Commander: 1.5x
+Economy Balance Targets
+Early players (Cadet) can afford meaningful Common-tier upgrades within approximately 2 weeks of consistent check-ins
+Rare-tier items achievable within 1–2 months of consistent play
+Epic-tier items require 3+ months of consistent commitment and Commander level
+[PLACEHOLDER — DETAIL NEEDED: Exact Space Credit costs for each ship upgrade (Common, Rare, Very Rare, Epic) across Wings, Armor, and Thrusters — needed to validate economy balance targets — REVIEW AND CONFIRM]
+
+Post-MVP Specs
+Seasonal bonus credit events tied to streak milestones or community challenges
+Credit gifting between tribe members (exploratory)
+
+Phase Activation
+Phase 1, Stage 1:  Momentum Points are introduced and earned at each Habits Hierarchy checkpoint: 10 pts (Truth Seeker) → 15 pts (Principle Decoder) → 20 pts (Keystone Forger) → 25 pts (Core Dimension Explorer) → 40 pts (Golden Habit Architect). Points are awarded with celebration animation at each checkpoint. Space Credits are not yet in play.
+Phase 1, Stage 2:  Momentum Points continue: 10 pts (Friction Hunter) → 15 pts (Method Master) → 25 pts (Implementation Wizard). Space Cantina unlock at Stage 2 completion includes a 25 Space Credit welcome bonus. This is the player's first Space Credit experience.
+Phase 2:  Both currencies fully active. Daily earning loop begins. Economy balance targets apply from Day 1.
+
+AI Dependency
+AI Dependency:  None directly for currency mechanics. Economy balance monitoring (detecting if players are accumulating too fast or too slow) is a product analytics function, not AI coaching. See PRD Section 20 for analytics spec.
+
+Section 4 — Planet Journey & Exploration
+→ Feeds PRD: PRD Section 17.4 — includes Space Quests & Journey Challenges
+Feature Description
+The planet journey is the primary progression metaphor — the player's rocket travels through the solar system, with each planet representing a milestone earned through sustained habit execution. The journey creates direction, stakes, and a destination that makes daily consistency feel like movement toward something real.
+
+MVP Specs
+Solar System Sequence
+Travel order: Moon → Mars → Jupiter → Saturn → Pluto
+Each planet requires more Momentum Points and days to reach than the last
+Completing Pluto unlocks the Star Jump Engine — signals future star system content
+[PLACEHOLDER — DETAIL NEEDED: Exact Momentum Point and/or day requirements for each planet leg — REVIEW AND CONFIRM]
+Journey Stakes — Minimum Threshold Rule
+In the second half of each journey leg, a minimum momentum threshold must be maintained
+Drop below the threshold and the rocket regresses to the previous checkpoint — not the beginning of the leg
+Trophy Room, Space Credits, formed habits, and level are always fully preserved regardless of rocket position regression
+[PLACEHOLDER — DETAIL NEEDED: Exact minimum threshold value (Momentum Points per day, or average score) that triggers regression in the second half of each journey leg — REVIEW AND CONFIRM]
+Planet Arrival Sequence
+When the player reaches a planet, the following triggers in order:
+Celebration animation sequence plays
+Alien Guide appears and delivers a Universal Principle relevant to the player's current Core focus
+New Momentum List unlocks (earned as a reward, not given automatically)
+Bonus Space Credits awarded
+New Space Quest activates tied to the player's current Core focus
+[PLACEHOLDER — DETAIL NEEDED: Which Momentum Lists unlock at which planet arrivals — exact mapping needed — REVIEW AND CONFIRM]
+[PLACEHOLDER — DETAIL NEEDED: Exact bonus Space Credit amount awarded at each planet arrival — REVIEW AND CONFIRM]
+Space Quests
+At each planet, completing a quest from the alien guide is required to receive full arrival rewards and advance the narrative
+Quests are personalized to the player's current Core focus and Momentum List data (e.g., "Add 3 items to your Obstacles List," "Define a new Golden Habit for your Career Core")
+Quest completion earns: Space Credits, Momentum Points, and a Mystery Box trigger chance
+[PLACEHOLDER — DETAIL NEEDED: Full quest library by planet and Core — what quest types are possible at each planet for each of the 5 Cores — REVIEW AND CONFIRM]
+Journey Challenges
+Every 3 days starting on Day 2, the player receives an optional one-day challenge
+Challenge examples: "Don't let any Core score below 3 today," "Write a Captain's Log entry of 3+ sentences"
+Completing a challenge earns: Space Credits, Momentum Points, and a variable reward chance
+Purpose: keeps the experience dynamic between major planet milestones
+Challenges are optional — skipping does not affect streak or rocket position
+[PLACEHOLDER — DETAIL NEEDED: Full challenge library — what challenge types exist, how they are selected, and whether AI personalizes challenge selection based on player patterns — REVIEW AND CONFIRM]
+
+Post-MVP Specs
+Star system content beyond Pluto — new planets, new alien characters, new Universal Principle library
+Planet-specific leaderboards showing tribe members' positions on the same journey leg
+
+Phase Activation
+Phase 1, Stage 1:  The rocket is introduced and the solar system is previewed — the player sees the full journey ahead (zoomed out, all planets visible). The rocket has not yet launched. The intro sequence shows the rocket breaking Earth's gravitational pull at Stage 1 completion, bridging to Stage 2.
+Phase 1, Stage 2:  Rocket shown in orbit with the player's Primary Core activated. Journey not yet tracking. The Routines List visualization at Stage 2 end previews how the habit schedule maps to the journey ahead.
+Phase 2:  Journey tracking begins on Day 1. Momentum Points from each check-in move the rocket in real time. Progress Summary after each check-in shows current position.
+
+AI Dependency
+AI Dependency:  Quest personalization: AI selects and customizes quests based on the player's current Core focus, active pain points, and Momentum List data. Challenge selection may also be AI-personalized based on recent performance patterns. See PRD Section 15.
+
+Section 5 — Ship Upgrades System
+→ Feeds PRD: PRD Section 17.5
+Post-MVP feature
+Feature Description
+Ship upgrades are the primary customization and reward system. Every upgrade changes the rocket's visual appearance AND provides a tangible gameplay advantage. Upgrades must be purchased in a fixed order, creating clear sequential goals. The ship's appearance visible to tribe members in the Space Cantina makes progress social and aspirational.
+
+MVP Specs
+Purchase Order Rule
+Required order: Wings first, then Armor, then Thrusters
+All tiers within a category must be fully purchased before the next category unlocks
+Epic-tier items are only available at Commander level
+Wings — Unlocks Content
+Common: Basic Momentum Lists unlocked at planet arrivals
+Rare: Advanced Momentum Lists + faster travel speed
+Very Rare: Elite content access
+Epic: All content + special abilities
+[PLACEHOLDER — DETAIL NEEDED: Exact Space Credit cost for each Wings tier — REVIEW AND CONFIRM]
+Armor — Protects Progress
+Common: 1-day grace period before streak breaks on a missed weekday check-in
+Rare: 2-day grace period
+Very Rare: 3-day grace period + missed check-in protection
+Epic: Full week protection — activates Emergency Mode functionality
+[PLACEHOLDER — DETAIL NEEDED: Exact Space Credit cost for each Armor tier — REVIEW AND CONFIRM]
+Thrusters — Accelerates Growth
+Common: +25% Momentum Points per check-in
+Rare: +50% Momentum Points per check-in
+Very Rare: +75% Momentum Points per check-in
+Epic: +100% Momentum Points per check-in (2x speed)
+[PLACEHOLDER — DETAIL NEEDED: Exact Space Credit cost for each Thrusters tier — REVIEW AND CONFIRM]
+Visual Rules
+Each tier visually transforms the rocket — new wing shapes, armor plating, thruster designs
+Ship appearance is visible to tribe members in the Space Cantina leaderboard
+Upgrade animation plays when a new tier is purchased
+[PLACEHOLDER — DETAIL NEEDED: Visual design specifications for each upgrade tier — exact appearance changes for Common, Rare, Very Rare, and Epic tiers across Wings, Armor, and Thrusters — REVIEW AND CONFIRM]
+
+Post-MVP Specs
+Cosmetic-only skin options (color variants, patterns) purchasable separately from functional upgrades
+Ship appearance preview before purchase
+
+Phase Activation
+Phase 1, Stage 1 & 2:  Ship is introduced visually in the narrative but no upgrades are available for purchase. The upgrade system is foreshadowed — players see the rocket and understand it can be improved.
+Phase 2:  Upgrades become purchasable once the player has accumulated sufficient Space Credits. Common Wings are the first available tier. Purchase UI accessible from the rocket dashboard.
+
+AI Dependency
+AI Dependency:  None directly. Ship upgrade availability is rules-based (level + credit balance). No AI involvement in upgrade logic.
+
+Section 6 — Streaks & Accountability
+→ Feeds PRD: PRD Section 17.6 — includes Ship Warnings / Progressive Accountability System
+Feature Description
+The streak system creates meaningful daily accountability through compounding rewards and real — but compassionate — consequences for missed check-ins. Multiple protection layers ensure accountability has teeth without triggering perfectionism or shame-based abandonment.
+
+MVP Specs
+Streak Definition
+A streak requires consecutive WEEKDAYS (Monday–Friday) on which the player completes a check-in AND achieves a 4.0+ average score across all active Cores
+Weekends (Saturday and Sunday) are always exempt — missing a weekend never affects the streak
+Current streak count is displayed permanently at the top of the rocket dashboard
+Streak Milestone Rewards
+3 days: First momentum reward — variable reward trigger
+7 days: Mystery Box bonus unlock
+14 days: Ship upgrade unlocked (can now purchase Wings/Armor/Thrusters)
+30 days: Major achievement + bonus Space Credits + Streak Saver earned
+60 days: Elite status + special perks
+90 days: "Momentum Master" achievement
+180 days: Legendary status
+365 days: Full celebration sequence — highest recognition in the system
+[PLACEHOLDER — DETAIL NEEDED: Exact Space Credit bonus amounts and achievement badge details for each streak milestone — REVIEW AND CONFIRM]
+[PLACEHOLDER — DETAIL NEEDED: Definition of "Elite status" perks at 60 days and "Legendary status" at 180 days — what specifically is unlocked — REVIEW AND CONFIRM]
+Streak Protection Mechanisms
+Protection layers stack — a player can use multiple protections in the same period:
+Weekend Protection: Weekends are always exempt. Automatic — no player action required.
+Streak Savers: Earned at the 30-day milestone. Automatically applied when the player misses 1 weekday, keeping the streak alive. Maximum of 1 Streak Saver banked at any time. Visual indicator shows "Streak Saver Available" when held.
+Armor Upgrades: Common = 1-day grace period; Rare = 2-day grace period. Works separately from and stacks with Streak Savers.
+Vacation Mode: Player activates before a planned absence. Pauses streak tracking for a defined period without penalty. Returns to pre-vacation streak state upon reactivation.
+[PLACEHOLDER — DETAIL NEEDED: Vacation Mode details: how long can it be activated, how many times per year, whether there is a minimum streak length required to use it — REVIEW AND CONFIRM]
+Ship Warnings — Progressive Accountability System
+When weekday check-ins are missed, a graduated consequence system activates:
+MISS 1 WEEKDAY CHECK-IN — Warning Only:
+Warning notification appears. No consequences applied at this stage.
+Streak remains intact. Momentum Points not lost. Ship position unchanged.
+Player can defer the reminder by 1 hour (respects autonomy).
+Warning message tone: supportive, never shaming. Example: "You missed your check-in yesterday. Your rocket is losing momentum. Check in today to stay on course!"
+MISS 2 CONSECUTIVE WEEKDAY CHECK-INS — Consequence Triggered:
+Rocket position regresses to the previous checkpoint (not the start of the journey)
+Streak is broken if one existed
+Momentum Points reduced
+Tone remains supportive: "You've missed 2 check-ins. Your rocket has dropped back to the previous progress marker. Don't worry — your Trophy Room and all progress are safe!"
+Always preserved regardless of consequence:
+Space Credits balance
+Trophy Room — formed habits are NEVER un-formed by a warning
+All Momentum List data
+Level and all earned achievements
+[Get Support] options when the 2-miss consequence triggers:
+Review Captain's Log for patterns
+Simplify routine temporarily (Emergency Simplification Mode)
+Connect with tribe in the Space Cantina
+AI coaching session targeting obstacles
+Temporary goal pause option if player is in a life crisis
+[PLACEHOLDER — DETAIL NEEDED: Exact Momentum Point reduction amount triggered by 2 consecutive misses — REVIEW AND CONFIRM]
+
+Post-MVP Specs
+Additional Streak Saver earn opportunities beyond the 30-day milestone
+Streak recovery challenges: complete a special challenge to partially restore a broken streak
+
+Phase Activation
+Phase 1, Stage 1 & 2:  No streak tracking. Streak concept is introduced conceptually — players see it as a Phase 2 feature during the Space Cantina preview at Stage 2 completion.
+Phase 2:  Streak tracking begins on Day 1. All protection mechanisms are active from the start. Vacation Mode available immediately.
+
+AI Dependency
+AI Dependency:  The AI monitors for streak-risk patterns and proactively coaches before a streak breaks — e.g., flagging when a player's scores have been hovering near the 4.0 threshold for several days. The 2-miss consequence [Get Support] coaching session is AI-driven. See PRD Section 15.
+
+Section 7 — Variable Rewards & Mystery Box
+
+→ Feeds PRD: PRD Section 17.7
+Post-MVP feature
+Feature Description
+Variable rewards apply the psychological principle that anticipation generates more dopamine than the reward itself. The Mystery Box creates unpredictable delight within the daily check-in, making every session feel like it could surprise the player. Anti-gaming measures ensure rewards are tied exclusively to genuine behavioral engagement.
+
+MVP Specs
+Trigger Rules
+10–15% chance of Mystery Box reward per completed check-in
+Guaranteed Mystery Box reward every 10th consecutive check-in (prevents long dry spells that kill motivation)
+Anti-gaming: reward probability requires a full check-in with Captain's Log entry completed — cannot be triggered by simply opening the app
+Score validation cross-references Captain's Log before reward eligibility is confirmed — inflated scores do not unlock disproportionate rewards
+Presentation Flow
+Step 1: Mystery Box appears after check-in is complete (when triggered). "Tap to reveal your reward!"
+Step 2: 2–3 second anticipation animation plays before the reveal. This delay is intentional — anticipation IS the experience.
+Step 3: Reward revealed with celebration animation appropriate to the reward type.
+Reward Mix: 70% Useful / 30% Delightful
+Useful Rewards (70%):
+Bonus Space Credits: +25 to +100
+Streak Savers: protect one missed weekday check-in
+Core Boosts: temporary +0.5 score multiplier for one Core for 24 hours
+Upgrade Discounts: 10–20% off next ship upgrade purchase
+Double Points: 2x Momentum Points for the next check-in only
+Delightful Rewards (30%):
+Mystery Cosmetics: ship skins, color variants, patterns
+Personalized Alien Messages: Zorg or another Alien Guide references specific moments from the player's Captain's Log
+Throwback Memories: "Remember Day 23 when you overcame X?" — AI-surfaced past Captain's Log highlight
+Achievement Unlocks: special badges or titles not available through standard progression
+Easter Eggs: hidden game references, humor, unexpected surprises
+Personalized Inspirational Quotes: AI-generated based on the player's current challenges and progress
+Personalized Alien Message — Design Note
+This is the highest-value Delightful reward. The message references a specific moment from the player's Captain's Log history, creating emotional connection that no point system can replicate. Example:
+"Captain, I've been watching your transformation. That moment on Day 23 when you chose the protein shake over cereal despite being rushed? That's when I knew you were becoming the person you're meant to be. The upgraded you is closer than you think. Keep firing on all cylinders! — Zorg, Planet Mars"
+
+Post-MVP Specs
+Expanded Delightful reward catalog as Captain's Log archive grows richer
+Tribe-shared reward moments — option to share a Mystery Box reveal in the Space Cantina
+
+Phase Activation
+Phase 1, Stage 1:  No Mystery Box. Achievement checkpoint rewards (escalating Momentum Points with celebration animations) establish the reward psychology without variable mechanics.
+Phase 1, Stage 2:  No Mystery Box. Space Cantina 25 Credit welcome bonus at Stage 2 completion is the bridge reward.
+Phase 2:  Variable rewards fully active from Day 1. First possible Mystery Box trigger is on Day 1's check-in.
+
+AI Dependency
+AI Dependency:  Personalized Alien Messages and Throwback Memories require AI to: (1) scan the Captain's Log archive for emotionally significant moments, (2) draft the personalized message in the correct alien character voice, and (3) ensure the referenced moment is positive/growth-oriented. See PRD Section 15.
+
+Section 8 — Trophy Room & Habit Formation Milestones
+→ Feeds PRD: PRD Section 17.8 — includes Habit Formation Goals / Dynamic Progression System
+
+Feature Description
+The Trophy Room is the player's permanent record of identity transformation — habits that have become automatic and are now part of who they are. It is the deepest form of progress visible in the system, more powerful than any score or point balance because it represents real behavioral change that has been sustained over time.
+
+MVP Specs
+Formation Eligibility Threshold
+14+ days with 80%+ consistency (scoring 3 or above on the habit's Core on days the habit applies)
+AI validation required before "formed" status is confirmed — behavioral data must match the claimed formation
+Early formation option: player can manually mark a habit formed earlier with a confirmation prompt acknowledging the 2+ week research-backed standard
+Trophy Room Display
+Formed non-routine habits move to the Trophy Room, organized by Core (🧠 💰 👥 💪 🧘)
+Routine habits that reach formed status turn green in the Full Routines List but stay visible in the daily schedule
+Trophy counts are visible to tribe members in the Space Cantina — personal pride and social proof
+Full Routines List color transformation — the most visceral progress indicator in the system:
+🔴 Bad / Failure Habit — default, pre-system
+🟠 Active Golden Habit — in progress
+🟢 Formed Habit — lives in Trophy Room (or green in Routines List)
+Formation Rewards
+Celebration animation sequence
+Bonus Space Credits awarded
+Ship upgrade progress contribution
+Trophy added to Trophy Room with identity language: "This is now automatic and part of who you ARE!"
+[PLACEHOLDER — DETAIL NEEDED: Exact Space Credit bonus amount for habit formation — REVIEW AND CONFIRM]
+Monthly Review System
+Review prompts at 30, 60, and 90 days after formation ensure formed habits stay formed
+Review checks: Core average monitoring (detects 1.0+ point drops), Captain's Log theme analysis, score trend review
+Un-forming option is always available — framed as "adaptation, not failure," never a punishment
+If formed habit slips, AI suggests un-forming and rebuilding with fresh insights from the player's evolved profile
+Habit Formation Goals — Dynamic Progression System
+Goal Setup:
+System suggests a formation target: "Let's aim to form 1 habit in your first 2 weeks"
+Player can adjust: 1 habit in 7 days (ambitious) through 1 in 21 days (cautious)
+Research-backed defaults: 14–21 days for simple habits, 30–60 days for complex habits
+Tracking:
+Daily check-in updates formation progress bar showing days remaining and consistency percentage
+"Closest habit to forming" always displayed with days and consistency data
+At-risk alert: "Only 4 days left and no habits close to forming. Need help?"
+Celebration When Goal Hit:
+Confetti animation + specific habit name that was formed
+Identity language: "This is now automatic and part of who you ARE!"
+Rewards unlocked: credits, ship upgrade progress, achievement
+Next challenge suggestion presented immediately
+Dynamic Progression Scaling:
+Beginner (Cadet): 1 habit / 14 days
+Building Momentum: 2 habits / 30 days
+Advanced (Navigator): 3 habits / 45 days
+Expert (Commander): 4+ habits / 60 days
+
+Post-MVP Specs
+Trophy Room social features: browse tribe members' Trophy Rooms for strategy inspiration
+Formed habit anniversary celebrations (e.g., 6-month and 1-year markers)
+
+Phase Activation
+Phase 1, Stage 1 & 2:  No Trophy Room activity. Golden Habits are being set up. Players see the Trophy Room referenced as a future destination during the Stage 2 Routines List visualization.
+Phase 2:  Trophy Room tracking begins on Day 1. Formation eligibility monitoring starts immediately. First trophy is typically earned around Day 14–21 for most players.
+
+AI Dependency
+AI Dependency:  AI validates formation eligibility — cross-referencing scores, Captain's Log mentions, and behavioral patterns before confirming formed status. Monthly review monitoring is also AI-driven. Throwback memories in Mystery Box rewards reference Trophy Room milestones. See PRD Section 15.
+
+Section 9 — Badges & Achievements
+→ Feeds PRD: PRD Section 17.9
+Post-MVP feature
+Feature Description
+Badges provide multi-category recognition that spans from easily attainable early wins to long-term aspirational goals — ensuring every player always has something to pursue regardless of stage. Badge visibility in the player profile, Space Cantina, and ship exterior makes progress social and inspiring.
+
+MVP Specs
+Badge Categories
+Journey Badges: Awarded for reaching each planet (Moon, Mars, Jupiter, Saturn, Pluto, and Star Jump)
+Streak Badges: Awarded at streak milestones (7, 14, 30, 60, 90, 180, 365 days)
+Formation Badges: Awarded based on number of habits moved to the Trophy Room (1 habit formed, 3 habits, 5 habits, 1 per Core, etc.)
+Balance Badges: Awarded for maintaining all 5 Cores above 3.0 for defined consecutive day periods
+Exploration Badges: Awarded for completing quests, unlocking alien encounters, and filling Momentum Lists
+Social Badges: Awarded for tribe participation, strategy sharing in the Space Cantina, and accountability partner activity
+[PLACEHOLDER — DETAIL NEEDED: Full badge library with exact names, descriptions, criteria, and rarity tier for each badge in every category — REVIEW AND CONFIRM]
+Badge Display Rules
+Badges are visible in the player profile
+Select badges are displayable on the ship exterior — visible to tribe members
+Badges are shareable in the Space Cantina
+[PLACEHOLDER — DETAIL NEEDED: Which specific badges can be displayed on the ship exterior — exact selection criteria and display slots — REVIEW AND CONFIRM]
+Achievement Titles
+Phase 1 achievement titles (established the system's language):
+Stage 1: Truth Seeker → Principle Decoder → Keystone Forger → Core Dimension Explorer → Golden Habit Architect
+Stage 2: Friction Hunter → Method Master → Implementation Wizard
+[PLACEHOLDER — DETAIL NEEDED: Full Phase 2 achievement title list — what titles are awarded beyond the Phase 1 set, and at what milestones — REVIEW AND CONFIRM]
+
+Post-MVP Specs
+Seasonal limited-edition badges tied to community events
+Badge showcase customization — player chooses which badges display on their profile
+
+Phase Activation
+Phase 1, Stage 1 & 2:  Achievement titles and Momentum Point rewards establish the recognition language. No formal badge system active yet — badges are introduced as a Phase 2 feature.
+Phase 2:  All badge categories active. First Journey Badge (Moon arrival) is typically the first badge earned. Formation and Streak badges follow as those milestones accumulate.
+
+AI Dependency
+AI Dependency:  Minimal. Badge award triggers are rules-based. AI may surface badge progress notifications ("You're 2 habits away from your next Formation Badge") as part of the Today's Focus compilation. See PRD Section 15.
+
+Section 10 — Core Balance & "Firing on All Cylinders"
+→ Feeds PRD: PRD Section 16
+
+Feature Description
+The Core Balance system ensures players cannot neglect any of the 5 Cores for extended periods. It enforces the MM System's foundational promise: holistic, balanced growth. A player who is excelling in one Core while neglecting others is not experiencing the system's full transformational power.
+
+MVP Specs
+Balance Meter
+Displays 7-day rolling averages across all 5 Cores in the Progress Summary after every check-in
+Visualized as fuel gauges — each Core has a bar showing its 7-day average on the 1–5 scale
+Makes imbalance immediately obvious and actionable before it becomes a crisis
+Display format:
+🧠 Mindset: [bar] 4.2 / 5
+💰 Career: [bar] 1.8 / 5 ⚠️
+👥 Relationships: [bar] 4.6 / 5
+💪 Physical: [bar] 2.1 / 5 ⚠️
+🧘 Emotional: [bar] 3.5 / 5
+Core Balance Alert — Trigger Rules
+A red ⚠️ badge appears on any Core that scores below 3.0 for 5 or more consecutive days
+Badge displayed on the rocket dashboard — impossible to miss
+Alert persists until the Core scores above 3.0 for at least 2 consecutive days
+Alert message includes:
+Core name and number of consecutive days below threshold
+Recent low scores displayed in context
+[Review Habits] → Opens that Core's habit view for inspection
+[Get AI Help] → Triggers targeted AI intervention for that Core
+[Done] → Acknowledges the alert; player takes responsibility
+Multi-Core Alert
+If 2 or more Cores simultaneously fall below 3.0 for 5+ days, both show ⚠️ badges simultaneously
+Combined alert adds: "Multiple Cores are struggling. This might indicate broader life stress. Consider simplifying or getting support."
+[Emergency Simplification Mode] option appears in multi-Core alert
+Emergency Simplification Mode
+Temporarily pauses non-essential habits so the player can focus on a minimum viable routine across all Cores
+Framed as a strategic reset, never as failure — language: "Let's simplify to keep your momentum alive"
+Player selects which habits to pause; AI suggests which to prioritize keeping active
+[PLACEHOLDER — DETAIL NEEDED: Exact rules for Emergency Simplification Mode: how long it can be active, what habits are auto-suggested to keep vs. pause, how exit from Emergency Mode is triggered — REVIEW AND CONFIRM]
+Balance Bonus Rewards
+Bonus Space Credits awarded when all 5 Cores maintain above the threshold for a defined consecutive period
+[PLACEHOLDER — DETAIL NEEDED: Exact consecutive day requirement and Space Credit bonus amount for the Balance Bonus reward — REVIEW AND CONFIRM]
+
+Post-MVP Specs
+Deeper Ripple Effect analytics: AI shows which Cores rise and fall together for this specific player
+Personalized balance recommendations based on player archetype patterns
+
+Phase Activation
+Phase 1, Stage 1 & 2:  Balance concept introduced at the system level — the 5 Cores framework and the importance of holistic balance are explained. No balance tracking active yet.
+Phase 2:  Balance Meter and Core Balance Alert system both active from Day 1. First alert is possible from Day 5 onward if a Core is consistently neglected.
+
+AI Dependency
+AI Dependency:  The [Get AI Help] alert action triggers a targeted AI coaching session: analyzes failing habits in that Core, cross-references Captain's Log for patterns, and recommends experiments or Go Deeper rebuilds. Emergency Simplification Mode habit prioritization is AI-driven. See PRD Section 15.
+
+Section 11 — Space Cantina & Social Features
+Related Doc:
+Detailed Space Cantina Doc
+
+→ Feeds PRD: PRD Section 18
+Full version is post-MVP. MVP uses Reddit Bridge for crowdsourced sharing. See PRD Section 18 for full MVP-vs-post-MVP breakdown.
+Feature Description
+The Space Cantina is the social hub — the community layer that transforms individual habit building into a shared movement. It is organized around four pillars: Crowdsourced Idea Sharing, Interstellar Collaboration (Tribes), Leaderboards, and Weekly Competitions.
+
+MVP Specs
+Crowdsourced Idea Sharing (Reddit Bridge for MVP)
+Reddit-style upvoting system surfaces the most effective Golden Habits and MBMs for each Core Area
+Any player can tap to adopt a discovered habit directly from the feed
+Most-upvoted strategies surface to the top — collective intelligence in action
+MVP implementation via Reddit API bridge — see PRD Section 18.1 and Section 19.3 for integration spec
+Interstellar Collaboration — Space Tribes
+Public or private groups for accountability partner matching
+AI suggests specialized tribes matching the player's goals and active pain points as they level up
+Verified wellness professionals accessible within tribes (post-MVP)
+Successful tribe strategies feed back into AI recommendations — collective intelligence amplifying personal growth
+[PLACEHOLDER — DETAIL NEEDED: Exact tribe size limits, matching algorithm criteria, and accountability partner check-in cadence spec — REVIEW AND CONFIRM]
+Aspirational Leaderboards
+
+Ranking criteria applied in order:
+Primary: Ship upgrade level (Wings tier first, then Armor, then Thrusters as tiebreakers). Visual representation of each player's ship displayed — creates positive aspiration.
+Secondary: Momentum Score (total Momentum Points earned)
+Tertiary: Trophy count (number of formed habits — shows behavioral transformation, not just engagement)
+Social features within leaderboard:
+View Ship: see visual representation of any tribe member's upgrades
+Message / Connect: send messages, ask for strategies, celebrate wins
+View Trophy Room: see which habits others have formed, learn from their Golden Habits, copy successful strategies
+Trending arrows (⬆️ ⬇️ ↔️) show movement rather than fixed rank
+Full leaderboard opt-out available — players can choose private progress mode
+Anti-Shame Design Principles
+What the system does NOT do:
+Highlight "worst performer" or use red/negative colors for bottom ranks
+Send notifications about falling behind other players
+Display "days since last check-in" for any player
+Share public failures or slip-ups
+Use comparative language ("Jordan is beating you")
+What the system always does:
+Use positive language for all rank positions (bottom = "Just Getting Started")
+Emphasize learning over competing — Trophy Room view makes the leaderboard a strategy library
+Celebrate all progress regardless of position
+Frame the group as a "Tribe" not "Competitors"
+Weekly Competitions
+Themed competitions focused on specific Cores or challenge types run weekly
+Top performers earn: bonus Space Credits, Momentum Points, and real-life rewards
+Participation is optional — never required for progression
+[PLACEHOLDER — DETAIL NEEDED: Weekly competition format: how themes are selected, duration, reward structure, and whether AI personalizes which competitions are surfaced to each player — REVIEW AND CONFIRM]
+Cantina Unlock Trigger
+Space Cantina unlocks as the reward for completing Phase 1, Stage 2 entirely
+Unlock includes: cosmic fanfare animation, doors opening to reveal the hub, 25 Space Credit welcome bonus, and brief Four Pillars overview
+[PLACEHOLDER — DETAIL NEEDED: Exact Space Cantina onboarding flow after unlock — what the player sees and does in their first 2 minutes in the Cantina — REVIEW AND CONFIRM]
+
+Post-MVP Specs
+Native MM platform community (replacing Reddit bridge)
+Full group quests and tribe-wide challenges
+Verified wellness professional integration within tribes
+
+Phase Activation
+Phase 1, Stage 1 & 2:  Space Cantina is foreshadowed — players see it referenced as a reward they are working toward. No Cantina access during Phase 1 until Stage 2 completion.
+Phase 2:  Full Cantina access. Social features integrate with daily gameplay: tribe members can see ship upgrades, Trophy counts, and challenge participation.
+
+AI Dependency
+AI Dependency:  Tribe matching uses AI to suggest groups based on player's active Core focus, pain points, and Momentum List data. Crowdsourced strategies that match a player's profile are surfaced by AI in recommendations. Weekly competition selection may be AI-personalized. See PRD Section 15.
+
+Section 12 — Sustaining Long-Term Engagement
+→ Feeds PRD: PRD Section 17 — cross-cutting
+Feature Description
+This section captures the cross-cutting design principles and mechanics that prevent the experience from becoming stale over time. These are not individual features but emergent properties of the system working together — the result of all the above mechanics combining to keep engagement fresh, challenging, and identity-driven over months and years.
+
+MVP Specs
+Progressive Challenge Calibration
+Each planet requires more momentum than the last — the challenge scales with the player
+Each level (Cadet → Navigator → Commander) requires higher thresholds across all three advancement criteria
+The system never becomes easy — there is always a next planet, a next level, a next trophy to earn
+Expanding Content
+New Momentum Lists unlock through planet arrivals and Wing upgrades — the Command Center grows richer over time
+New alien encounters introduce new Universal Principles at each planet — wisdom content expands with progression
+The system always has content the player hasn't seen yet
+Visual Transformation Narrative
+The color transformation (🔴 → 🟠 → 🟢) across the Full Routines List makes long-term progress viscerally visible
+The rocket's evolving appearance through ship upgrades tells the story of the journey at a glance
+The growing Trophy Room is a permanent, visible record of who the player has become
+The Balance Meter's 7-day rolling averages show holistic improvement over time
+Identity Anchoring — The Deepest Form of Retention
+The player who once needed external motivation to check in eventually checks in because it is simply what they do
+Behavior has merged with identity — the ultimate goal of the entire system
+Trophy Room, formed habits, and the evolving BTTF vision all reinforce: "This is who I am now"
+Long-term retention is not driven by new features — it is driven by the player's investment in their own transformation
+
+Post-MVP Specs
+Star system content beyond Pluto — new planets, new alien lore, extended Universal Principle library
+Annual "Year in Review" celebration — AI-generated summary of the player's transformation over 12 months
+
+Phase Activation
+Phase 1:  Foundation for long-term engagement is set: identity-based framing, investment in Momentum Lists, cosmic mission narrative. The player is primed to want to come back.
+Phase 2:  All long-term engagement mechanics active. The compound effect of daily wins across all 5 Cores is what sustains engagement — not novelty alone.
+
+AI Dependency
+AI Dependency:  The AI's continuous learning loop is the core engine of long-term personalization — recommendations improve over time as the player's data profile grows richer. The system that knows you better than you know yourself is the deepest retention mechanism. See PRD Section 15 for full AI spec.
+
+Cross-Document References
+This document feeds the following PRD sections:
+PRD Section 16 — Core Balance & "Firing on All Cylinders" (fed by Section 10 of this doc)
+PRD Section 17 — Gamification & Progression System (fed by Sections 1–9 and 12 of this doc)
+PRD Section 18 — Space Cantina & Social Features (fed by Section 11 of this doc)
+
+This document should be read alongside:
+Gamification, AI & Science: System Implementation (Three-Layer Framework, Doc 2) — conceptual descriptions of what each mechanic is and why it exists
+Product Design Rationale & Decision Log (Three-Layer Framework, Doc 3) — why specific design choices were made
+Phase 1 & 2 Sequence (Simplest for Coders) — player-facing walkthroughs and visual specifications for all phases
+AI-First Strategy & Data Learning Guide — full AI architecture, Data Learning Effects, and competitive advantage framing
+PRD Section 15 — AI Engine & Personalization System — full specification for all AI dependencies referenced throughout this document

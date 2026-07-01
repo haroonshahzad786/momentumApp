@@ -1,0 +1,689 @@
+MM BUILD GUIDE
+MVP Feature Specifications & Development Reference
+(Doc 1 of 2 in the Two-Doc Build System)
+NOTE: THIS is the original one I had fro July 2025. Should I combine the format of this older one into this version???
+______
+PURPOSE & HOW TO USE THIS DOCUMENT
+What This Document Is
+The MM Build Guide is the comprehensive WHAT and WHY reference for all 80 MVP FEATURES (as well as showing the future features to develop in later stages after testing MVP). It provides detailed specifications, technical requirements, dependencies, and design decisions needed to build the Moore Momentum System.
+This is Doc 1 of 2 in the Two-Doc Build System. Use it alongside the MM Build Tracker (Google Sheet) which tracks STATUS and WHO for each feature.
+Primary Audience
+•   	Will Moore - Product specifications, feature requirements, decision authority
+•   	Haroon Shahzad - Technical implementation, development priorities
+•   	Future Team Members - Onboarding reference, system understanding
+•   	Collaborators/Investors- MVP scope and technical approach
+When To Use This Document
+•   	Building a feature: Look up full specs, UI requirements, technical considerations
+•   	Planning a sprint: Review dependencies and blockers for prioritization
+•   	Making a decision: Check Decision Log for previous decisions or add new ones
+•   	Onboarding someone: Share for complete system understanding
+•   	Scope creep check: Verify if something is MVP vs Post-MVP vs Exploratory
+How This Connects To Other Documents
+Document
+Relationship
+MM Build Tracker
+Companion doc - tracks STATUS/WHO while this doc covers WHAT/WHY
+Navigation Guide
+Master index - explains how all docs work together
+Product & Strategy Guide
+Detailed System Strategy Guide for additional context
+Technical Implementation
+Code-level specs - detailed technical implementation (post-validation)
+Visual Design System
+UI specifications - wireframes, colors, components
+Document Maintenance
+This is a living document. Update it when:
+•   	A feature spec changes based on validation or technical constraints
+•   	A decision is made (add to Decision Log)
+•   	Something is learned from testing (add to Learnings Log)
+•   	A feature moves between MVP/Post-MVP/Exploratory categories
+
+ _______
+TABLE OF CONTENTS
+SECTION 1: CURRENT FOCUS
+1.1 This Week's Priority
+1.2 Questions for Haroon Validation
+1.3 What's Complete
+1.4 What's In Progress
+1.5 What's Not Started
+SECTION 2: PHASE 1 STAGE 1 - Golden Habit Identification
+2.1 Overview & Context
+2.2 Issues This Phase Solves
+2.3 Features 1-10 (Detailed Specifications)
+2.4 Post-MVP Features for Stage 1
+2.5 Technical Considerations
+2.6 Outstanding Decisions
+SECTION 3: PHASE 1 STAGE 2 - 3 Momentum Building Methods
+3.1 Overview & Context
+3.2 Issues This Phase Solves
+3.3 Features 11-20 (Detailed Specifications)
+3.4 Post-MVP Features for Stage 2
+3.5 Technical Considerations
+SECTION 4: PHASE 2 - Daily Action & Gamification
+4.1 Overview & Context
+4.2 Issues This Phase Solves
+4.3 Daily Check-In Features (21-35)
+4.4 Gamification Features (36-50)
+4.5 Core Balance System
+4.6 Reward Systems & Progression
+4.7 Post-MVP Features for Phase 2
+4.8 Technical Considerations
+4.9 Outstanding Decisions
+SECTION 5: SUPPORTING SYSTEMS
+5.1 Infrastructure Features (51-60)
+5.2 Command Center & Momentum Lists
+5.3 Integration Architecture
+5.4 Data Architecture
+5.5 Deployment Strategy
+SECTION 6: DECISION LOG
+6.1 Confirmed Decisions
+6.2 Pending Decisions
+SECTION 7: LEARNINGS LOG
+7.1 Documentation Learnings
+7.2 Validation Learnings
+7.3 UX Learnings
+7.4 Technical Learnings
+
+ _______
+QUICK REFERENCE DASHBOARD
+MVP Status At A Glance
+Phase/Area
+Features
+Status
+% Done
+Phase 1 Stage 1
+10
+4 ✅ | 1 🔄 | 5 ❌
+~50%
+Phase 1 Stage 2
+10
+0 ✅ | 0 🔄 | 10 ❌
+0%
+Phase 2 Check-In
+15
+0 ✅ | 0 🔄 | 15 ❌
+0%
+Phase 2 Gamification
+15
+0 ✅ | 0 🔄 | 15 ❌
+0%
+Phase 2 Balance/Rewards
+20
+0 ✅ | 0 🔄 | 20 ❌
+0%
+Infrastructure
+10
+1 ✅ | 3 🔄 | 6 ❌
+~20%
+TOTAL MVP
+80
+5 ✅ | 4 🔄 | 71 ❌
+~12%
+Key Project Information
+Timeline
+4 Months (adjusted from original 3 months)
+Tech Stack
+FlutterFlow for MVP then migrate to Flutter for Post MVP (UI) + Voiceflow (AI) + Firebase (Backend)
+Team
+Will Moore (Product) + Haroon Shahzad (Dev)
+Methodology
+AI-First Validation → Production Build
+Deployment
+PWA-first via FlutterFlow (no app store approval needed)
+Weekly Sync
+Wednesdays (Will + Haroon)
+Status Legend
+✅ Complete - Feature built and working
+🔄 In Progress - Currently being built or refined
+❌ Not Started - Not yet begun
+🔶 Post-MVP - Planned for after MVP launch
+🔵 Exploratory - Ideas being considered, not committed
+❓ Decision Needed - Requires resolution before implementation
+
+ _______
+SECTION 1: CURRENT FOCUS
+🎯 This Week's Priority: Haroon Validation Meeting
+1.1 Meeting Objectives
+The primary goal is to reality-check all 80 MVP features before proceeding with detailed documentation and visual design. This prevents costly rebuilds if technical constraints require feature changes.
+Questions for Haroon
+Are the 80 features achievable in 4 months with current team size?
+Which features should be cut or simplified for MVP?
+What's the remaining infrastructure work and time estimate?
+Any technical concerns with Voiceflow multi-agent architecture at scale?
+How complex is Google Calendar integration (OAuth, two-way sync)?
+Are animated sliders with haptic feedback feasible in FlutterFlow?
+What's the realistic timeline for Phase 2 gamification features.
+Any features that seem technically risky or need prototyping first?
+Are we confirmed that we do the MVP in Flutterflow then migrate to Flutter for Post MVP? Full understanding of  how this will work and why we’ll need to do this? 
+
+1.2 What's Complete
+Infrastructure ✅
+FlutterFlow project setup and configuration
+Firebase backend connected (Firestore, Auth, Functions, Analytics)
+Voiceflow multi-agent architecture (initial version)
+Basic authentication system (Email, Google Sign-In)
+Database schema for Phase 1
+Phase 1, Stage 1 (Partial) ✅
+Phase 1, Stage 1 (longer version instructions) conversation flow created in Voiceflow (Will to create shortened version)
+Flutter Flow corresponding screens/animations complete forlonger version instructions? 
+Momentum Lists collecting user input (17 lists defined)
+Command Center structure defined
+Core area selection working
+Pain point identification flow working
+1.3 What's In Progress
+Haroon's Current Work 🔄
+Phase 1, Stage 1 completion (tagging system)
+Multi-agent architecture refinement
+Command Center UI implementation
+End-to-end testing Phase 1, Stage 1
+Will's Current Work 🔄
+Momentum List tagging criteria document
+Master Habits Database (60% complete)
+Top Pain Points Database
+   …
+
+Current Blockers
+Auto-tagging system: Waiting on tagging criteria document from Will
+Visual Design System: Waiting on Haroon validation before creating wireframes
+Beta Tester Recruitment: Need to begin recruiting 50-100 users for Month 3
+1.4 What's Not Started
+Phase 1, Stage 2 ❌
+All 10 features not started: 3 Momentum Building Methods AI logic, IF-THEN planning flow, Habit refinement workflow, Space Cantina unlock.
+Phase 2 ❌
+All 50 features not started: Daily Check-In interface, Hybrid Scoring system, Interactive Animated Sliders, Core Balance Meter, Routines system, Weekly Missions, Gamification (XP, levels, achievements), Calendar integration.
+Content ❌
+Master Visual Guide (Figma), Default Pain Point examples (final), Screen copy for all features, Animation specifications, Motivational messages library.
+_______
+SECTION 2: PHASE 1 STAGE 1 - Use Habits Hierarchy to Determine Pain Points and Golden Habits to Resolve Them.
+Related Docs
+PHASE 1 AND 2 SEQUENCE (SIMPLEST VERSION FOR CODERS)
+Overview of phases 1 and 2, goals for both first time and returning players, success metrics, etc at the top. 
+Example player walkthrough of first time player longer version (including visuals)
+PHASE 1 AND PHASE 2 BEST OVERVIEW VERSION
+Details of the entire MM System (both phases) and how it should all work together, which the "Phase 1 and 2 Sequence” docs was created from (can reference when get stuck/something not working as originally intended). 
+2.1 Brief Overview & Context
+Purpose: Guide players through AI-powered questions to identify personalized Golden Habits via the 5-step Habits Hierarchy Journey. The goal is to move from vague pain point → specific, actionable Golden Habit in 3-5 minutes (for initial) and 1-2 minutes for returning, and to introduce the key personalization element of the Command Center/Momentum Lists. 
+Visual Metaphor: Move through all 5 sections of the Habits Hierarchy pyramid until complete phase 1 where they see the pyramid was a hybrid for their rocket, which then launches at the end as they complete level 1. et.
+Key Principle: Each step builds on the previous, no skipping allowed (creates investment and proper foundation).
+The 5-Step Journey:
+1. 	Pain Point Scanner - Identify what's holding player back
+2. 	Core Area Mapper - Connect to one of 5 Core Areas
+3. 	Principle Decoder - Identify underlying universal principle (build trust)
+4. 	Keystone Personalizer - Match to personalized habit category (leap  from generic advice to highly personalized)
+5. 	Golden Habit Forger - Create specific, actionable Golden Habit (solid actionable/simple starting point that feels achievable). 
+2.2a Player Pain Points This Phase Solves
+Issue
+Solution
+Users don't know which habits to start with
+AI-guided Golden Habit identification through pain point analysis
+Generic habit advice doesn't fit individual
+Triple-Check Criteria: WANTS to, CAN do, EFFECTIVE
+Users overwhelmed with too many habits
+Start with 1-2 Golden Habits per core, expand over time
+No self-awareness of strengths/weaknesses, and other personal factors to ensure tailored golden habits
+Momentum Lists auto-populated during conversation
+Lack of Trust (players worry about advice being pulled randomly from internet and knowing AI is often wrong)
+Universal Principle correlation
+One stop-shop for awareness metrics
+Command Center containing the Momentum Lists provide a simple database to access all major aspects/personalization factors of a player’s life.
+2.2b Known Issues and Challenges to Address
+
+2.3 Features 1-10 (Detailed Specifications)
+Feature 1: Multi-Agent AI Architecture (Voiceflow) ✅
+Status: COMPLETE (in refinement)
+What It Does:
+Voiceflow-driven conversations with natural language processing. Multiple specialized AI agents hand off to each other based on conversation context. Adaptive questioning adjusts based on user responses. Context preservation allows users to leave and return without losing progress.
+Technical Implementation:
+•   	Voiceflow multi-agent setup with defined handoff points
+•   	Session state management in Firebase
+•   	NLP for understanding natural language responses
+•   	Knowledge documents uploaded to each agent
+UI Requirements:
+•   	Chat interface (ListView for history, TextFormField for input)
+•   	Progress indicator showing current step (1-5)
+•   	Auto-scroll to latest message
+•   	Typing indicator while AI responds
+Success Criteria:
+•   	Conversation feels natural (not robotic)
+•   	Context preserved across sessions
+•   	Response time < 3 seconds
+•   	Handles unexpected inputs gracefully
+Feature 2: Core Area Selection ✅
+Status: COMPLETE
+What It Does:
+Player selects which of the 5 Core Areas to focus on first. Can be AI-recommended based on initial questions or player-chosen. Explains each Core Area briefly before selection.
+The 5 Core Areas:
+•   	🧠 Mindset: Growth-owner thinking, resilience, mental frameworks
+•   	💰 Career & Finances: Professional growth, wealth building, purpose
+•   	👥 Relationships: Deep connections, communication, support network
+•   	💪 Physical Health: Energy, fitness, nutrition, sleep
+•   	🧘 Emotional & Mental Health: Stress management, fulfillment, passion
+UI Requirements:
+•   	5 tappable Core Area cards with icons and brief descriptions
+•   	Visual highlight on selection
+•   	Option for AI to recommend based on initial questions
+Feature 3: Pain Point Identification ✅
+Status: COMPLETE
+What It Does:
+AI identifies specific pain points through open-ended questions. Starts with Core Areas scoring lowest. Uses "Why?" drilling technique to find root cause (not surface symptoms). Validates understanding before proceeding.
+Example Flow:
+AI: "What's holding you back from being your best self?"
+User: "I'm tired all the time"
+AI: "When you say tired, is it physical exhaustion, mental fatigue, or lack of motivation?"
+User: "Mostly physical, I don't sleep well"
+AI: "Got it - so poor sleep quality is affecting your energy. Let me confirm: your main challenge is getting quality sleep, which leaves you physically exhausted. Is that right?"
+Technical Notes:
+•   	NLP categorizes pain points to Core Areas (we have core area 
+•   	Top Pain Points Database for pattern matching
+•   	Clarifying questions if input is vague
+Feature 4: Momentum List Collection ✅
+Status: COMPLETE
+What It Does:
+Collects information for the 17 Momentum Lists during natural conversation flow. This data powers AI personalization throughout the system. Lists are stored in Command Center for player to view/edit.
+The 17 Momentum Lists:
+•   	1. Strengths | 2. Passions | 3. Fears | 4. Goals | 5. Obstacles
+•   	6. Values | 7. Triggers | 8. Rewards | 9. Accountability | 10. Environment
+•   	11. Time Availability | 12. Energy Patterns | 13. Social Support | 14. Resources
+•   	15. Past Successes | 16. Past Failures | 17. Back to the Future (vision)
+Key Innovation:
+All 17 lists function as weekly missions/quests in Phase 2, not just static profile data. Players earn XP for adding/updating entries, creating engagement loop.
+Feature 5: Auto-Tagging System 🔄
+Status: IN PROGRESS
+What It Does:
+Automatically extracts and tags user responses to populate Momentum Lists without explicit data entry. AI identifies when a user mentions a strength, passion, fear, etc. and tags it appropriately.
+Example:
+User says: "I'm really good at organizing and planning, but I freeze when I have to speak in public."
+System tags:
+•   	Strengths List: "organizing", "planning"
+•   	Fears List: "public speaking"
+•   	Obstacles List: "freezing when speaking publicly"
+Current Blocker:
+Waiting on Tagging Criteria Document from Will that defines exact rules for what goes in each list.
+Technical Requirements:
+•   	NLP entity extraction
+•   	Tagging rules engine
+•   	Real-time Firebase updates
+•   	Player review/edit capability (in Command Center)
+Feature 6: Golden Habit Recommendation ❌
+Status: NOT STARTED
+What It Does:
+AI recommends personalized Golden Habits based on pain points, Core Area, and Momentum Lists data. Pulls from Master Habits Database (500+ vetted habits). Explains WHY this habit addresses their specific pain point.
+Recommendation Algorithm:
+•   	Match pain point → relevant habits in database
+•   	Filter by player's strengths (leverage what they're good at)
+•   	Filter by player's passions (use what they enjoy)
+•   	Filter by time availability (fits their schedule)
+•   	Filter by obstacles (avoid known friction points)
+•   	Rank by predicted success rate
+Dependencies:
+•   	Master Habits Database (currently 60% complete)
+•   	Auto-tagging system (Feature 5)
+•   	Pain point → habit mapping rules
+Feature 7: WANT/CAN/EFFECTIVE Scoring ❌
+Status: NOT STARTED
+What It Does:
+Triple-Check Criteria validation ensures every Golden Habit passes three tests before being recommended.
+The Triple-Check:
+•   	✅ WANT: Does player actually want to do this? Feels good, energizing, aligned with passions
+•   	✅ CAN: Can player realistically do this? Fits schedule, resources, lifestyle constraints
+•   	✅ EFFECTIVE: Will this actually address their pain point? Evidence-based, proven approach
+UI Flow:
+After AI recommends habit, player rates each criterion on 1-5 scale. If any score < 3, AI suggests modifications or alternatives. If all pass, proceed to habit creation.
+Feature 8: Habit Refinement Options ❌
+Status: NOT STARTED
+What It Does:
+Allows player to customize, adjust, or regenerate Golden Habit recommendation until satisfied. Player should feel ownership over their habit, not like it was imposed.
+Refinement Options:
+•   	Tweak: Adjust frequency, duration, timing, or specific action
+•   	Alternative: Show next-best habit from database
+•   	Custom: Player enters their own habit (validated against criteria)
+•   	Regenerate: Start recommendation process over
+Feature 9: Master Habits Database Integration ❌
+Status: NOT STARTED (Database 60% complete)
+What It Does:
+500+ vetted habits organized by Core Area, pain point, and difficulty level. Each habit includes why it works (behavioral science backing), common pitfalls, and success tips. AI queries database for personalized recommendations.
+Database Structure:
+•   	Habit ID, Name, Description
+•   	Core Area(s) - primary and secondary
+•   	Pain Points addressed
+•   	Difficulty level (1-5)
+•   	Time required (minutes)
+•   	Science backing (citations)
+•   	Success rate (from user data - Post-MVP)
+Feature 10: Quality Feedback Collection ❌
+Status: NOT STARTED
+What It Does:
+End-of-flow quality check: "How helpful was this Golden Habit?" (1-5 stars). Collects qualitative feedback: "What would have made this better?" Feeds Data Learning Effects to improve recommendations over time.
+Data Collected:
+Relevance score (1-5)
+Personalization score (1-5)
+Would implement: Yes/No/Maybe
+Open text feedback
+Time to complete Stage 1
+Drop-off points (where did they exit?)
+Why It Matters:
+This data creates the competitive moat through Data Learning Effects. More users → better recommendations → higher success rates → more users. Critical for long-term differentiation.
+
+ 
+2.4 Post-MVP Features for Stage 1
+🔶 Power User Shortcut: Bypass full Habits Hierarchy for experienced users. Natural language shortcut (2-3 min vs 10-15 min). Timeline: 6-12 months post-launch.
+🔶 One-Time Actions Upgrade: AI agent performs setup tasks immediately after Golden Habit identification (calendar, reminders). Timeline: 6-9 months post-launch.
+NOTE: This is a feature we’re designing for phase 1, stage 2. Once completed, we can bring it into this phase if makes sense to help with the part in the Habits Hierarchy where we help them overcome the biggest obstacle to their golden habit. 
+🔵 Wearables To Enhance/Reduce Friction To Build Habits: Use of wearables (i.e. ai glasses, ring, etc) to record day, sync with habits working on, and help player in real time to align their choices/actions with the Golden habits and MBM’s they’ve established. 
+
+2.5 Technical Considerations
+Voiceflow API integration for AI conversations
+Conversation state management (user can leave and return)
+Habit database preloaded with 500+ vetted habits
+Mapping system (pain points → habits)
+NLP for understanding natural language responses
+Progress saving (don't lose Phase 1 work)
+Estimated completion time: 20-30 minutes per stage
+2.6 Outstanding Decisions
+❓ Decision: How many Golden Habits per Core Area in MVP?
+Option A: 1 per core (5 total) - simpler
+Option B: 2 per core (10 total) - more comprehensive
+Option C: User decides (1-3 per core) - flexible
+Recommendation: Option C, default to 2 per core
+❓ Decision: Can users skip Phase 1 and go straight to Phase 2?
+Pro: Some users already know their habits
+Con: Missing 3MBMs setup increases failure risk
+Recommendation: Allow skip but show warning + offer "Quick Setup" alternative
+❓ Decision: Should we show Universal Principles during Phase 1?
+Pro: Educate users on why habits work
+Con: May slow down flow, information overload
+Recommendation: Introduce principles contextually, not as separate lessons
+
+  _______
+SECTION 3: PHASE 1 STAGE 2 - 3 Momentum Building Methods
+3.1 Overview & Context
+Purpose: Apply the 3 MBMs (Make Obvious, Make Easy, Make Rewarding) to Golden Habits identified in Stage 1. This reduces friction and increases success rate before daily tracking begins.
+Timeline: 10-15 minutes per Golden Habit
+Status: NOT STARTED (all 10 features)
+Key Outcome: User leaves Phase 1 with 2-3 Golden Habits per Core Area, fully optimized with 3MBMs, ready for Phase 2 daily tracking. Each habit has been "Momentified" - transformed from generic habit into personalized, friction-reduced, reward-enhanced action.
+3.2 Issues This Phase Solves
+Issue
+Solution
+Habits fail because they're too hard
+Make It Easy - break into tiny steps, reduce barriers
+Habits fail because people forget
+Make It Obvious - environmental cues, reminders, triggers
+Habits fail because they're not rewarding
+Make It Rewarding - immediate rewards, dopamine hits
+Obstacles derail progress
+IF-THEN planning - proactive obstacle handling
+3.3 Features 11-20 (Detailed Specifications)
+Feature 11: MBM #1 - Make It Obvious/Attractive ❌
+Status: NOT STARTED
+What It Does:
+Explains the science of cues and triggers. Suggests personalized cue strategies based on player's Momentum Lists (schedule, environment, existing routines). Player selects and customizes their cue.
+Types of Cues:
+•   	Time-based: "Every day at 7am"
+•   	Location-based: "When I enter the kitchen"
+•   	Action-stacking: "After I pour my coffee"
+•   	Emotional: "When I feel anxious"
+•   	Environmental: "When I see my gym bag by the door"
+Personalization Points:
+Uses player's Time Availability list to suggest realistic timing. Uses Environment list to suggest physical cues. Uses existing routines for action-stacking opportunities.
+Feature 12: MBM #2 - Make It Easy ❌
+Status: NOT STARTED
+What It Does:
+Explains the science of reducing friction. Suggests ways to shrink habit duration or reduce barriers. Player commits to specific "easy" implementation.
+Friction Reduction Strategies:
+•   	2-Minute Rule: Shrink to starter version ("Read 1 page" not "Read 30 min")
+•   	Reduce steps: Minimize actions needed to start
+•   	Prepare environment: Lay out gym clothes night before
+•   	Remove decisions: Pre-decide what, when, where
+Feature 13: MBM #3 - Make It Rewarding/Fun ❌
+Status: NOT STARTED
+What It Does:
+Explains dopamine and immediate rewards. Suggests personalized reward strategies based on player's Passions list. Player designs their reward system.
+Reward Types:
+•   	Immediate: Small treat, checkmark, app notification
+•   	Variable: Mystery rewards (more engaging than predictable)
+•   	Social: Share accomplishment, accountability partner
+•   	Intrinsic: Track progress, visualize streak
+Feature 14: IF-THEN Obstacle Planning ❌
+Status: NOT STARTED
+What It Does:
+Proactively identifies obstacles before they happen. Creates IF-THEN plans: "IF [obstacle], THEN [response]." Uses player's Obstacles list from Momentum Lists.
+Example IF-THEN Plans:
+•   	IF I'm too tired to workout, THEN I'll do 5 minutes of stretching instead
+•   	IF I'm traveling, THEN I'll use hotel gym or do bodyweight exercises
+•   	IF I forget my lunch, THEN I'll choose the healthiest option at nearest restaurant
+Feature 15: "Momentified" Habit Output ❌
+Status: NOT STARTED
+What It Does:
+Combines Golden Habit + 3 MBMs into final "Momentified" habit ready for Phase 2 tracking. Creates summary card showing the complete habit system.
+Momentified Habit Card Example:
+Golden Habit: Morning 10-minute meditation
+Cue (Obvious): After pouring coffee, before checking phone
+Easy Version: Start with 2 minutes, build to 10
+Reward: Log in app (XP), enjoy coffee mindfully
+IF-THEN: If running late, do 2-min breathing instead
+Features 16-20: Supporting Stage 2 Features ❌
+•   	Feature 16: AI Personalization Enhancement - Uses all Momentum Lists data for deeply personalized suggestions
+•   	Feature 17: Space Cantina Unlock - Social hub reward for completing Stage 2
+•   	Feature 18: Progress Saving - Don't lose work if user exits mid-flow
+•   	Feature 19: Session Resumption - Can leave and return without starting over
+•   	Feature 20: Completion Celebration - Animation and achievement unlock for finishing Phase 1
+3.4 Technical Considerations
+•   	Stage 2 must receive all Stage 1 data (Golden Habit details, Momentum Lists)
+•   	Each MBM section is a Voiceflow agent with handoffs
+•   	Momentified habit stored in Firebase with all components
+•   	Progress saved after each MBM completion
+•   	Estimated completion time: 15-20 minutes per Golden Habit
+
+ _______
+SECTION 4: PHASE 2 - Daily Action & Gamification
+4.1 Overview & Context
+Purpose: Daily habit tracking with gamified rocket ship journey, converting Golden Habits into automatic success habits through consistent action and rewards.
+Core Experience:
+•   	Daily check-in (morning or evening, user's choice)
+•   	Score each Core Area (1-5 scale)
+•   	Earn XP, Credits, and progression
+•   	Visual feedback (rocket moves forward)
+•   	Balance tracking (all 5 cores)
+Key Principle: Make daily check-in feel like a game, not a chore. ALWAYS reward, never punish.
+Status: NOT STARTED (50 features)
+4.2 Issues This Phase Solves
+Issue
+Solution
+Daily tracking feels tedious and boring
+Gamification (points, progress, visual feedback, rewards)
+Users forget to track daily
+Smart reminders, streak system, countdown timer
+Failure feels punishing
+Always reward (even low scores earn points), encouraging tone
+Too many habits overwhelm daily check-in
+Show only active habits, hide completed Success Habits
+Hard to maintain balance across all 5 Cores
+Core Balance Meter, alerts when core needs attention
+4.3 Daily Check-In Features (21-35)
+Feature 21: Hybrid Scoring System ❌ [CRITICAL INNOVATION]
+Status: NOT STARTED
+What It Does:
+Major innovation that maintains the "Firing on All Cylinders" principle while reducing daily friction. Different scoring for Active Cores vs. Maintaining Cores.
+How It Works:
+Active Cores (with Golden Habits/Working On habits): Detailed habit-by-habit scoring with specific feedback.
+Maintaining Cores (no active habits yet): Quick 1-5 general score for the whole core. "How's your Physical Health today?" Simple, fast.
+Why This Matters:
+Without this, users would have to score 25+ items daily (5 cores × 5 habits each). With Hybrid Scoring, early users might only score 7 items (2 active habits + 5 quick core scores). As they progress and add more habits, scoring naturally expands.
+Feature 22: Interactive Animated Sliders ❌
+Status: NOT STARTED
+What It Does:
+Liquid-filled sliders that respond with haptic feedback. As user slides, liquid fills the container. Score-specific encouragement messages appear. Visual delight makes scoring feel like play, not work.
+Score-Specific Messages:
+•   	Score 1: "Tough day? Tomorrow's a fresh start. You showed up - that counts! +10 XP"
+•   	Score 2: "Not your best, but you're tracking. That's momentum building! +25 XP"
+•   	Score 3: "Solid effort! Consistency beats perfection. +50 XP"
+•   	Score 4: "Great day! You're building real momentum. +75 XP"
+•   	Score 5: "CRUSHING IT! 🔥 This is what growth looks like! +100 XP"
+Technical Question for Haroon:
+Are animated liquid-fill sliders with haptic feedback feasible in FlutterFlow? What's the complexity level?
+Features 23-35: Additional Check-In Features ❌
+•   	Feature 23: Core Balance Meter - Visual showing balance across all 5 cores with 7-day rolling average
+•   	Feature 24: Streak Tracking - Consecutive days with visual countdown and Streak Freeze power-up
+•   	Feature 25: Routines System - Morning, Afternoon, Evening habit clusters
+•   	Feature 26: Non-Routine Tracking - Habits that can happen anytime
+•   	Feature 27: Smart Reminders - Push notifications timed to user schedule
+•   	Feature 28: Quick Reflection - Optional journaling prompt after scoring
+•   	Feature 29: Daily Summary - End-of-day recap with XP earned
+•   	Features 30-35: Countdown timers, balance alerts, habit coloring system, skip handling, offline support, accessibility
+
+ 
+4.4 Gamification Features (36-50)
+Feature 36: XP & Credits System ❌
+Dual Currency System:
+XP (Experience Points):
+•   	Used for leveling up
+•   	Unlock new features and areas
+•   	Shows overall progress
+•   	Can't be spent (permanent)
+Credits (Rocket Fuel):
+•   	Used to purchase upgrades
+•   	Customize rocket appearance
+•   	Buy power-ups (Streak Freeze, Double XP Day)
+•   	Refills over time (passive income)
+Earning Rates:
+Daily check-in: 50-100 XP, 15-25 Credits (based on scores)
+Completing habits: 10-25 XP per habit
+Weekly missions: 50-100 XP, 25-50 Credits
+Balance Bonus: 1,000 XP, 250 Credits
+Feature 37: Level System & Progression ❌
+Progression:
+•   	Start at Level 1
+•   	Level up every ~1,000 XP (scales up at higher levels)
+•   	Each level unlocks new features
+•   	Visual badge/title (Level 5 = "Momentum Builder")
+Unlock Progression:
+Level 1: Basic features (Phase 1 & 2)
+Level 3: Space Cantina access
+Level 5: Rocket customization
+Level 10: Advanced analytics
+Level 20: Beta features
+Feature 38: Rocket Ship Visualization ❌
+What It Does:
+2D rocket (MVP) showing momentum. Journey between planets represents progress. 7-day journeys to planet milestones. Visual upgrades earned through progress.
+MVP vs Final:
+MVP: Simple 2D rocket, basic movement animation, planet progression
+Post-MVP: 3D rocket, detailed planets, obstacles (asteroids), power-ups, alien encounters
+Features 39-50: Additional Gamification ❌
+•   	Feature 39: Achievement Badges - Milestones like "First Golden Habit", "7-Day Streak", "All Cores Balanced"
+•   	Feature 40: Rocket Customization - Colors, wings, thrusters purchasable with Credits
+•   	Feature 41: Planet Landings - Major milestones with alien encounters teaching Universal Principles
+•   	Feature 42: Weekly Missions - Momentum Lists updates as quests for bonus XP
+•   	Feature 43: Obstacles - Asteroids and aliens that appear when progress stalls
+•   	Feature 44: Power-Ups - Streak Freeze, Double XP Day, Momentum Boost
+•   	Features 45-50: Leaderboards, tribes, celebration animations, sound effects, confetti, haptic feedback
+
+ 
+SECTION 5: SUPPORTING SYSTEMS
+5.1 Infrastructure Features (51-60)
+Feature 51: Firebase Setup ✅
+Status: COMPLETE
+Firestore database, Authentication (Email, Google, Apple Sign-In), Cloud Functions, Hosting, Storage, Analytics all configured and working.
+Feature 52: Command Center UI 🔄
+Central hub for viewing/editing all 17 Momentum Lists. Hamburger menu navigation. Real-time Firebase sync. Currently in development.
+Feature 53: Google Calendar Integration ❌
+Two-way sync (MM → Calendar, Calendar → MM). AI agent creates habit reminders. OAuth flow implementation required.
+Question for Haroon: How complex is the OAuth implementation for Google Calendar? Time estimate?
+Features 54-60: Additional Infrastructure ❌
+•   	Push notification system (PWA-compatible)
+•   	Offline support (sync when back online)
+•   	Data export (GDPR compliance)
+•   	Analytics and tracking infrastructure
+•   	Error handling and logging
+•   	Session management and timeout handling
+•   	Mobile-first responsive design
+5.2 Data Architecture
+Core Collections Structure:
+users/{userId}/
+├── profile/
+├── momentumLists/
+├── goldenHabits/
+├── habitTracking/
+├── coreScores/
+└── gamification/
+Key Design Decisions:
+•   	User-centric structure (easy GDPR compliance)
+•   	Separate analytics collection for aggregate queries
+•   	Timestamp everything for learning loops
+•   	Built for Data Learning Effects from Day 1
+5.3 Deployment Strategy
+Month 1-3: PWA via FlutterFlow - Fast to deploy, works on all devices, no app store approval, easy updates
+Month 4-6: Continue PWA, monitor performance - Collect data, identify any limitations
+Month 6+: Evaluate native migration - If need advanced features (3D, AR), export Flutter code from FlutterFlow
+
+ 
+SECTION 6: DECISION LOG
+Purpose: Track key decisions and their rationale to avoid re-debating and maintain consistency.
+6.1 Confirmed Decisions
+Decision 1: Timeline Extended to 4 Months
+Date: November 2025
+Decision: Extend MVP from 3 to 4 months.
+Rationale: Better quality, more validation iterations, sustainable pace. Month 4 enables extended beta testing (50+ users) and professional launch process.
+Trade-off: Slightly longer to market, extra month of costs.
+Decision 2: AI-First Validation Approach
+Date: November 2025
+Decision: Validate AI logic in Chipp.ai before production implementation.
+Rationale: 1-2 weeks validating is cheaper than 4 weeks building wrong thing. Real user feedback before code. Dual-track approach keeps Haroon productive during validation.
+Decision 3: PWA-First Deployment
+Date: November 2025
+Decision: Launch as PWA via FlutterFlow, not native apps.
+Rationale: Faster deployment, no app store approval, works on all devices, easy updates. Can migrate to native later if needed for 3D/AR features.
+Decision 4: Two-Doc Build System
+Date: November 2025
+Decision: Use MM Build Guide (this doc) + MM Build Tracker (Google Sheet) instead of multiple overlapping documents.
+Rationale: Reduces friction, clear separation of WHAT/WHY (Guide) vs STATUS/WHO (Tracker). Consolidates Issues & Features doc and 3 Month Master Plan into actionable format.
+6.2 Pending Decisions (For Haroon Meeting)
+Pending 1: Golden Habits per Core Area
+Options: A) 1 per core (5 total), B) 2 per core (10 total), C) User decides (1-3)
+Recommendation: Option C, default to 2 per core.
+Status: Needs Haroon input on complexity
+Pending 2: Skip Phase 1 Option
+Question: Can users skip Phase 1 and go straight to Phase 2?
+Recommendation: Allow skip with warning + offer "Quick Setup" alternative.
+Status: Needs design decision
+Pending 3: Missed Check-In Policy
+Options: A) Streak breaks, B) 1 missed day allowed/month, C) Streak Freeze power-up
+Recommendation: Option C (balances accountability with compassion).
+Status: Needs final decision
+Pending 4: Animated Sliders Feasibility
+Question: Are liquid-fill animated sliders with haptic feedback feasible in FlutterFlow?
+Status: Needs Haroon technical assessment
+Pending 5: Calendar Integration Scope
+Question: What's realistic for MVP - full two-way sync or just push to calendar?
+Status: Needs Haroon time estimate
+
+ 
+SECTION 7: LEARNINGS LOG
+Purpose: Document insights from testing, development, and user feedback to improve future iterations.
+7.1 Documentation Learnings
+•   	Comprehensive docs essential for fundraising but need condensed versions for daily execution
+•   	Progressive disclosure (Quick Start → Reference → Deep Dive) serves both immediate team needs and future scaling
+•   	Two-Doc System (Build Guide + Build Tracker) reduces friction vs. multiple overlapping documents
+•   	Validate features with developer BEFORE building detailed documentation to avoid rework
+7.2 Validation Learnings
+•   	AI-First validation (Chipp.ai testing) is faster and cheaper than building first
+•   	Dual-track approach (Will validates while Haroon builds infrastructure) maintains momentum
+•   	Better to spend 1-2 weeks validating than 4 weeks building wrong thing
+•   	Test with real users in lightweight environment before production code
+7.3 UX Learnings
+•   	Daily interactions should feel rewarding, not burdensome
+•   	Animated sliders with haptic feedback increase engagement
+•   	Score-specific encouragement messages create emotional connection
+•   	ALWAYS reward (even low scores) - never punish users for showing up
+•   	Hybrid Scoring System critical for reducing friction while maintaining "Firing on All Cylinders"
+7.4 Technical Learnings
+•   	FlutterFlow enables rapid development with path to native if needed
+•   	Voiceflow multi-agent architecture handles complex AI conversations well
+•   	Firebase provides excellent real-time sync for habit tracking
+•   	PWA deployment much faster than app store process
+7.5 Post-Haroon Meeting Learnings
+[To be filled in after validation meeting]
+•   	Feature feasibility: _________________
+•   	Timeline adjustments: _________________
+•   	Technical concerns: _________________
+•   	Features to cut/simplify: _________________
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

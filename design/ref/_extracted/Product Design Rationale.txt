@@ -1,0 +1,221 @@
+PRODUCT DESIGN RATIONALE
+& Decision Log
+Moore Momentum System  |  Living Document  |  Part of the Three-Layer Framework
+
+A NOTE ON SCOPE
+This document does not aim to cover every feature in the MM System — the Gamification, AI & Science: System Implementation doc already does that. This document covers only decisions where the reasoning is non-obvious, where a real alternative was on the table, or where future builders might be tempted to change something without understanding why it was built that way. New entries should be added organically when: (1) a new design decision is made and reasoning should be captured while fresh, or (2) a potential change triggers the question "why was it built this way?"
+
+TABLE OF CONTENTS
+1.   Document Overview
+Purpose
+What This Doc Covers
+What This Doc Does Not Cover
+How to Read Decision Entries
+Cross-Document References
+2.   Design Philosophy
+       2.1  Core Design Principle
+       2.2  What Players Are Building Through the Daily Ritual
+3.   Key Design Decisions by Topic
+       A.   Daily Ritual & Scoring Architecture   (A1 – A6)
+       B.   Core Philosophy & Organization   (B1 – B3)
+       C.   Habit Lifecycle & Progression   (C1 – C5)
+       D.   Additional Differentiators & Revolutionary Aspects
+
+1. DOCUMENT OVERVIEW
+Purpose
+Product Design Rationale & Decision Log captures why specific design choices were made in the Moore Momentum System — the reasoning, tradeoffs considered, and alternatives rejected. It is the developer-facing context layer of the Three-Layer Framework.
+It answers one question: why is the product built this way? It does not describe what the product does or how to build it. This document only needs updating when the reasoning behind a decision changes — not when a feature changes.
+What This Doc Covers
+The core design philosophy and principles that govern every MM System product decision
+Named design decisions organized by topic area, each with: the decision made, why it was made, how it works, and what alternative was rejected and why
+Rationale for Phase 2-heavy decisions, where the daily-use architecture requires the most deliberate design thinking
+Context that helps developers, collaborators, and future product owners understand the intent behind choices that might otherwise seem arbitrary
+What This Doc Does NOT Cover
+Feature descriptions. For what each mechanic does inside the product, see Gamification, AI & Science: System Implementation (Doc 2 of this Three-Layer Framework).
+Scientific theory or expert framework origins. For the academic foundations, see MM Science & Expert Foundations (Doc 1 of this Three-Layer Framework).
+Build specifications or developer requirements. For feature-level specs and acceptance criteria, see the PRD.
+Player experience walkthroughs. For phase-by-phase journey documentation, see the Phase 1 & Phase 2 Details doc.
+How to Read Decision Entries
+Each decision entry in Section 3 follows a consistent four-part structure:
+DECISION:  The specific choice that was made
+WHY:  The reasoning — what problem this solves and why this was the right call
+HOW IT WORKS:  A brief description of the implementation (not a full spec — for that, see the PRD)
+ALTERNATIVE REJECTED:  What else was considered, and why it was ruled out
+CROSS-DOCUMENT REFERENCES
+This document is the design rationale layer of the Three-Layer Framework. It should be read alongside:
+
+MM Science & Expert Foundations (Doc 1) — theoretical basis and expert framework origins for every principle referenced in this document
+Gamification, AI & Science: System Implementation (Doc 2) — what each mechanic does inside the product; the WHAT to this document's WHY
+PRD — exact mechanic specs, build requirements, and acceptance criteria for every feature described here
+Phase 1 & Phase 2 Details — full player experience walkthroughs and phase-by-phase journey documentation
+Phase 1 & 2 Sequence (Simplest for Coders) — step-by-step developer-facing walkthrough
+AI-First Strategy & Data Learning Guide — strategic rationale and competitive advantage framing for the AI architecture
+
+Update this document when: the reasoning behind a decision changes, a new design decision is made that warrants documentation, or an alternative approach is newly considered and rejected. Feature changes alone do not require updates here — only reasoning changes do.
+
+2. DESIGN PHILOSOPHY
+2.1  Core Design Principle
+"Will the player want to come back tomorrow?"
+
+Every design decision in the MM System answers this single question. Daily use should feel like a game, not a chore. The system always rewards effort and never punishes failure. Consistency is celebrated, struggles are met with empathy, and even showing up on a difficult day is treated as progress.
+This principle is the filter through which every feature, interaction, and mechanic is evaluated. If a design choice makes tomorrow's check-in feel less appealing, it is the wrong choice — regardless of how technically elegant it is.
+2.2  What Players Are Building Through the Daily Ritual
+The daily ritual is not just about tracking habits — it is about systematic transformation. Every check-in advances the player toward six compounding outcomes:
+
+A sea of green automated habits.  Routine habits that turn green represent the foundation of an automatic, friction-free daily schedule.
+A Trophy Room full of formed habits.  Non-routine habits that reach 'formed' status become permanent identity markers, visually celebrated.
+A leveled-up rocket ship.  Wings, armor, and thrusters earned through consistency create both visual progress and functional gameplay benefits.
+Balanced growth across all 5 Cores.  The Balance Meter prevents the common pitfall of excelling in one area while neglecting others.
+An unshakeable Growth-Owner identity.  Through repeated daily practice of scoring and reflection, players rewire their core identity from 'fixed victim' to 'growth owner.'
+A completely transformed life.  The compound effect of daily wins across all 5 Cores creates holistic life transformation — firing on all cylinders.
+
+3. KEY DESIGN DECISIONS BY TOPIC
+A.  Daily Ritual & Scoring Architecture
+
+A1 — The Daily Scoring Ritual as Transformation Engine
+DECISION:  Engineer the daily check-in to serve five simultaneous functions, not just habit tracking.
+
+WHY:  Most habit apps are glorified checklists — they record what you did but do nothing to change who you are. A ritual that only tracks completion misses the psychological leverage that makes habits stick. The check-in needed to work on multiple levels simultaneously to justify the daily behavior it asks players to build.
+
+HOW IT WORKS:  2–4 minute morning check-in. The five simultaneous functions: (1) Single-Pass Scoring — players review each habit once during scoring, which naturally primes thinking for today; (2) Backward Reflection — reviewing yesterday's performance builds self-awareness by connecting actions to consequences in real time; (3) Forward Priming — scoring yesterday naturally prepares the player's mind for today without a separate 'plan today' step; (4) Bridge Between Current Self and Future Self — daily connection to the player's BTTF vision strengthens the identity being built; (5) Momentum Building — gamification elements (streaks, points, rewards) create ethical addiction that fuels consistent execution. Habits appear as abbreviated names to keep the ritual fast. Full context available on-demand via [Detailed View] — accessible without interrupting the ritual flow.
+
+ALTERNATIVE REJECTED:  A longer, more comprehensive daily review (10–15 minutes). Rejected because length is the primary abandonment trigger in competing systems. Depth-on-demand beats mandatory depth every time.
+
+A2 — Identity Over Activity: Back to the Future (BTTF) Contextualization
+DECISION:  Show an AI-assembled BTTF vision at the top of each Core during scoring.
+
+WHY:  Anchoring each habit to a vivid future self — rather than framing it as a task to complete — shifts the player's internal narrative from 'I'm doing this habit' to 'I'm becoming this person.' Grounded in identity-based habit theory (Clear) and growth mindset research (Dweck), every check-in becomes accumulating evidence of the new identity being built.
+
+HOW IT WORKS:  For Phase 1 habits, the system auto-pulls the pain point → future vision connection captured during the Habits Hierarchy. For manually added habits, AI suggests the connection based on the detailed BTTF list in the Command Center; player confirms or edits. Updates automatically when habits are added, formed, or rebuilt. Abbreviated format shows the essence without overwhelming.
+
+ALTERNATIVE REJECTED:  A static, generic future vision statement. Rejected because it wouldn't evolve with the player's active habits and would feel disconnected from current work — reducing it to decoration rather than behavioral science.
+
+A3 — Calibrated Scoring Scale (1–5)
+DECISION:  Use a 1–5 scale for Core scoring, where each number carries a distinct, memorable meaning.
+
+WHY:  The scale needed to capture meaningful variation in performance quality — not just completion — without triggering decision paralysis. Binary (yes/no) was too blunt; 1–10 created meaningless distinctions that slow the ritual and reduce data quality.
+
+HOW IT WORKS:  Each number has a defined meaning players internalize over time. The 7-day rolling average across all 5 Cores powers the Balance Meter. Scoring is the first action in the daily ritual — fast, decisive, and reflective.
+
+ALTERNATIVE REJECTED:  Binary (yes/no) completion tracking. Rejected because it flattens effort — a player who executed their habit at 30% shouldn't score the same as one who executed at 100%. That nuance is critical both for player self-awareness and for AI pattern detection.
+
+ALTERNATIVE REJECTED:  1–10 scale. Rejected because the difference between a 6 and a 7 is psychologically meaningless, slows the ritual, and produces noisy data that reduces AI accuracy.
+
+A4 — Weekend Flexibility
+DECISION:  Weekends are optional check-ins with no penalties. Only Cores with active Daily (7-day) habits appear on weekends.
+
+WHY:  Most people's routines are fundamentally different on weekends. Forcing weekend check-ins when habits don't apply creates a negative experience — players either skip entirely or submit fake scores, both of which poison the AI's data and the player's relationship with the ritual.
+
+HOW IT WORKS:  During Phase 1 setup, each habit is tagged as: Daily (7 days) — appears on weekends; Weekdays Only (M–F) — hidden on weekends; or Flexible — player discretion. Weekend check-ins show only relevant Cores and habits. No streak penalty for skipping weekends.
+
+ALTERNATIVE REJECTED:  Required 7-day check-ins for all players. Rejected because it creates friction on weekends when many habits don't apply, leading to abandonment or score inflation — both of which undermine the system's core purpose.
+
+A5 — Ethical Gamification: Dopamine Tied to Real Progress
+DECISION:  Every reward is verified against real behavioral data. No reward can be earned by opening the app, inflating a score, or spending credits.
+
+WHY:  Hollow rewards — dopamine hits disconnected from real growth — create temporary engagement but erode long-term trust and intrinsic motivation. The MM System's core promise is ethical addiction: the player becomes hooked on the growth process itself, not a simulation of it. If rewards aren't tied to genuine behavior, the system becomes just another app players eventually abandon.
+
+HOW IT WORKS:  Score Validation cross-references Captain's Log entries against numeric scores to catch misalignments. Mystery Box rewards require a full check-in with Captain's Log entry. Momentum Points are earned through actual habit execution, not passive engagement. Planet progression requires sustained performance, not credit spending.
+
+ALTERNATIVE REJECTED:  Rewarding app opens and passive check-ins without behavioral validation. Rejected because it optimizes for vanity metrics (DAU, session length) rather than transformation outcomes — misaligning business incentives with player wellbeing.
+
+A6 — Flexible Rigor: Accountability Without Shame
+DECISION:  Escalate consequences compassionately — real stakes with a non-shaming recovery pathway.
+
+WHY:  Accountability must have real teeth to be meaningful, but punishment and shame reliably cause abandonment. The design needed to thread this needle: stakes high enough to motivate, safety nets strong enough to prevent catastrophic setbacks, and framing that always preserves the player's dignity and forward momentum.
+
+HOW IT WORKS:  First missed weekday check-in: warning and encouragement, no consequences. Second consecutive miss: Momentum Point loss and checkpoint regression — Trophy Room, credits, and habit formation status fully preserved. Framing is always 'relaunching,' never 'failing.' Multiple protection layers: Weekend Protection, Streak Savers (max 3), Armor upgrades, Vacation Mode.
+
+ALTERNATIVE REJECTED:  Punishment-based accountability (losing Trophy Room progress, resetting habit formation, public shame on leaderboards). Rejected because research consistently shows shame-based accountability accelerates abandonment — the opposite of the intended outcome.
+
+B.  Core Philosophy & Organization
+
+B1 — Every Habit Tagged to a Primary Core
+DECISION:  All habits — including seemingly general ones like 'wake at 7 AM' — must be assigned to exactly one of the 5 Cores.
+
+WHY:  The 5 Core framework is the philosophical spine of the entire MM System. Allowing unassigned or multi-Core habits creates ambiguity that cascades across scoring, Balance Meter calculation, Trophy Room organization, and AI pattern detection. Philosophical consistency requires every habit to live somewhere definitive.
+
+HOW IT WORKS:  During Phase 1, the AI suggests which Core fits best based on primary impact. Players can override if they disagree. For manually added habits, the AI analyzes the habit and suggests an appropriate Core. Habits can be reassigned later if needed.
+
+ALTERNATIVE REJECTED:  'General' or 'Multiple Cores' category. Rejected because it would undermine the 5 Core framework, create ambiguity in scoring and balance tracking, and produce a Trophy Room organized around ambiguity rather than identity transformation.
+
+B2 — Core-Based vs. Time-Based Organization
+DECISION:  Primary organization of habits and scoring is by Core, not by time of day. Time-based views are available as a secondary option.
+
+WHY:  Time-based organization (morning routine, afternoon routine, evening routine) is common but creates several problems: it loses connection to life areas and holistic balance; it can't measure growth across meaningful dimensions; and it encourages time-optimization over life-transformation. Core-based organization maintains philosophical consistency, enables the Trophy Room and Balance Meter, and reinforces identity transformation at the Core level.
+
+HOW IT WORKS:  Primary scoring and habit display is organized by Core. The full Routines List can be toggled to show by time of day. The ALL HABITS QUICK VIEW offers a 'By Core' and 'By Time' toggle. Routine habits naturally cluster by time of day within each Core.
+
+ALTERNATIVE REJECTED:  Time-first organization as the primary structure. Rejected because it optimizes for schedule management rather than identity transformation — a fundamentally different (and weaker) product philosophy.
+
+B3 — Compound Growth Across All 5 Cores
+DECISION:  The scoring structure, Balance Meter, Core Balance Alert system, and Momentum Points economy are all designed to enforce holistic growth — no single Core can be neglected for long without consequences.
+
+WHY:  The Ripple Effect — one of the MM System's core principles — only operates when all 5 Cores are receiving attention. A player who optimizes one Core while neglecting others is not experiencing the system's full transformational power and is likely building an unstable growth pattern that will eventually collapse.
+
+HOW IT WORKS:  Balance Bonuses reward players for maintaining all 5 Cores above threshold. Core Balance Alerts trigger when any Core averages below 3 for 3+ consecutive days. The Balance Meter provides a persistent visual of 7-day rolling averages across all Cores. AI intervention prioritizes neglected Cores in its coaching recommendations.
+
+ALTERNATIVE REJECTED:  Allowing players to focus exclusively on one or two Cores indefinitely. Rejected because it defeats the core premise of the MM System — that sustainable happiness requires holistic balance, not peak performance in a single domain.
+
+C.  Habit Lifecycle & Progression
+
+C1 — Pain Points vs. Neutral Habits / Opportunities
+DECISION:  Track the distinction between red pain points (bad habits to replace) and black opportunities (neutral habits to upgrade). Both contribute equally to formation goals and rewards.
+
+WHY:  Pain points and opportunities represent different psychological starting points. Pain points carry urgency and motivation from negative consequences — the player is escaping something. Opportunities are growth-oriented — the player is expanding capacity. Both contribute to transformation, but from different emotional baselines. The system needs to respect this distinction to coach effectively.
+
+HOW IT WORKS:  The distinction is tracked in backend data. Both count equally toward 'forming a habit' goals and rewards in the MVP. Future versions may provide different coaching approaches, milestone framing, and celebration language based on source type.
+
+ALTERNATIVE REJECTED:  Treating pain points and opportunities identically in all respects. Rejected because it erases a meaningful psychological distinction that informs how the AI should coach and how achievements should be framed.
+
+FUTURE CONSIDERATION:  Pain point → formed habit may warrant a bigger celebration (overcoming adversity framing). Opportunity → formed habit may unlock advanced capabilities (expanded capacity framing). Different AI intervention strategies based on source type.
+
+C2 — Manual Habit Entry
+DECISION:  Players can add habits without going through the full Phase 1 Habits Hierarchy if they want to experiment quickly.
+
+WHY:  Advanced players who instinctively know what habit they want to build shouldn't be forced through a discovery process they don't need. Respecting player agency reduces friction and enables rapid experimentation — both of which serve the system's core goal of momentum building.
+
+HOW IT WORKS:  Add from Command Center or individual Core view. AI suggests appropriate Core assignment. Minimal required fields: habit name, Core, routine vs. non-routine. Player can always run through Phase 1 later to optimize with full HHS and MBMs. Flagging system catches struggling manual habits for later optimization. AI offers 'Go Deeper' when patterns of struggle emerge.
+
+ALTERNATIVE REJECTED:  Requiring Phase 1 for all habits. Rejected because it creates unnecessary friction for experienced players, prevents rapid experimentation, and signals distrust of player self-knowledge — the opposite of the Growth-Owner mindset the system is trying to build.
+
+C3 — Formed Habits → Trophy Room
+DECISION:  When non-routine habits reach 'formed' status, they leave the daily check-in and move to the Trophy Room. Routine habits turn green but stay visible in the Full Routines List.
+
+WHY:  Three simultaneous problems needed solving: the daily check-in becoming cluttered with dozens of formed habits over time; the need for a visual destination that celebrates identity transformation; and the risk of formed habits quietly regressing without the player noticing.
+
+HOW IT WORKS:  Formation requires 14+ days at 80%+ consistency, with AI validation. Non-routine formed habits move to Trophy Room organized by Core. Routine habits turn green and remain visible as the foundation of the daily schedule. Monthly review prompts (30/60/90 days) monitor formed habits. Un-forming is always available and framed as 'adaptation, not failure.' Formation earns bonus Space Credits, ship upgrade progress, and a celebration animation.
+
+ALTERNATIVE REJECTED:  Keeping all habits in the daily check-in forever. Rejected because it creates a cluttered, overwhelming ritual as players progress — directly undermining the 2–4 minute ritual target and the system's core promise of reducing friction over time.
+
+C4 — Habit Flagging & AI Intervention (Hybrid System)
+DECISION:  Interventions trigger two ways: AI auto-flags struggling habits AND players can manually flag any habit at any time.
+
+WHY:  Neither AI-only nor player-only flagging is sufficient. AI catches patterns players might not consciously recognize (3+ consecutive days below 3.0, recurring Captain's Log themes). Players know context — human intuition identifies root causes the AI might miss (a difficult week at work, a family situation, a temporary disruption). Combined intelligence creates optimal support while preserving the sense of partnership rather than surveillance.
+
+HOW IT WORKS:  AI auto-flags when it detects: 3+ consecutive low scores on a habit; recurring negative themes in Captain's Log entries referencing that habit; or a Core average trending below 3 for 3+ days. Players can manually flag any habit via a [Flag This Habit] button at any time. Both AI-flagged and player-flagged habits display a warning indicator in all views. Once flagged, the player selects a resolution path (see C5).
+
+ALTERNATIVE REJECTED:  AI-only flagging. Rejected because players often know a habit is struggling before the data does — waiting for the pattern to emerge in AI metrics means unnecessary delay in getting support.
+
+ALTERNATIVE REJECTED:  Player-only flagging. Rejected because players frequently don't recognize their own struggling patterns, particularly when they're in a difficult period. The AI's pattern detection is a safety net for the player's blind spots.
+
+C5 — "Go Deeper": Two-Path Intervention (Path A & B)
+DECISION:  When a player selects 'Go Deeper' during a flagged habit intervention, they choose between two distinct fix paths rather than a single generic rebuild.
+
+WHY:  A struggling habit has two fundamentally different root causes: either the habit itself is wrong, or the execution strategy is wrong. Treating both with the same intervention wastes time and produces worse outcomes. Separating the two paths respects the player's self-knowledge and gets to the actual problem faster. Path A — 'Rebuild This Habit' (Phase 1 Stage 1 Review): use when the habit itself may be wrong — it no longer passes the Want/Can/Effective triple-check, life circumstances changed, or the habit feels forced. Core question: 'Is this even the right habit?' Path B — 'Better MBM Strategies' (Phase 1 Stage 2 Refinement): use when the habit is right but execution is failing — current MBMs aren't working, different cues or rewards are needed. Core question: 'How can I make this easier?'
+
+HOW IT WORKS:  Player chooses Path A or B during intervention. System takes them to the returning-player version (slimmed-down) of the relevant Phase 1 stage for that specific habit. Updates are tracked as an Experiment with a 3-day check-in cycle. Player can cancel and try the other path if the first doesn't resolve the issue.
+
+ALTERNATIVE REJECTED:  A single generic 'rebuild' flow that covers both habit selection and MBM adjustment simultaneously. Rejected because it's longer, more cognitively demanding, and often fixes the wrong thing — players who just need a better cue shouldn't have to re-evaluate the habit's entire philosophical validity.
+
+D.  Additional Differentiators & Revolutionary Aspects
+The following design characteristics distinguish Phase 2 from every other habit tracking system on the market. They are not individual features but emergent properties of the design decisions documented above working in combination.
+
+Core-Based Organization:  Unlike time-based trackers or scattered single-purpose apps, everything is organized by the 5 Core Areas of Life. This maintains philosophical consistency and enables the Trophy Room, Balance Meter, and holistic growth metrics.
+Real-Time AI Coaching:  Pattern detection triggers interventions before small struggles become big failures. The system learns what works for each individual and converts successful experiments into permanent strategies.
+Unified Learning System:  One AI brain powers both Phase 1 (setup) and Phase 2 (execution), creating bidirectional learning. Setup informs execution; execution improves future setup recommendations for all users.
+Bidirectional Evolution:  The system doesn't execute a static plan — it adapts. Failed habits trigger mini Phase 1 rebuilds. Successful experiments update MBMs. The player and system evolve together.
+Habit Formation & Trophy System:  Clear progression path from active habit → consistent execution → formed habit → Trophy Room. Multi-layered safety net (monthly reviews, Core monitoring, Captain's Log analysis) catches slips before full relapse.
+Weekend Flexibility:  Recognizes that most people's routines differ on weekends. Optional check-ins with no penalties maintain momentum without creating unnecessary friction or fake scoring.
+2–4 Minute Ritual:  Achieves the same depth as competing systems (10–15 minutes) with less cognitive load, more natural flow, and player choice about when to reference habit context. This is one of the core innovations differentiating Phase 2.
+
