@@ -8,6 +8,7 @@ import '../../services/habits_service.dart';
 import '../../services/momentum_lists_service.dart';
 import '../../services/core_lists_service.dart';
 import '../../services/checkin_service.dart';
+import '../../services/onboarding_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/glass_panel.dart';
 import '../../widgets/momentum/mm_buttons.dart';
@@ -3836,21 +3837,29 @@ class _SegTabs extends StatelessWidget {
 }
 
 /// A Golden Habit that has fully formed (14+ days @ 80%+). Identity payoff.
-class _FormedHabit {
-  const _FormedHabit(this.coreId, this.name, this.days, this.date);
-  final String coreId;
+/// A Golden Habit as seen by the Trophy Room (#11): "formed" is either the
+/// manual "Mark as Formed" flag OR the auto rule (14+ days of the Core's
+/// check-in history with ≥80% scored ≥3, via `deriveRoutineStage == 'formed'`).
+class _TrophyHabit {
+  const _TrophyHabit({
+    required this.habitId,
+    required this.coreShort,
+    required this.name,
+    required this.autoFormed,
+    required this.manualFormed,
+    required this.days,
+    required this.formedAt,
+  });
+  final String habitId;
+  final String coreShort;
   final String name;
-  final int days;
-  final String date;
-}
+  final bool autoFormed;
+  final bool manualFormed;
+  final int days; // Core check-in history length (the formation window)
+  final String formedAt; // ISO string when manually marked, else ''
 
-const _formedHabits = <_FormedHabit>[
-  _FormedHabit('mindset', 'Morning Mindset Ritual', 62, 'Apr 2'),
-  _FormedHabit('mindset', 'Evening brain-dump', 31, 'May 4'),
-  _FormedHabit('career', 'Deep-work block · 90m', 88, 'Mar 7'),
-  _FormedHabit('physical', 'Strength training', 44, 'Apr 20'),
-  _FormedHabit('physical', '8,000 steps', 21, 'May 14'),
-];
+  bool get formed => autoFormed || manualFormed;
+}
 
 const _trophyCores = <List<dynamic>>[
   ['mindset', 'Mindset', MM.blue],
@@ -3871,15 +3880,172 @@ class TrophyScreen extends StatefulWidget {
 }
 
 class _TrophyScreenState extends State<TrophyScreen> {
+  final _onboarding = OnboardingService();
+  final _checkin = CheckinService();
+
   String _tab = 'trophies';
+  List<_TrophyHabit> _habits = const [];
+  bool _loading = true;
+  bool _busy = false; // during a Mark-as-Formed write
+  bool _errorOffline = false;
+  String? _error;
+
+  static const _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _onboarding.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) {
+      setState(() {
+        _loading = false;
+        _error = 'Not signed in';
+      });
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final habits = await _onboarding.goldenHabits(uid);
+      // Real formation source: recent per-Core check-in scores (Spec §8).
+      List<DailyCheckin> checkins = const [];
+      try {
+        checkins = await _checkin.getRecent(uid, limit: 30);
+      } catch (_) {}
+      final byCore = <String, List<int>>{};
+      for (final c in checkins) {
+        c.scores.forEach((k, v) => byCore.putIfAbsent(k, () => []).add(v));
+      }
+      final list = habits.map((h) {
+        final scores = byCore[h.shortCoreId] ?? const <int>[];
+        return _TrophyHabit(
+          habitId: h.habitId,
+          coreShort: h.shortCoreId,
+          name: h.habitName.trim().isNotEmpty ? h.habitName.trim() : 'Golden Habit',
+          autoFormed: deriveRoutineStage(scores) == 'formed',
+          manualFormed: h.formed,
+          days: scores.length,
+          formedAt: h.formedAt,
+        );
+      }).toList();
+      if (!mounted) return;
+      setState(() {
+        _habits = list;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _errorOffline = isNetworkError(e);
+        _loading = false;
+      });
+    }
+  }
+
+  String _fmtDate(String iso) {
+    final d = DateTime.tryParse(iso);
+    if (d == null) return '';
+    return '${_months[d.month - 1]} ${d.day}';
+  }
+
+  Future<void> _markFormed(_TrophyHabit h) async {
+    final ok = await _confirmFormed(h);
+    if (ok != true || !mounted) return;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return;
+    setState(() => _busy = true);
+    final saved =
+        await _onboarding.setHabitFormed(userId: uid, habitId: h.habitId, formed: true);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (saved) {
+      _load();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Couldn't save — check your connection and try again.")));
+    }
+  }
+
+  Future<bool?> _confirmFormed(_TrophyHabit h) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: MM.navy,
+        insetPadding: const EdgeInsets.all(28),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: MM.teal.withOpacity(0.45)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('MARK AS FORMED',
+                  style: MM.displayX(size: 11, color: MM.teal)),
+              const SizedBox(height: 10),
+              Text('"${h.name}"',
+                  style: MM.body(
+                      color: Colors.white, size: 14, weight: FontWeight.w600)),
+              const SizedBox(height: 10),
+              Text(
+                'The 2-week standard: habits usually take 14+ days of '
+                'consistency to form${h.days > 0 ? ' (you have ${h.days} logged)' : ''}. '
+                'Mark it formed if it\'s now simply who you are.',
+                style: MM.body(
+                    color: Colors.white.withOpacity(0.7),
+                    size: 12.5,
+                    height: 1.5),
+              ),
+              const SizedBox(height: 16),
+              Row(children: [
+                Expanded(
+                  child: MMGhostButton(
+                    label: 'Cancel',
+                    expand: true,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    onPressed: () => Navigator.pop(ctx, false),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: MMPrimaryButton(
+                    label: 'Mark Formed',
+                    onPressed: () => Navigator.pop(ctx, true),
+                  ),
+                ),
+              ]),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final totalFormed = _formedHabits.length;
+    final formedCount = _habits.where((h) => h.formed).length;
     return ScreenShell(
       title: 'Trophy Room',
       subtitle: _tab == 'trophies'
-          ? 'FORMED · $totalFormed'
+          ? 'FORMED · $formedCount'
           : 'ACHIEVEMENTS · 5/8',
       accent: MM.yellow,
       onBack: widget.onBack,
@@ -3899,22 +4065,35 @@ class _TrophyScreenState extends State<TrophyScreen> {
           ),
           const SizedBox(height: 14),
           if (_tab == 'trophies')
-            _TrophyRoom(total: totalFormed)
+            _trophiesBody(formedCount)
           else
             const _AchievementsTab(),
         ],
       ),
     );
   }
-}
 
-/// Trophy Room tab: formed-habit summary + habits grouped by Core.
-class _TrophyRoom extends StatelessWidget {
-  const _TrophyRoom({required this.total});
-  final int total;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _trophiesBody(int formedCount) {
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 48),
+        child: Center(child: CircularProgressIndicator(color: MM.yellow)),
+      );
+    }
+    if (_error != null) {
+      if (_errorOffline) {
+        return OfflineErrorView(onRetry: _load, what: 'your trophies');
+      }
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Column(children: [
+          Text('Could not load trophies',
+              style: MM.display(size: 14, color: Colors.white)),
+          const SizedBox(height: 14),
+          MMGhostButton(label: 'Retry', onPressed: _load),
+        ]),
+      );
+    }
     return Column(
       children: [
         GlassPanel(
@@ -3927,14 +4106,19 @@ class _TrophyRoom extends StatelessWidget {
               Text('FORMED HABITS',
                   style: MM.displayX(size: 10, color: MM.yellow)),
               const SizedBox(height: 4),
-              Text('$total', style: MM.display(size: 30, color: Colors.white)),
+              Text('$formedCount',
+                  style: MM.display(size: 30, color: Colors.white)),
               const SizedBox(height: 4),
               RichText(
                 text: TextSpan(
-                  style: MM.body(
-                      color: Colors.white.withOpacity(0.7), size: 12),
+                  style:
+                      MM.body(color: Colors.white.withOpacity(0.7), size: 12),
                   children: [
-                    TextSpan(text: '$total habits are now simply '),
+                    TextSpan(
+                        text: formedCount == 0
+                            ? 'No formed habits yet — keep showing up. Habits '
+                                'graduate here once they\'re simply '
+                            : '$formedCount ${formedCount == 1 ? 'habit is' : 'habits are'} now simply '),
                     const TextSpan(
                         text: 'who you are',
                         style: TextStyle(
@@ -3946,121 +4130,150 @@ class _TrophyRoom extends StatelessWidget {
             ],
           ),
         ),
-        ..._trophyCores.map((c) {
-          final id = c[0] as String;
-          final name = c[1] as String;
-          final hex = c[2] as Color;
-          final items =
-              _formedHabits.where((h) => h.coreId == id).toList();
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 14),
+        ..._trophyCores.map(_coreSection),
+      ],
+    );
+  }
+
+  Widget _coreSection(List<dynamic> c) {
+    final id = c[0] as String;
+    final name = c[1] as String;
+    final hex = c[2] as Color;
+    final formed = _habits.where((h) => h.coreShort == id && h.formed).toList();
+    final forming =
+        _habits.where((h) => h.coreShort == id && !h.formed).toList();
+    // Skip Cores the player has no Golden Habit in — keeps the room focused.
+    if (formed.isEmpty && forming.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: hex,
+                boxShadow: [BoxShadow(color: hex, blurRadius: 6)],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(name.toUpperCase(), style: MM.displayX(size: 10, color: hex)),
+            const SizedBox(width: 8),
+            Expanded(child: Container(height: 1, color: hex.withOpacity(0.2))),
+            const SizedBox(width: 8),
+            Text('${formed.length}',
+                style:
+                    MM.mono(size: 10, color: Colors.white.withOpacity(0.4))),
+          ]),
+          const SizedBox(height: 8),
+          ...formed.map((h) => _trophyCard(h, hex)),
+          ...forming.map((h) => _formingCard(h, hex)),
+        ],
+      ),
+    );
+  }
+
+  Widget _trophyCard(_TrophyHabit h, Color hex) {
+    final date = _fmtDate(h.formedAt);
+    final sub = date.isNotEmpty
+        ? 'FORMED ${date.toUpperCase()} · ${h.days} DAYS'
+        : 'FORMED · ${h.days} DAYS';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GlassPanel(
+        leftAccentColor: hex,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        boxShadow: [BoxShadow(color: hex.withOpacity(0.13), blurRadius: 14)],
+        child: Row(children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                center: const Alignment(-0.4, -0.4),
+                colors: [hex, hex.withOpacity(0.4)],
+              ),
+              boxShadow: [BoxShadow(color: hex.withOpacity(0.53), blurRadius: 12)],
+            ),
+            child: const Center(child: Text('🏆', style: TextStyle(fontSize: 18))),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: hex,
-                      boxShadow: [BoxShadow(color: hex, blurRadius: 6)],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(name.toUpperCase(),
-                      style: MM.displayX(size: 10, color: hex)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: Container(
-                          height: 1, color: hex.withOpacity(0.2))),
-                  const SizedBox(width: 8),
-                  Text('${items.length}',
-                      style: MM.mono(
-                          size: 10, color: Colors.white.withOpacity(0.4))),
-                ]),
-                const SizedBox(height: 8),
-                if (items.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.02),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                          color: hex.withOpacity(0.2),
-                          style: BorderStyle.solid),
-                    ),
-                    child: Text('No trophies yet — keep building',
-                        textAlign: TextAlign.center,
-                        style: MM.body(
-                            color: Colors.white.withOpacity(0.45),
-                            size: 11)),
-                  )
-                else
-                  ...items.map((h) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: GlassPanel(
-                          leftAccentColor: hex,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 12),
-                          boxShadow: [
-                            BoxShadow(
-                                color: hex.withOpacity(0.13), blurRadius: 14)
-                          ],
-                          child: Row(children: [
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: RadialGradient(
-                                  center: const Alignment(-0.4, -0.4),
-                                  colors: [hex, hex.withOpacity(0.4)],
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                      color: hex.withOpacity(0.53),
-                                      blurRadius: 12)
-                                ],
-                              ),
-                              child: const Center(
-                                  child: Text('🏆',
-                                      style: TextStyle(fontSize: 18))),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Text(h.name,
-                                      style: MM.body(
-                                          color: Colors.white,
-                                          weight: FontWeight.w600)),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                      'FORMED ${h.date.toUpperCase()} · ${h.days} DAYS',
-                                      style: MM.display(
-                                        size: 9,
-                                        color:
-                                            Colors.white.withOpacity(0.5),
-                                        weight: FontWeight.w600,
-                                        letterSpacing: 9 * 0.08,
-                                      )),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            MMChip(label: 'FORMED', color: MM.teal),
-                          ]),
-                        ),
-                      )),
+                Text(h.name,
+                    style: MM.body(color: Colors.white, weight: FontWeight.w600)),
+                const SizedBox(height: 3),
+                Text(sub,
+                    style: MM.display(
+                      size: 9,
+                      color: Colors.white.withOpacity(0.5),
+                      weight: FontWeight.w600,
+                      letterSpacing: 9 * 0.08,
+                    )),
               ],
             ),
-          );
-        }),
-      ],
+          ),
+          const SizedBox(width: 8),
+          MMChip(label: h.manualFormed ? 'FORMED' : 'FORMED ✓', color: MM.teal),
+        ]),
+      ),
+    );
+  }
+
+  /// A Golden Habit still forming — shows progress toward the 14-day standard
+  /// and a manual "Mark as Formed" action.
+  Widget _formingCard(_TrophyHabit h, Color hex) {
+    final pct = (h.days / 14).clamp(0.0, 1.0);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GlassPanel(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Expanded(
+                child: Text(h.name,
+                    style: MM.body(
+                        color: Colors.white.withOpacity(0.9),
+                        weight: FontWeight.w600)),
+              ),
+              const SizedBox(width: 8),
+              Text('${h.days}/14 DAYS',
+                  style: MM.display(
+                      size: 9, color: Colors.white.withOpacity(0.45))),
+            ]),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: pct,
+                minHeight: 5,
+                backgroundColor: Colors.white.withOpacity(0.08),
+                valueColor: AlwaysStoppedAnimation<Color>(hex),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: MMGhostButton(
+                label: 'Mark as Formed',
+                borderColor: MM.teal.withOpacity(0.5),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                onPressed: _busy ? null : () => _markFormed(h),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

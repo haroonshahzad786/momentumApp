@@ -133,6 +133,9 @@ class GoldenHabitRef {
     required this.habitName,
     required this.flagged,
     required this.flagReason,
+    this.formed = false,
+    this.formedAt = '',
+    this.createdAt = '',
   });
 
   final String habitId;
@@ -140,6 +143,11 @@ class GoldenHabitRef {
   final String habitName;
   final bool flagged;
   final String flagReason;
+
+  /// Trophy Room (#11): manual "Mark as Formed" flag + when + when forged.
+  final bool formed;
+  final String formedAt;
+  final String createdAt;
 
   /// Golden Habits store coreId in long form (`physical_health_core`); the
   /// check-in/dashboard key Cores by short id (`physical`). Map long → short.
@@ -167,6 +175,9 @@ class GoldenHabitRef {
         habitName: (j['habitName'] ?? '').toString(),
         flagged: j['flagged'] == true,
         flagReason: (j['flagReason'] ?? '').toString(),
+        formed: j['formed'] == true,
+        formedAt: (j['formedAt'] ?? '').toString(),
+        createdAt: (j['createdAt'] ?? '').toString(),
       );
 }
 
@@ -346,6 +357,33 @@ class OnboardingService {
           'flagged': flagged,
           if (reason.isNotEmpty) 'flagReason': reason,
           if (note.isNotEmpty) 'flagNote': note,
+        }),
+      );
+      if (response.statusCode != 200) return false;
+      final decoded = jsonDecode(response.body);
+      return decoded is Map && decoded['ok'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Records the player's manual "Mark as Formed" decision for the Trophy Room
+  /// (#11) via `flutterSetHabitFormed`. Best-effort; returns true on success.
+  Future<bool> setHabitFormed({
+    required String userId,
+    required String habitId,
+    required bool formed,
+  }) async {
+    if (habitId.isEmpty) return false;
+    try {
+      final response = await _client.post(
+        Uri.parse('$_baseUrl/flutterSetHabitFormed'),
+        headers: const {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'secret': _secret,
+          'userId': userId,
+          'habitId': habitId,
+          'formed': formed,
         }),
       );
       if (response.statusCode != 200) return false;

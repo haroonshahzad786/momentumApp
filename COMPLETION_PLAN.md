@@ -16,10 +16,11 @@ hook and flag *needs spec from the user*.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user spec
 
-> **▶ RESUME HERE (next session):** #1–#9 ✅ · #10 ✅ (Streak system — weekday 4.0+ streak w/ grace/reset,
-> milestones detected+stubbed, effective-streak-on-read; device-verified 0→1). **NEXT: #11 (Trophy Room from
-> real formation — M3).** Formed = 14+ days history AND ≥80% of applicable days scored ≥3 on the Core (reuse
-> `deriveRoutineStage`); replace hardcoded `_formedHabits`; manual "Mark as Formed"; 🔒 formation badges defer.
+> **▶ RESUME HERE (next session):** #1–#10 ✅ · #11 ✅ (Trophy Room from real formation — real golden habits +
+> check-in history, auto+manual formed, "Mark as Formed" dialog→`flutterSetHabitFormed`; device-verified).
+> **M3 core (#9/#10/#11) DONE. NEXT: #12 (Profile screen real data — M4).** Replace mock ("Alex Moore",
+> 78/65/42/81/54); wire name/level/streak/score from the profile; 5-Core radar from rolling 7-day check-in
+> averages; keep Sign Out working, mark other settings tiles not-yet-wired.
 > _(2026-06-30: also produced a client traceability doc — `design/ref/documentation/` — mapping #1–#9 to
 > the source `.docx` specs with quoted excerpts + 12 app screenshots, exported to both `.md` and a formatted
 > `Moore Momentum - Build Progress & Traceability.docx`. Update it as more features land.)_
@@ -272,10 +273,24 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
   `streak:1,longest:1,last:2026-07-02`; re-award idempotent (streakUpdated:false). Analyzer-clean; both
   endpoints deployed. **Note:** the "relaunch"/MP-reduction on 2 misses (rocket regression) is economy #13 —
   #10 resets the streak + preserves level/credits/Trophy (untouched); the MP-reduction amount is PLACEHOLDER.
-- [ ] **#11 Trophy Room from real formation.** Replace hardcoded `_formedHabits`. Formed = 14+ days
+- [x] **#11 Trophy Room from real formation.** Replace hardcoded `_formedHabits`. Formed = 14+ days
   history AND ≥80% of applicable days scored ≥3 on the habit's Core (reuse `deriveRoutineStage`). List
   real formed habits by Core; support manual "Mark as Formed" (2-week-standard confirm) writing a
   formed flag/date. 🔒 formation badges by count — defer.
+  *Built + device-verified 2026-07-02:* `TrophyScreen` rewritten to fetch REAL data — `OnboardingService.
+  goldenHabits` (now carries `formed`/`formedAt`) + `CheckinService.getRecent` per-Core scores. A habit is
+  "formed" if **manually marked** OR **auto** (`deriveRoutineStage(coreScores) == 'formed'` — the 14d/≥80%
+  rule). Trophy tab: summary count + per-Core sections (only Cores with a Golden Habit shown); formed →
+  🏆 trophy card ("FORMED {date} · {days} DAYS"); still-forming → progress card ("{days}/14 DAYS" bar) +
+  a **"Mark as Formed"** action → **2-week-standard confirm dialog** → `flutterSetHabitFormed` (new
+  functions-flutter endpoint writes `formed`+`formedAt`; normalizer returns them) → refetch. Achievements
+  tab (badges) left as the existing placeholder (🔒 formation-badges-by-count deferred). Analyzer-clean.
+  **DEVICE-VERIFIED (emulator-5554):** Trophy Room showed the 2 real habits as forming (relationships 1/14,
+  physical 3/14); "Mark as Formed" on "walk 20 min in evening" → confirm dialog ("2-week standard … you have
+  3 logged") → habit became a 🏆 trophy ("FORMED JUL 2 · 3 DAYS"), count → 1; GET confirms
+  `formed:true, formedAt:2026-07-02`. Auto-formation (14+ days) not device-reproduced (needs 14 days of
+  history — same limit as #7/#8) but reuses the verified `deriveRoutineStage`. Endpoints deployed. *(Emulator
+  display froze again mid-test → rebooted to recover; verify on a physical device when possible.)*
 
 ## M4
 

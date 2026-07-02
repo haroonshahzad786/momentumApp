@@ -40,7 +40,8 @@ All features are traced to the four specification files you provided in
 | | #8 Core Balance 5‑day alert | ✅ Done |
 | **M3 Economy** | #9 Momentum Points engine | ✅ Done |
 | | #10 Streak system | ✅ Done |
-| | #11 Trophy Room from real formation | ⏳ Next |
+| | #11 Trophy Room from real formation | ✅ Done |
+| **M4** | #12 Profile screen real data | ⏳ Next |
 
 The canonical living backlog is `COMPLETION_PLAN.md` in the project root.
 
@@ -188,6 +189,19 @@ The canonical living backlog is `COMPLETION_PLAN.md` in the project root.
 ![Streak on the recap](images/13-streak-summary.png)
 *A qualifying weekday check‑in starts the streak — "Current Streak · Day 1" with the next milestone at 3, alongside the real +10 Momentum Points.*
 
+### #11 Trophy Room from real formation ✅
+
+**What this is:** The Trophy Room now shows the player's **real** Golden Habits and whether each has formed. A habit is *formed* automatically after 14+ days of ≥80% consistency on its Core, or the player can **manually mark it formed** after a 2‑week‑standard confirmation. Habits still forming show a progress bar.
+
+**Source — Document B (Gamification Mechanics Specs Reference), Section 8 "Trophy Room & Habit Formation"** *(extracted ref lines 446–449)*:
+
+> "Formation Eligibility Threshold: **14+ days with 80%+ consistency** (scoring 3 or above on the habit's Core on days the habit applies) … Early formation option: **player can manually mark a habit formed earlier with a confirmation prompt acknowledging the 2+ week research‑backed standard.**"
+
+**Built:** `TrophyScreen` was rewritten to pull real Golden Habits + the last 30 days of check‑ins. Formed = the manual flag **or** the auto rule (`deriveRoutineStage == 'formed'` — 14 days / ≥80% on the Core). Formed habits appear as 🏆 trophies grouped by Core; still‑forming habits show a `{days}/14` progress bar and a **"Mark as Formed"** button → a 2‑week‑standard confirm dialog → a new `flutterSetHabitFormed` endpoint records `formed` + `formedAt`.
+
+![Trophy Room with real habits](images/14-trophy-room.png)
+*After marking one habit formed: "walk 20 min in evening" becomes a 🏆 trophy ("FORMED JUL 2 · 3 DAYS"), the count rises to 1, and the other habit keeps its progress bar + "Mark as Formed" action.*
+
 ---
 
 ## 3. Engineering notes (for your technical reviewer)
@@ -200,8 +214,7 @@ The canonical living backlog is `COMPLETION_PLAN.md` in the project root.
 
 ## 4. What's next
 
-- **#11 Trophy Room** from real habit formation (14+ days, ≥80% consistency).
-- **#12 Profile** real data.
+- **#12 Profile** screen real data (name/level/streak/score + a 5‑Core radar from rolling check‑in averages).
 - **Deferred (need your numbers):** the full gamified economy (Space Credits, levels, planets, ship upgrades, Mystery Box, badge library) and the full Space Cantina build — both gated on the `[PLACEHOLDER]` values in your Gamification & Cantina docs.
 
 *All screenshots in `./images/` were captured from the working app during this build.*
