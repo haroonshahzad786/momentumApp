@@ -39,8 +39,8 @@ All features are traced to the four specification files you provided in
 | | #7 Persist Mission Control flags + AI auto‑flag | ✅ Done |
 | | #8 Core Balance 5‑day alert | ✅ Done |
 | **M3 Economy** | #9 Momentum Points engine | ✅ Done |
-| | #10 Streak system | ⏳ Next |
-| | #11 Trophy Room from real formation | ⏳ Planned |
+| | #10 Streak system | ✅ Done |
+| | #11 Trophy Room from real formation | ⏳ Next |
 
 The canonical living backlog is `COMPLETION_PLAN.md` in the project root.
 
@@ -175,6 +175,19 @@ The canonical living backlog is `COMPLETION_PLAN.md` in the project root.
 
 > **Note on placeholders:** Your Gamification doc intentionally leaves several amounts as `[PLACEHOLDER — DETAIL NEEDED]` (e.g. the high‑score bonus, streak‑milestone payouts, regression thresholds). Wherever a number wasn't specified, the code **stubs the hook and surfaces "needs spec"** instead of guessing — so nothing fabricated ever ships. These are ready to wire the moment you confirm the values.
 
+### #10 Streak system ✅
+
+**What this is:** A streak now tracks consecutive **weekday** check‑ins with a **4.0+ average**. Weekends never break it, one missed weekday is a grace "warning," and two missed weekdays reset it. Milestones (3/7/14/…/365) are detected.
+
+**Source — Document B (Gamification Mechanics Specs Reference), Section 6 "Streaks & Accountability"** *(extracted ref lines 335, 358–367)*:
+
+> "A streak requires consecutive WEEKDAYS (Monday–Friday) on which the player completes a check‑in AND achieves a 4.0+ average score across all active Cores. Weekends … are always exempt … MISS 1 WEEKDAY CHECK‑IN — Warning Only … Streak remains intact … MISS 2 CONSECUTIVE WEEKDAY CHECK‑INS … Streak is broken … Always preserved: Space Credits, Trophy Room, … Level and all earned achievements."
+
+**Built:** the check‑in award (`flutterAwardCheckinPoints`) updates the streak in the same step — weekend‑exempt, a 1‑weekday grace ("warning"), reset on 2+ missed weekdays — persisting `streak` / `lastCheckinDate` / `longestStreak`. The profile read reports the **effective** streak (shown as *ok / warning / broken*) so the dashboard is truthful between check‑ins. Milestones are **detected** (the reward amounts are `[PLACEHOLDER]` in your docs, so payouts are **stubbed**, not invented). The dashboard streak turns amber‑warning at 1 missed weekday; the recap celebrates a milestone.
+
+![Streak on the recap](images/13-streak-summary.png)
+*A qualifying weekday check‑in starts the streak — "Current Streak · Day 1" with the next milestone at 3, alongside the real +10 Momentum Points.*
+
 ---
 
 ## 3. Engineering notes (for your technical reviewer)
@@ -187,7 +200,6 @@ The canonical living backlog is `COMPLETION_PLAN.md` in the project root.
 
 ## 4. What's next
 
-- **#10 Streak system** — increment on weekday check‑ins; 1st missed weekday = warning, 2nd consecutive = "relaunch" (level/credits/Trophy preserved). *Source — Document B, line 164: "Missing 2+ consecutive weekday check‑ins triggers regression to previous checkpoint."*
 - **#11 Trophy Room** from real habit formation (14+ days, ≥80% consistency).
 - **#12 Profile** real data.
 - **Deferred (need your numbers):** the full gamified economy (Space Credits, levels, planets, ship upgrades, Mystery Box, badge library) and the full Space Cantina build — both gated on the `[PLACEHOLDER]` values in your Gamification & Cantina docs.
