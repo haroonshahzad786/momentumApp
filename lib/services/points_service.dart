@@ -10,6 +10,9 @@ class CheckinAward {
     required this.pointsAdded,
     required this.dayPoints,
     this.totalPoints,
+    this.streak,
+    this.streakUpdated = false,
+    this.milestone,
   });
 
   /// True only when this call newly credited the day's points.
@@ -24,6 +27,15 @@ class CheckinAward {
 
   /// New running total (null on a non-awarding day / failure).
   final int? totalPoints;
+
+  /// New streak after this check-in (#10), null when unknown/failed.
+  final int? streak;
+
+  /// True when this check-in extended/reset the streak (a qualifying 4.0+ day).
+  final bool streakUpdated;
+
+  /// The streak milestone reached (3/7/14/30/60/90/180/365), else null.
+  final int? milestone;
 
   static const none =
       CheckinAward(awarded: false, pointsAdded: 0, dayPoints: 0);
@@ -69,6 +81,9 @@ class PointsService {
         pointsAdded: (d['pointsAdded'] as num? ?? 0).toInt(),
         dayPoints: (d['dayPoints'] as num? ?? 0).toInt(),
         totalPoints: (d['totalPoints'] as num?)?.toInt(),
+        streak: (d['streak'] as num?)?.toInt(),
+        streakUpdated: d['streakUpdated'] == true,
+        milestone: (d['milestone'] as num?)?.toInt(),
       );
     } catch (_) {
       return CheckinAward.none;

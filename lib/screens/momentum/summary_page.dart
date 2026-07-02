@@ -23,6 +23,7 @@ class SummaryPage extends StatefulWidget {
     this.activeCores = const <String>[],
     this.momentumScore = 0,
     this.earnedToday,
+    this.streakMilestone,
     this.todayScores = const <String, int>{},
   });
 
@@ -37,6 +38,9 @@ class SummaryPage extends StatefulWidget {
   /// Points credited for today's check-in (#9). Null when unknown (e.g. opening
   /// the Summary outside a fresh check-in) → shown as a pending placeholder.
   final int? earnedToday;
+
+  /// Streak milestone reached this check-in (#10), else null.
+  final int? streakMilestone;
 
   /// The scores just submitted this check-in — folded into the rolling average
   /// immediately so the meter reflects today even before the read settles.
@@ -203,7 +207,10 @@ class _SummaryPageState extends State<SummaryPage> {
                           ),
                         // Real persisted streak (no optimistic +1 — the streak
                         // system increments server-side once #10 lands).
-                        _StreakCallout(days: widget.streak, delay: 550),
+                        _StreakCallout(
+                            days: widget.streak,
+                            milestone: widget.streakMilestone,
+                            delay: 550),
                         // Space Credits await the gamified economy (#13).
                         const _PendingStatRow(
                           label: 'Space Credits',
@@ -444,12 +451,16 @@ class _CountUpState extends State<_CountUp>
 }
 
 class _StreakCallout extends StatelessWidget {
-  const _StreakCallout({required this.days, required this.delay});
+  const _StreakCallout(
+      {required this.days, required this.delay, this.milestone});
   final int days;
   final int delay;
 
+  /// A streak milestone reached this check-in (#10) — celebrate it.
+  final int? milestone;
+
   int _nextMilestone(int d) {
-    for (final m in const [7, 14, 30, 60, 90, 180, 365]) {
+    for (final m in const [3, 7, 14, 30, 60, 90, 180, 365]) {
       if (d < m) return m;
     }
     return 365;
@@ -483,7 +494,10 @@ class _StreakCallout extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(days > 0 ? 'Current Streak' : 'No Active Streak',
+                Text(
+                    milestone != null
+                        ? '🎉 $milestone-DAY MILESTONE'
+                        : (days > 0 ? 'Current Streak' : 'No Active Streak'),
                     style: MM.displayX(size: 10, color: MM.yellow)),
                 const SizedBox(height: 2),
                 Text('Day $days',

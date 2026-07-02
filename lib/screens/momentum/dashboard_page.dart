@@ -14,6 +14,7 @@ class DashboardPage extends StatelessWidget {
   const DashboardPage({
     super.key,
     this.streak = 47,
+    this.streakState = 'ok',
     this.planet = 'mars',
     this.activeCores = const ['mindset', 'career', 'physical'],
     this.atRiskCores = const <String>{},
@@ -31,6 +32,9 @@ class DashboardPage extends StatelessWidget {
   });
 
   final int streak;
+
+  /// Streak health (#10): 'ok' · 'warning' (1 weekday missed) · 'broken'.
+  final String streakState;
   final String planet;
   final List<String> activeCores;
 
@@ -116,9 +120,20 @@ class DashboardPage extends StatelessWidget {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('STREAK',
-                                    style: MM.displayX(
-                                        size: 11, color: MM.yellow)),
+                                Row(mainAxisSize: MainAxisSize.min, children: [
+                                  Text('STREAK',
+                                      style: MM.displayX(
+                                          size: 11,
+                                          color: streakState == 'ok'
+                                              ? MM.yellow
+                                              : MM.red)),
+                                  if (streakState == 'warning') ...[
+                                    const SizedBox(width: 4),
+                                    const Text('⚠',
+                                        style: TextStyle(
+                                            fontSize: 10, color: MM.red)),
+                                  ],
+                                ]),
                                 const SizedBox(height: 2),
                                 Text('DAY $streak',
                                     style: MM.display(

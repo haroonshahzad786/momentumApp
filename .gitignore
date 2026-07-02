@@ -64,3 +64,7 @@ serviceAccount*.json
 
 # Claude Code local tool config (machine-specific, may contain secrets)
 .claude/
+
+# Office lock/temp files
+~$*
+*.tmp

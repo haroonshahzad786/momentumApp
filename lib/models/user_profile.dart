@@ -9,6 +9,9 @@ class UserProfile {
     required this.email,
     required this.momentumScore,
     required this.streak,
+    this.longestStreak = 0,
+    this.streakState = 'ok',
+    this.lastCheckinDate = '',
     required this.planet,
     required this.level,
     required this.balance,
@@ -24,7 +27,15 @@ class UserProfile {
   final String displayName;
   final String email;
   final int momentumScore;
+
+  /// Effective current streak (#10): consecutive qualifying weekday check-ins,
+  /// already zeroed server-side once 2 weekdays have been missed.
   final int streak;
+  final int longestStreak;
+
+  /// 'ok' · 'warning' (1 weekday missed — grace active) · 'broken' (2+ missed).
+  final String streakState;
+  final String lastCheckinDate;
   final String planet;
   final String level;
   final int balance;
@@ -51,6 +62,9 @@ class UserProfile {
         email: (json['email'] ?? '').toString(),
         momentumScore: (json['momentumScore'] as num? ?? 0).toInt(),
         streak: (json['streak'] as num? ?? 0).toInt(),
+        longestStreak: (json['longestStreak'] as num? ?? 0).toInt(),
+        streakState: (json['streakState'] ?? 'ok').toString(),
+        lastCheckinDate: (json['lastCheckinDate'] ?? '').toString(),
         planet: (json['planet'] ?? 'earth').toString(),
         level: (json['level'] ?? 'cadet').toString(),
         balance: (json['balance'] as num? ?? 0).toInt(),

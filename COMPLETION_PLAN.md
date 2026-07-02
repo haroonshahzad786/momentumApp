@@ -16,8 +16,10 @@ hook and flag *needs spec from the user*.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user spec
 
-> **▶ RESUME HERE (next session):** #1–#8 ✅ · #9 ✅ (Momentum Points engine — +10 weekday check-in,
-> device-verified, momentumScore 103→113; bonuses stubbed). **NEXT: #10 (Streak system — M3).** See M3.
+> **▶ RESUME HERE (next session):** #1–#9 ✅ · #10 ✅ (Streak system — weekday 4.0+ streak w/ grace/reset,
+> milestones detected+stubbed, effective-streak-on-read; device-verified 0→1). **NEXT: #11 (Trophy Room from
+> real formation — M3).** Formed = 14+ days history AND ≥80% of applicable days scored ≥3 on the Core (reuse
+> `deriveRoutineStage`); replace hardcoded `_formedHabits`; manual "Mark as Formed"; 🔒 formation badges defer.
 > _(2026-06-30: also produced a client traceability doc — `design/ref/documentation/` — mapping #1–#9 to
 > the source `.docx` specs with quoted excerpts + 12 app screenshots, exported to both `.md` and a formatted
 > `Moore Momentum - Build Progress & Traceability.docx`. Update it as more features land.)_
@@ -249,10 +251,27 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
   113 MP / Earned Today 10 MP"; GET profile `momentumScore:113` (was 103); re-award 2026-06-30 →
   alreadyAwarded, +0, total 113; weekend (2026-06-28) → reason "weekend" no award; empty scores →
   "not_completed". Analyzer-clean. Endpoint deployed.
-- [ ] **#10 Streak system.** Confirmed: increments on weekday check-in; weekends optional (don't break);
+- [x] **#10 Streak system.** Confirmed: increments on weekday check-in; weekends optional (don't break);
   1st missed weekday = warning only; 2nd consecutive = "relaunch" (level/credits/Trophy preserved).
   Persist `streak`, `lastCheckinDate`, `longestStreak`. 🔒 milestone payouts (7/14/30/60/90/180/365) +
   Streak Saver mechanics are PLACEHOLDER — detect milestones, stub payouts.
+  *Built + verified 2026-07-02:* **Streak rule (Gamification Spec §6):** a streak day = a WEEKDAY check-in
+  with a **≥4.0 average** across scored Cores (not just any check-in). Implemented in
+  `flutterAwardCheckinPoints` (same txn as points): weekends exempt (early return), 1 missed weekday = grace
+  (streak survives → "warning"), 2+ missed weekdays reset to 1; persists `streak`/`lastCheckinDate`/
+  `longestStreak` on the user doc; idempotent per day via `lastCheckinDate`. Milestones 3/7/14/30/60/90/180/365
+  **detected** (returns `milestone`), payouts **stubbed** (`bonusHooks.streakMilestone`, PLACEHOLDER — not
+  fabricated). `flutterGetUserProfile` computes the **effective streak** vs the client's local `today` (passed
+  by `ProfileService`): gap 1 → `streakState:"warning"`, gap ≥2 → streak 0 / `"broken"` — so the dashboard is
+  truthful between check-ins. Client: `UserProfile` gains `longestStreak`/`streakState`/`lastCheckinDate`;
+  `PointsService`/`CheckinAward` return streak+milestone; `momentum_home` `_streakOverride`/`_streakMilestone`
+  (optimistic, like points); dashboard shows a red "STREAK ⚠" on warning; Summary streak callout shows the new
+  Day count + "🎉 N-DAY MILESTONE". **VERIFIED:** curl state-machine (1→2→3+milestone→4 grace→1 reset;
+  low-avg no-extend; weekend exempt) + effective-read (ok/warning/broken, longest preserved); **device**
+  (emulator-5554): qualifying weekday check-in → Summary "Day 1", next milestone 3, MP 113→123; GET
+  `streak:1,longest:1,last:2026-07-02`; re-award idempotent (streakUpdated:false). Analyzer-clean; both
+  endpoints deployed. **Note:** the "relaunch"/MP-reduction on 2 misses (rocket regression) is economy #13 —
+  #10 resets the streak + preserves level/credits/Trophy (untouched); the MP-reduction amount is PLACEHOLDER.
 - [ ] **#11 Trophy Room from real formation.** Replace hardcoded `_formedHabits`. Formed = 14+ days
   history AND ≥80% of applicable days scored ≥3 on the habit's Core (reuse `deriveRoutineStage`). List
   real formed habits by Core; support manual "Mark as Formed" (2-week-standard confirm) writing a

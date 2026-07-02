@@ -59,6 +59,12 @@ class _MomentumHomeState extends State<MomentumHome> {
   int? _earnedToday;
   int? _momentumOverride;
 
+  // Streak (#10): optimistic override of the running streak after a qualifying
+  // check-in (cleared on the next authoritative profile fetch) + the milestone
+  // reached this check-in, handed to the Summary for a celebration.
+  int? _streakOverride;
+  int? _streakMilestone;
+
   // Phase 1 progress. Seeded from the persisted profile on launch (see
   // _fetchProfile) and written back to Firestore on every change via
   // _persistPhase1 so it survives an app restart.
@@ -146,8 +152,9 @@ class _MomentumHomeState extends State<MomentumHome> {
         _phase1 = result.data.phase1State;
         _offline = result.fromCache;
         _loading = false;
-        // Fresh profile is authoritative — drop the optimistic points override.
+        // Fresh profile is authoritative — drop the optimistic overrides.
         _momentumOverride = null;
+        _streakOverride = null;
       });
       // Compute the Core Balance 5-day alert badges (#8) from real check-ins.
       _loadCoreBalance();
@@ -353,6 +360,9 @@ class _MomentumHomeState extends State<MomentumHome> {
       );
       _earnedToday = award.dayPoints;
       if (award.totalPoints != null) _momentumOverride = award.totalPoints;
+      // Streak (#10): reflect the new streak immediately + surface any milestone.
+      if (award.streak != null) _streakOverride = award.streak;
+      _streakMilestone = award.milestone;
     }
     // Stash for the summary's Balance Meter so today's scores fold into the
     // rolling 7-day average immediately, without waiting on the read.
@@ -400,7 +410,8 @@ class _MomentumHomeState extends State<MomentumHome> {
     final activeCores = p?.activeCores ?? const <String>[];
     if (_screen == 'dashboard') {
       return DashboardPage(
-        streak: p?.streak ?? 0,
+        streak: _streakOverride ?? (p?.streak ?? 0),
+        streakState: p?.streakState ?? 'ok',
         planet: p?.planet ?? 'earth',
         activeCores: activeCores,
         atRiskCores: _atRiskCores,
@@ -451,7 +462,8 @@ class _MomentumHomeState extends State<MomentumHome> {
     if (_screen == 'summary') {
       return SummaryPage(
         userId: FirebaseAuth.instance.currentUser?.uid ?? '',
-        streak: p?.streak ?? 0,
+        streak: _streakOverride ?? (p?.streak ?? 0),
+        streakMilestone: _streakMilestone,
         activeCores: activeCores,
         momentumScore: _momentumOverride ?? (p?.momentumScore ?? 0),
         earnedToday: _earnedToday,

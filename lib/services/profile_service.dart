@@ -21,11 +21,17 @@ class ProfileService {
   /// last-good profile from disk is returned with `fromCache: true`.
   Future<Fetched<UserProfile>> getProfile(String userId) async {
     final cacheKey = 'cache:profile:$userId';
+    // Local calendar date so the server can compute the effective streak (#10)
+    // — whether it's broken by missed weekdays — against the player's own day.
+    final now = DateTime.now();
+    final today = '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
     try {
       final response = await _client.post(
         Uri.parse('$_baseUrl/flutterGetUserProfile'),
         headers: const {'Content-Type': 'application/json'},
-        body: jsonEncode({'secret': _secret, 'userId': userId}),
+        body: jsonEncode({'secret': _secret, 'userId': userId, 'today': today}),
       );
       if (response.statusCode != 200) {
         throw Exception(
