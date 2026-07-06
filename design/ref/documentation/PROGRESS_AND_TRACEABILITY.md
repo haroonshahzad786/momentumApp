@@ -41,7 +41,7 @@ All features are traced to the four specification files you provided in
 | **M3 Economy** | #9 Momentum Points engine | ✅ Done |
 | | #10 Streak system | ✅ Done |
 | | #11 Trophy Room from real formation | ✅ Done |
-| **M4** | #12 Profile screen real data | ⏳ Next |
+| **M4** | #12 Profile screen real data | ✅ Done |
 
 The canonical living backlog is `COMPLETION_PLAN.md` in the project root.
 
@@ -204,6 +204,21 @@ The canonical living backlog is `COMPLETION_PLAN.md` in the project root.
 
 ---
 
+## M4 — Profile
+
+### #12 Profile screen real data ✅
+
+**What this is:** The Profile screen now shows the player's **real** name, level, streak and Momentum score, and a **5‑Core radar** computed from their actual check‑in averages — no more placeholder "Alex Moore / 78‑65‑42‑81‑54." Settings that aren't wired yet are clearly marked, and Sign Out works.
+
+**Source — Document B (Gamification Mechanics Specs Reference), Section 2 "Progressive Leveling System: Cadet → Navigator → Commander"** *(extracted ref line 107)*; the radar reuses the **5‑Core Balance Meter** concept (see #6). The level tiers themselves carry `[PLACEHOLDER]` advancement thresholds in your doc, so the screen shows the player's current level as stored rather than inventing a level number.
+
+**Built:** `ProfileScreen` now reads the real profile (`flutterGetUserProfile`) and the last 30 days of check‑ins. The header shows the real name (avatar = first initial), level, streak 🔥 and Momentum score; the 5‑Core radar is the per‑Core rolling **7‑day average** of check‑in scores. Notifications / Connected calendars / Privacy / Subscription are tagged **"SOON"** (a tap shows a "coming soon" note); **Sign out** remains fully functional.
+
+![Profile with real data](images/15-profile.png)
+*The real profile: "naginashaheen88 · CADET · 1🔥 · 123 MP", a live 5‑Core radar from actual check‑ins (Physical & Relationships extended, the rest centred), and the not‑yet‑wired settings clearly marked "SOON".*
+
+---
+
 ## 3. Engineering notes (for your technical reviewer)
 
 - **Backend isolation:** all new cloud functions live in the **Flutter‑only** functions codebase (`vf-bridge/functions-flutter`), never in the FlutterFlow `index.js`. New endpoints added this phase: `flutterSavePhase1State`, `flutterSaveMomentumMethods`, `flutterFlagGoldenHabit` (client wiring), `flutterAwardCheckinPoints`, plus read endpoints `flutterGetUserProfile` / `flutterGetGoldenHabits` / `flutterSyncOnboarding`.
@@ -214,7 +229,9 @@ The canonical living backlog is `COMPLETION_PLAN.md` in the project root.
 
 ## 4. What's next
 
-- **#12 Profile** screen real data (name/level/streak/score + a 5‑Core radar from rolling check‑in averages).
-- **Deferred (need your numbers):** the full gamified economy (Space Credits, levels, planets, ship upgrades, Mystery Box, badge library) and the full Space Cantina build — both gated on the `[PLACEHOLDER]` values in your Gamification & Cantina docs.
+The core product loop (#1–#12) is complete. What remains are the two large **deferred** buckets — both **blocked on decisions/numbers from you**:
+
+- **Gamified economy** — Space Credits ledger, the Cadet → Navigator → Commander leveling thresholds, the planet journey + alien guides, ship upgrades, the Mystery Box, and the badge library. **Nearly every threshold is marked `[PLACEHOLDER — DETAIL NEEDED]` in your Gamification doc** (e.g. how many formed habits / what streak to reach Navigator, credit amounts per milestone, Mystery Box odds). These are ready to build the moment you confirm the values.
+- **Full Space Cantina + Lists editing + Tasks** — the social hub (MVP Reddit bridge → native Tribes / Ideas Well / Leaderboards), making Momentum Lists editable, and wiring the Tasks screen.
 
 *All screenshots in `./images/` were captured from the working app during this build.*

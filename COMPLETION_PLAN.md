@@ -16,11 +16,13 @@ hook and flag *needs spec from the user*.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user spec
 
-> **▶ RESUME HERE (next session):** #1–#10 ✅ · #11 ✅ (Trophy Room from real formation — real golden habits +
-> check-in history, auto+manual formed, "Mark as Formed" dialog→`flutterSetHabitFormed`; device-verified).
-> **M3 core (#9/#10/#11) DONE. NEXT: #12 (Profile screen real data — M4).** Replace mock ("Alex Moore",
-> 78/65/42/81/54); wire name/level/streak/score from the profile; 5-Core radar from rolling 7-day check-in
-> averages; keep Sign Out working, mark other settings tiles not-yet-wired.
+> **▶ RESUME HERE (next session):** #1–#12 ✅ ALL CORE-LOOP TASKS DONE (M0–M4), device-verified + on GitHub.
+> **Only the two DEFERRED buckets remain — both 🔒 BLOCKED ON USER SPEC:**
+> **#13 Gamified economy** (Space Credits ledger, leveling Cadet→Navigator→Commander, planet journey +
+> alien guides, ship upgrades, Mystery Box, badge library) — nearly every threshold is `[PLACEHOLDER —
+> DETAIL NEEDED]` in the Gamification doc. **#14 Cantina full build + Lists editing + Tasks screen** (MVP
+> Reddit-bridge → V1 native Tribes/Ideas-Well/Leaderboards; Lists become editable; Tasks wired). Don't start
+> #13/#14 without the user's numbers/decisions — surface what's needed and ask.
 > _(2026-06-30: also produced a client traceability doc — `design/ref/documentation/` — mapping #1–#9 to
 > the source `.docx` specs with quoted excerpts + 12 app screenshots, exported to both `.md` and a formatted
 > `Moore Momentum - Build Progress & Traceability.docx`. Update it as more features land.)_
@@ -294,9 +296,19 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
 
 ## M4
 
-- [ ] **#12 Profile screen real data.** Replace mock ("Alex Moore", 78/65/42/81/54). Wire name/level/
+- [x] **#12 Profile screen real data.** Replace mock ("Alex Moore", 78/65/42/81/54). Wire name/level/
   streak/score from the profile; compute the 5-Core radar from rolling 7-day check-in averages. Sign
   Out stays functional; mark other settings tiles as not-yet-wired.
+  *Built + device-verified 2026-07-06:* `ProfileScreen` (sub_screens) rewritten StatelessWidget→Stateful,
+  fetches `ProfileService.getProfile` + `CheckinService.getRecent`. Header shows real displayName (email
+  local-part fallback → "Commander"; avatar = 1st letter), real `level` (subtitle + chip), real `streak`🔥
+  + `momentumScore` MP chips. The `_RadarPainter` (0–100) is fed by `_computeRadar` = per-Core rolling
+  7-day check-in average (avg/5·100), Cores with no data → 0 + a "check in daily…" hint. Settings tiles
+  (Notifications/Connected calendars/Privacy/Subscription) now show a **"SOON"** tag + a "coming soon"
+  snackbar (`_SettingTile.wired=false`); **Sign out stays functional** (red, real `onSignOut`). Loading/
+  offline/error states added. Analyzer-clean. **DEVICE-VERIFIED (emulator-5554):** Profile showed
+  "naginashaheen88 · CADET · 1🔥 · 123 MP", a real radar (physical+relationships extended, others centred),
+  SOON tiles → snackbar. *(No new backend — pure client using existing endpoints.)*
 
 ---
 

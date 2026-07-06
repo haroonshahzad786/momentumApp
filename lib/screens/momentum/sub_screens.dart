@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import '../../models/golden_habit.dart';
 import '../../models/momentum_list.dart';
 import '../../models/core_list.dart';
+import '../../models/user_profile.dart';
 import '../../services/habits_service.dart';
+import '../../services/profile_service.dart';
 import '../../services/momentum_lists_service.dart';
 import '../../services/core_lists_service.dart';
 import '../../services/checkin_service.dart';
@@ -4397,123 +4399,265 @@ class _AchievementsTab extends StatelessWidget {
 }
 
 // ─── PROFILE ───────────────────────────────────────────────
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key, this.onBack, this.onChat, this.onNav, this.onSignOut});
+/// Profile (#12) — real name / level / streak / score from the profile, and a
+/// 5-Core radar computed from the rolling 7-day average of real check-in scores.
+class ProfileScreen extends StatefulWidget {
+  const ProfileScreen(
+      {super.key, this.onBack, this.onChat, this.onNav, this.onSignOut});
   final VoidCallback? onBack;
   final VoidCallback? onChat;
   final void Function(String key)? onNav;
   final VoidCallback? onSignOut;
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final _profileService = ProfileService();
+  final _checkin = CheckinService();
+
+  UserProfile? _profile;
+  List<int> _radar = const [0, 0, 0, 0, 0]; // 0–100 per Core
+  bool _loading = true;
+  bool _offline = false;
+  bool _errorOffline = false;
+  String? _error;
+
+  // Radar order + colours (Mind / Career / Connect / Physical / Emotion).
+  static const _radarCores = ['mindset', 'career', 'relationships', 'physical', 'emotional'];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _profileService.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) {
+      setState(() {
+        _loading = false;
+        _error = 'Not signed in';
+      });
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final result = await _profileService.getProfile(uid);
+      List<DailyCheckin> checkins = const [];
+      try {
+        checkins = await _checkin.getRecent(uid, limit: 30);
+      } catch (_) {}
+      if (!mounted) return;
+      setState(() {
+        _profile = result.data;
+        _radar = _computeRadar(checkins);
+        _offline = result.fromCache;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _errorOffline = isNetworkError(e);
+        _loading = false;
+      });
+    }
+  }
+
+  /// Per-Core rolling 7-day average of check-in scores → 0–100 radar value.
+  List<int> _computeRadar(List<DailyCheckin> checkins) {
+    final byCore = <String, List<int>>{};
+    for (final c in checkins) {
+      c.scores.forEach((k, v) => byCore.putIfAbsent(k, () => []).add(v));
+    }
+    return _radarCores.map((core) {
+      final scores = (byCore[core] ?? const <int>[]).take(7).toList();
+      if (scores.isEmpty) return 0;
+      final avg = scores.reduce((a, b) => a + b) / scores.length;
+      return (avg / 5 * 100).round();
+    }).toList();
+  }
+
+  String _fmt(int n) {
+    final s = n.toString();
+    final buf = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
+      buf.write(s[i]);
+    }
+    return buf.toString();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final cores = [
-      [MM.blue, 'MIND', 78],
-      [MM.yellow, 'CAREER', 65],
-      [MM.magenta, 'CONNECT', 42],
-      [MM.teal, 'PHYSICAL', 81],
-      [MM.violet, 'EMOTION', 54],
-    ];
+    final p = _profile;
+    // Prefer a real name; fall back to the email's local part, then "Commander".
+    final raw = (p?.displayName ?? '').trim();
+    final name = raw.isEmpty
+        ? 'Commander'
+        : (raw.contains('@') ? raw.split('@').first : raw);
+    final level = (p?.level ?? 'cadet').toUpperCase();
+    final avatar = name.isNotEmpty ? name[0].toUpperCase() : 'C';
+
     return ScreenShell(
       title: 'Profile',
-      subtitle: 'CMDR · ALEX MOORE',
+      subtitle: level,
       accent: MM.yellow,
-      onBack: onBack,
-      onChat: onChat,
-      onNav: onNav,
+      onBack: widget.onBack,
+      onChat: widget.onChat,
+      onNav: widget.onNav,
+      child: _loading
+          ? const Padding(
+              padding: EdgeInsets.symmetric(vertical: 48),
+              child: Center(child: CircularProgressIndicator(color: MM.yellow)),
+            )
+          : (_error != null && p == null)
+              ? _errorView()
+              : Column(
+                  children: [
+                    if (_offline) ...[
+                      OfflineBanner(onRefresh: _load),
+                      const SizedBox(height: 10),
+                    ],
+                    _headerCard(name, level, avatar, p),
+                    _radarCard(),
+                    _settingsCard(),
+                  ],
+                ),
+    );
+  }
+
+  Widget _errorView() => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: _errorOffline
+            ? OfflineErrorView(onRetry: _load, what: 'your profile')
+            : Column(children: [
+                Text('Could not load profile',
+                    style: MM.display(size: 14, color: Colors.white)),
+                const SizedBox(height: 14),
+                MMGhostButton(label: 'Retry', onPressed: _load),
+              ]),
+      );
+
+  Widget _headerCard(String name, String level, String avatar, UserProfile? p) {
+    return GlassPanel(
+      accent: true,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+      margin: const EdgeInsets.only(bottom: 14),
+      child: Row(children: [
+        Container(
+          width: 60,
+          height: 60,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              center: Alignment(-0.4, -0.4),
+              radius: 0.9,
+              colors: [MM.yellow, MM.red],
+            ),
+            boxShadow: [BoxShadow(color: Color(0x8CFFC629), blurRadius: 16)],
+          ),
+          child: Center(
+            child: Text(avatar,
+                style: const TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 24)),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: MM.display(size: 16, color: Colors.white)),
+              const SizedBox(height: 2),
+              Text(level, style: MM.displayX(size: 10, color: MM.yellow)),
+              const SizedBox(height: 8),
+              Row(children: [
+                MMChip(label: '${p?.streak ?? 0}🔥', color: MM.teal),
+                const SizedBox(width: 6),
+                MMChip(
+                    label: '${_fmt(p?.momentumScore ?? 0)} MP',
+                    color: MM.yellow),
+              ]),
+            ],
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _radarCard() {
+    final hasData = _radar.any((v) => v > 0);
+    return GlassPanel(
+      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('5-CORE BALANCE · 7-DAY AVG',
+              style: MM.displayX(size: 10, color: Colors.white.withOpacity(0.5))),
+          const SizedBox(height: 8),
+          Center(
+            child: SizedBox(
+              width: 220,
+              height: 220,
+              child: CustomPaint(painter: _RadarPainter(scores: _radar)),
+            ),
+          ),
+          if (!hasData)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Center(
+                child: Text('Check in daily to build your Core balance.',
+                    style: MM.body(
+                        color: Colors.white.withOpacity(0.45), size: 11)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _settingsCard() {
+    return GlassPanel(
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
-          GlassPanel(
-            accent: true,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-            margin: const EdgeInsets.only(bottom: 14),
-            child: Row(children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const RadialGradient(
-                    center: Alignment(-0.4, -0.4),
-                    radius: 0.9,
-                    colors: [MM.yellow, MM.red],
-                  ),
-                  boxShadow: const [
-                    BoxShadow(color: Color(0x8CFFC629), blurRadius: 16),
-                  ],
-                ),
-                child: const Center(
-                  child: Text('A',
-                      style: TextStyle(
-                          color: Colors.black,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 24)),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Alex Moore',
-                        style: MM.display(size: 16, color: Colors.white)),
-                    const SizedBox(height: 2),
-                    Text('NAVIGATOR · LVL 12',
-                        style: MM.displayX(size: 10, color: MM.yellow)),
-                    const SizedBox(height: 8),
-                    Row(children: [
-                      MMChip(label: '47🔥', color: MM.teal),
-                      const SizedBox(width: 6),
-                      MMChip(label: '8,420 MS', color: MM.yellow),
-                    ]),
-                  ],
-                ),
-              ),
-            ]),
-          ),
-          GlassPanel(
-            padding: const EdgeInsets.all(14),
-            margin: const EdgeInsets.only(bottom: 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('5-CORE BALANCE',
-                    style: MM.displayX(
-                        size: 10, color: Colors.white.withOpacity(0.5))),
-                const SizedBox(height: 8),
-                Center(
-                  child: SizedBox(
-                    width: 220,
-                    height: 220,
-                    child: CustomPaint(
-                      painter: _RadarPainter(
-                        scores: cores.map((c) => c[2] as int).toList(),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          GlassPanel(
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                _SettingTile(label: 'Notifications', onTap: () {}),
-                _SettingTile(label: 'Connected calendars', onTap: () {}),
-                _SettingTile(label: 'Privacy', onTap: () {}),
-                _SettingTile(label: 'Subscription · PRO', onTap: () {}),
-                _SettingTile(
-                  label: 'Sign out',
-                  color: MM.red,
-                  onTap: onSignOut ?? () {},
-                  isLast: true,
-                ),
-              ],
-            ),
+          _SettingTile(label: 'Notifications', onTap: _notWired),
+          _SettingTile(label: 'Connected calendars', onTap: _notWired),
+          _SettingTile(label: 'Privacy', onTap: _notWired),
+          _SettingTile(label: 'Subscription', onTap: _notWired),
+          _SettingTile(
+            label: 'Sign out',
+            color: MM.red,
+            wired: true,
+            onTap: widget.onSignOut ?? () {},
+            isLast: true,
           ),
         ],
       ),
+    );
+  }
+
+  void _notWired() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Not yet available — coming soon.')),
     );
   }
 }
@@ -4524,11 +4668,17 @@ class _SettingTile extends StatelessWidget {
     required this.onTap,
     this.color,
     this.isLast = false,
+    this.wired = false,
   });
   final String label;
   final VoidCallback onTap;
   final Color? color;
   final bool isLast;
+
+  /// When false, the tile is a placeholder — shows a "SOON" tag instead of a
+  /// chevron (its onTap surfaces a "coming soon" note).
+  final bool wired;
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
@@ -4544,10 +4694,20 @@ class _SettingTile extends StatelessWidget {
         child: Row(children: [
           Expanded(
             child: Text(label,
-                style: MM.body(color: color ?? Colors.white, size: 13)),
+                style: MM.body(
+                    color: (color ?? Colors.white).withOpacity(wired ? 1 : 0.7),
+                    size: 13)),
           ),
-          Icon(Icons.chevron_right,
-              color: Colors.white.withOpacity(0.4), size: 18),
+          if (!wired && color == null)
+            Text('SOON',
+                style: MM.display(
+                    size: 8,
+                    color: Colors.white.withOpacity(0.35),
+                    weight: FontWeight.w700,
+                    letterSpacing: 8 * 0.12))
+          else
+            Icon(Icons.chevron_right,
+                color: Colors.white.withOpacity(0.4), size: 18),
         ]),
       ),
     );
