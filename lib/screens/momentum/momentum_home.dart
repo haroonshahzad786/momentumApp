@@ -466,6 +466,7 @@ class _MomentumHomeState extends State<MomentumHome> {
         streakMilestone: _streakMilestone,
         activeCores: activeCores,
         momentumScore: _momentumOverride ?? (p?.momentumScore ?? 0),
+        spaceCredits: p?.spaceCredits ?? 0,
         earnedToday: _earnedToday,
         todayScores: _lastCheckinScores,
         onClose: () => _go('dashboard'),

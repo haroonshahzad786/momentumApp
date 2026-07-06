@@ -8,6 +8,7 @@ class UserProfile {
     required this.displayName,
     required this.email,
     required this.momentumScore,
+    this.spaceCredits = 0,
     required this.streak,
     this.longestStreak = 0,
     this.streakState = 'ok',
@@ -27,6 +28,9 @@ class UserProfile {
   final String displayName;
   final String email;
   final int momentumScore;
+
+  /// Space Credits balance (#13a — reward currency).
+  final int spaceCredits;
 
   /// Effective current streak (#10): consecutive qualifying weekday check-ins,
   /// already zeroed server-side once 2 weekdays have been missed.
@@ -61,6 +65,7 @@ class UserProfile {
         displayName: (json['displayName'] ?? '').toString(),
         email: (json['email'] ?? '').toString(),
         momentumScore: (json['momentumScore'] as num? ?? 0).toInt(),
+        spaceCredits: (json['spaceCredits'] as num? ?? 0).toInt(),
         streak: (json['streak'] as num? ?? 0).toInt(),
         longestStreak: (json['longestStreak'] as num? ?? 0).toInt(),
         streakState: (json['streakState'] ?? 'ok').toString(),

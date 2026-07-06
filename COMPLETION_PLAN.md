@@ -314,11 +314,36 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
 
 ## Deferred (out of core-loop scope — captured so nothing is lost)
 
-- [ ] **#13 Gamified economy** 🔒 — Space Credits ledger; Leveling Cadet→Navigator→Commander (3
+- [~] **#13 Gamified economy** 🔒 — Space Credits ledger; Leveling Cadet→Navigator→Commander (3
   simultaneous criteria); Planet journey + alien-guide arrival + quests; Ship Upgrades
   (Wings→Armor→Thrusters, fixed order — not implemented at all today); Mystery Box (10–15%/check-in,
   guaranteed every 10th); Badge library. Nearly every threshold is PLACEHOLDER — split into per-system
   tasks once the user provides numbers.
+  **Split into sub-tasks (2026-07-06): 13a ledger · 13b leveling · 13c planets · 13d ship · 13e mystery box
+  · 13f badges.** User is providing the [PLACEHOLDER] numbers per system.
+  - **[x] 13a Space Credits ledger (foundation) — BUILT + backend-verified 2026-07-06.** New credits schema
+    `users/{uid}/credits/summary.total` + `history` subcollection + `users/{uid}.spaceCredits` mirror
+    (parallels the points schema). `creditMultiplier(level)` applies the SPECIFIED level multiplier
+    (cadet 1× / navigator 1.25× / commander 1.5×). The one specified amount — the **25-credit Cantina
+    welcome bonus** — is wired into `flutterSaveMomentumMethods` (Stage-2 completion), guarded by a NEW
+    `cantinaWelcomeCredited` flag INDEPENDENT of `mbsAwarded` (so already-Stage-2 players get credits on
+    next momentify without re-awarding MP; idempotent). `flutterGetUserProfile` returns `spaceCredits`.
+    Client: `UserProfile.spaceCredits`; Summary "Space Credits" is now a real `_StatRow` (💎, was SOON);
+    Profile header shows a `💎` chip. Curl-verified: 0→25 credits, MP unchanged (123), idempotent re-run;
+    profile returns spaceCredits. Analyzer-clean; both endpoints deployed. On-device visual blocked by the
+    recurring emulator display-freeze (backend is the source of truth here).
+    🔒 **NEEDS FROM USER (set ①) to wire the rest of earning:** base credits/check-in, high-score(5/5)
+    bonus, habit-formation bonus, streak-milestone credits (per 3/7/14/30/60/90/180/365). Then wire into
+    `flutterAwardCheckinPoints` (+ level mult) / `flutterSetHabitFormed`.
+  - [ ] **13b Leveling** (Cadet→Navigator→Commander, 3 simultaneous criteria). NEEDS set ②: formed-habits/
+    planet/streak thresholds per transition. Levels never downgrade.
+  - [ ] **13c Planet journey** (Moon→Mars→Jupiter→Saturn→Pluto + arrival: alien guide, list unlock, bonus
+    credits, quest). NEEDS set ③: MP per planet, arrival bonus credits, regression threshold.
+  - [ ] **13d Ship upgrades** (Wings→Armor→Thrusters fixed order; effects specified: armor grace 1/2/3/week,
+    thrusters +25/50/75/100% MP; epic=Commander). NEEDS set ④: credit costs per tier.
+  - [ ] **13e Mystery Box** (10–15%/check-in, guaranteed 10th, needs Captain's Log; 70% useful/30%
+    delightful reward table mostly specified). NEEDS set ⑤: exact % (pick 10–15).
+  - [ ] **13f Badge library** (last) — NEEDS the full badge list (names/criteria/rarity).
 - [ ] **#14 Cantina full build + Lists editing + Tasks** — Cantina: DMs are real Firestore but threads
   are seeded mocks; docs want MVP Reddit-bridge gateway, then V1 native (Ideas Well upvote/click-to-
   adopt, Tribes ≤20 members/≤3 joined, Accountability Partners, anti-shame leaderboards recalced 6h).

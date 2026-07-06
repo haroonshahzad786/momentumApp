@@ -4588,11 +4588,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 2),
               Text(level, style: MM.displayX(size: 10, color: MM.yellow)),
               const SizedBox(height: 8),
-              Row(children: [
+              Wrap(spacing: 6, runSpacing: 6, children: [
                 MMChip(label: '${p?.streak ?? 0}🔥', color: MM.teal),
-                const SizedBox(width: 6),
                 MMChip(
                     label: '${_fmt(p?.momentumScore ?? 0)} MP',
+                    color: MM.yellow),
+                MMChip(
+                    label: '${_fmt(p?.spaceCredits ?? 0)} 💎',
                     color: MM.yellow),
               ]),
             ],

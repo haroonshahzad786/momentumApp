@@ -22,6 +22,7 @@ class SummaryPage extends StatefulWidget {
     this.streak = 0,
     this.activeCores = const <String>[],
     this.momentumScore = 0,
+    this.spaceCredits = 0,
     this.earnedToday,
     this.streakMilestone,
     this.todayScores = const <String, int>{},
@@ -34,6 +35,9 @@ class SummaryPage extends StatefulWidget {
 
   /// Real running Momentum Points from the profile.
   final int momentumScore;
+
+  /// Space Credits balance (#13a).
+  final int spaceCredits;
 
   /// Points credited for today's check-in (#9). Null when unknown (e.g. opening
   /// the Summary outside a fresh check-in) → shown as a pending placeholder.
@@ -211,10 +215,13 @@ class _SummaryPageState extends State<SummaryPage> {
                             days: widget.streak,
                             milestone: widget.streakMilestone,
                             delay: 550),
-                        // Space Credits await the gamified economy (#13).
-                        const _PendingStatRow(
+                        // Space Credits balance (#13a — ledger live; per-trigger
+                        // earning amounts wire in as they're specified).
+                        _StatRow(
                           label: 'Space Credits',
-                          note: 'The Space Credits economy comes online soon.',
+                          value: widget.spaceCredits,
+                          suffix: ' 💎',
+                          accent: MM.yellow,
                           delay: 750,
                         ),
                         _BalanceMeter(
