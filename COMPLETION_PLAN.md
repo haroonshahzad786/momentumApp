@@ -368,9 +368,13 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
     `_creditsOverride` in momentum_home (mirrors `_momentumOverride`) → dashboard + summary update instantly.
     Curl-verified: check-in +15 (10+5) idempotent, formation +25 idempotent; **device-verified on Pixel**
     (dashboard CREDITS 25→65). Both endpoints deployed.
-    🔒 **STILL PENDING (streak-milestone credits) to finish set ①:** the credit bonus per streak milestone
-    (3/7/14/30/60/90/180/365) — `flutterAwardCheckinPoints` DETECTS the milestone but awards no credits yet
-    (`bonusHooks.streakMilestone` stubbed). Give me the 8 amounts to finish.
+  - **[x] 13a-milestones WIRED + verified 2026-07-07 — SET ① COMPLETE.** `STREAK_MILESTONE_CREDITS`
+    {3:10, 7:25, 14:50, 30:100, 60:200, 90:300, 180:500, 365:1000} (× level mult) awarded in
+    `flutterAwardCheckinPoints` when the streak hits a milestone (history id `streak_<date>`, idempotent/day);
+    `bonusHooks.streakMilestone` now returns the real amount. Curl-verified over 3 simulated weekdays:
+    day3 streak=3 → milestone=3 → +20💎 (10 base + 10 milestone), idempotent re-run. No client change needed
+    (credits flow via `creditsEarned`/`spaceCredits` → `_creditsOverride`; summary already shows the
+    "🎉 N-DAY MILESTONE" from #10). **Only the Balance bonus remains [PLACEHOLDER] (undesigned).**
   - [ ] **13b Leveling** (Cadet→Navigator→Commander, 3 simultaneous criteria). NEEDS set ②: formed-habits/
     planet/streak thresholds per transition. Levels never downgrade.
   - [ ] **13c Planet journey** (Moon→Mars→Jupiter→Saturn→Pluto + arrival: alien guide, list unlock, bonus
