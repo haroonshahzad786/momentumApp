@@ -16,13 +16,21 @@ hook and flag *needs spec from the user*.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user spec
 
-> **▶ RESUME HERE (next session):** #1–#12 ✅ ALL CORE-LOOP TASKS DONE (M0–M4), device-verified + on GitHub.
-> **Only the two DEFERRED buckets remain — both 🔒 BLOCKED ON USER SPEC:**
-> **#13 Gamified economy** (Space Credits ledger, leveling Cadet→Navigator→Commander, planet journey +
-> alien guides, ship upgrades, Mystery Box, badge library) — nearly every threshold is `[PLACEHOLDER —
-> DETAIL NEEDED]` in the Gamification doc. **#14 Cantina full build + Lists editing + Tasks screen** (MVP
-> Reddit-bridge → V1 native Tribes/Ideas-Well/Leaderboards; Lists become editable; Tasks wired). Don't start
-> #13/#14 without the user's numbers/decisions — surface what's needed and ask.
+> **▶ RESUME HERE (next session, updated 2026-07-07):** #1–#12 ✅ core loop DONE. **#13 economy IN PROGRESS**
+> (see the #13 block in the Deferred section for full detail + the design-image findings):
+> - ✅ **13a** Space Credits ledger + **ALL of set ① earning** (check-in 10💎 · high-score 5💎 · formation
+>   25💎 · streak milestones 3/7/14/30/60/90/180/365 → 10/25/50/100/200/300/500/1000💎, all ×level mult,
+>   idempotent) — curl + Pixel verified. ✅ **13g** dashboard 💎 readout. Pushed through commit `6a0a8ef`.
+> - ⏳ **NEXT, each 🔒 needs the user's numbers:** **13b Leveling** (set ② — formed-habits/planet/streak
+>   thresholds for Cadet→Navigator + Navigator→Commander) · **13c Planets** (MP/planet + arrival bonus +
+>   regression) · **13d Ship** (per-tier credit costs + rocket ART assets) · **13e Mystery Box** (exact % 10–15)
+>   · **13f Badges** (full library) · **13h Skip-Check-in** purchase (skip-day options + costs). Only the
+>   **Balance bonus** credit remains undesigned. Recommended next: 13b, or 13h (small).
+> - **#14** Cantina full build + Lists editing + Tasks — still deferred.
+> **Verify on the PHYSICAL Pixel 6** (serial 19301FDF600F0S, `--target-platform android-arm64`); emulators
+> keep freezing their display. Pixel sleeps fast → `adb shell svc power stayon true`. Test uid
+> `aGFJOhlFG3Oz8wdRICmKabiNdU33` (credits balance now 65💎). Backend edits live in vf-bridge/functions-flutter
+> (deployed, NOT in the app repo). Don't invent [PLACEHOLDER] numbers — surface what's needed and ask.
 > _(2026-06-30: also produced a client traceability doc — `design/ref/documentation/` — mapping #1–#9 to
 > the source `.docx` specs with quoted excerpts + 12 app screenshots, exported to both `.md` and a formatted
 > `Moore Momentum - Build Progress & Traceability.docx`. Update it as more features land.)_
