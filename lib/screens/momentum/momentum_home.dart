@@ -417,6 +417,7 @@ class _MomentumHomeState extends State<MomentumHome> {
         atRiskCores: _atRiskCores,
         level: p?.level ?? 'cadet',
         momentumScore: _momentumOverride ?? (p?.momentumScore ?? 0),
+        spaceCredits: p?.spaceCredits ?? 0,
         balance: p?.balance ?? 0,
         phase1State: _phase1,
         onCheckIn: _startCheckin,

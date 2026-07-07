@@ -321,6 +321,33 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
   tasks once the user provides numbers.
   **Split into sub-tasks (2026-07-06): 13a ledger · 13b leveling · 13c planets · 13d ship · 13e mystery box
   · 13f badges.** User is providing the [PLACEHOLDER] numbers per system.
+  **🖼 DESIGN-REFERENCE IMAGES (2026-07-07 — previously ignored: the text-only `_extracted/*.txt` dropped all
+  embedded images).** The 12 doc images are now saved to `design/ref/_doc_images/` (pulled from the `.docx`
+  zips' `word/media/`). What they add beyond the text — and the GAPS they surface:
+  - **Ship Upgrades UI (13d)** — `gam-07-improvements-hub`, `gam-06-ship-upgrade-wings`,
+    `gam-04-ship-upgrade-turbines`, `gam-01-rocket-base-variants`: an "IMPROVEMENTS" hub with category
+    buttons (COLORS · WINGS · TURBINES[=Thrusters] · ARMOR); each category = a rocket-in-porthole preview +
+    green **GET** button + a row of tiers with 💎 prices (mockup shows +5/+25/+50, illustrative) + a grid of
+    visual variants; the rocket art morphs per upgrade tier. "Colors" = cosmetic skins (post-MVP). Needs
+    per-tier rocket ART assets (Wings/Armor/Thrusters × Common/Rare/VeryRare/Epic) — currently absent.
+  - **GAP → dashboard Space Credits readout** — `gam-05`, `phase-03`, `phase-01` all show the dashboard
+    top status bar displaying **Space Credits (💎)** next to Planet + Momentum Score. Our shipped dashboard
+    shows PLANET/SCORE/BALANCE but NOT credits. Quick win now that 13a ledger + `profile.spaceCredits` exist.
+    (Added as 13g below.)
+  - **GAP → "Skip Check-in / Bonus" credit sink** — `gam-09-skip-checkin-bonus-purchase`: a purchase screen
+    to spend credits and skip 1/2/5 days (mockup 5/10/15 💎) to protect the streak — the Streak-Saver /
+    Vacation-Mode / Armor-grace SPEND mechanic as a screen. Not previously in the plan. (Added as 13h below.)
+  - **Planet journey full-screen view** — `phase-02-planet-journey-travel`: a dedicated full-screen rocket-
+    travelling-Earth→space-station view (dashed trajectory), beyond the dashboard's small JourneyArc → 13c.
+  - **Streak/milestone Trophies** — `gam-03-streak-milestone-trophy`: a Trophies CAROUSEL with per-trophy
+    progress ("7 STREAK DAYS · 2 of 7"), distinct from formed-habit trophies → feeds 13f + the Trophy Room
+    "Achievements" tab (still a placeholder from #11).
+  - **Cantina Leaderboard** — `gam-08-cantina-leaderboard`: rank · avatar · name · score · medal (gold/
+    silver/bronze), current player row highlighted → enrich #14.
+  - **iCore Alert framing** — `gam-02-icore-alert-cockpit`: the alert renders INSIDE the rocket cockpit-
+    porthole screen (we shipped a plain centered overlay in #8) → optional visual-polish on #8.
+  - **Branding note** — `phase-01` center shows a "5 CORE LIFE" splash; our shipped splash is Moore Momentum
+    (deliberate per [[project_branding_boot_splash]]) — design ref only, not a change.
   - **[x] 13a Space Credits ledger (foundation) — BUILT + backend-verified 2026-07-06.** New credits schema
     `users/{uid}/credits/summary.total` + `history` subcollection + `users/{uid}.spaceCredits` mirror
     (parallels the points schema). `creditMultiplier(level)` applies the SPECIFIED level multiplier
@@ -338,17 +365,33 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
   - [ ] **13b Leveling** (Cadet→Navigator→Commander, 3 simultaneous criteria). NEEDS set ②: formed-habits/
     planet/streak thresholds per transition. Levels never downgrade.
   - [ ] **13c Planet journey** (Moon→Mars→Jupiter→Saturn→Pluto + arrival: alien guide, list unlock, bonus
-    credits, quest). NEEDS set ③: MP per planet, arrival bonus credits, regression threshold.
+    credits, quest). NEEDS set ③: MP per planet, arrival bonus credits, regression threshold. UI: a
+    full-screen travel view (`phase-02-planet-journey-travel`) — rocket on a dashed trajectory Earth→station;
+    dashboard already has a small JourneyArc.
   - [ ] **13d Ship upgrades** (Wings→Armor→Thrusters fixed order; effects specified: armor grace 1/2/3/week,
-    thrusters +25/50/75/100% MP; epic=Commander). NEEDS set ④: credit costs per tier.
+    thrusters +25/50/75/100% MP; epic=Commander). NEEDS set ④: credit costs per tier. UI per
+    `gam-07/06/04`: "IMPROVEMENTS" hub (Colors/Wings/Turbines/Armor) → per-category porthole preview + GET +
+    tier row (💎 prices) + variant grid; **needs per-tier rocket ART assets** (12 functional variants + color
+    skins) which don't exist yet — flag to the user (asset production, not just numbers).
   - [ ] **13e Mystery Box** (10–15%/check-in, guaranteed 10th, needs Captain's Log; 70% useful/30%
     delightful reward table mostly specified). NEEDS set ⑤: exact % (pick 10–15).
-  - [ ] **13f Badge library** (last) — NEEDS the full badge list (names/criteria/rarity).
+  - [ ] **13f Badge / Trophy library** (last) — NEEDS the full badge list (names/criteria/rarity). Also the
+    **streak/milestone Trophies** (`gam-03`) — a carousel with per-trophy progress ("N-STREAK-DAYS · x of N")
+    — feed both this and the Trophy Room "Achievements" tab (placeholder since #11).
+  - [x] **13g Dashboard Space Credits readout — DONE + device-verified 2026-07-07.** Added a `CREDITS · N 💎`
+    `_Stat` row to the dashboard top status bar (between SCORE and BALANCE), fed by `profile.spaceCredits`
+    (`DashboardPage.spaceCredits` ← momentum_home). Analyzer-clean; verified on the physical Pixel 6 (shows
+    "CREDITS · 25 💎"). No new numbers needed (used the 13a ledger).
+  - [ ] **13h Skip-Check-in / streak-protection purchase** (image-surfaced, `gam-09`) — a "Bonus" screen to
+    spend credits and skip 1/2/5 days (mockup 5/10/15 💎) protecting the streak. Ties into #10 streak +
+    Armor grace (#13d). NEEDS set: the skip-day options + credit costs. (Was not an explicit task before.)
 - [ ] **#14 Cantina full build + Lists editing + Tasks** — Cantina: DMs are real Firestore but threads
   are seeded mocks; docs want MVP Reddit-bridge gateway, then V1 native (Ideas Well upvote/click-to-
   adopt, Tribes ≤20 members/≤3 joined, Accountability Partners, anti-shame leaderboards recalced 6h).
   Momentum Lists are read-only → add editing (20-list Command Center spec). Tasks screen is pure mock →
   wire to real storage or descope. (Cantina competitions + pro marketplace are explicitly post-MVP.)
+  UI ref (image-surfaced): the **Leaderboard** (`gam-08-cantina-leaderboard`) = rank · avatar · name · score ·
+  medal (gold/silver/bronze), current player's row highlighted; anti-shame ordering per the Cantina doc.
 
 ---
 

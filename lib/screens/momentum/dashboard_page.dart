@@ -20,6 +20,7 @@ class DashboardPage extends StatelessWidget {
     this.atRiskCores = const <String>{},
     this.level = 'navigator',
     this.momentumScore = 8420,
+    this.spaceCredits = 0,
     this.balance = 78,
     this.phase1State,
     required this.onCheckIn,
@@ -42,6 +43,9 @@ class DashboardPage extends StatelessWidget {
   final Set<String> atRiskCores;
   final String level;
   final int momentumScore;
+
+  /// Space Credits balance (#13g — reward currency, shown in the top status bar).
+  final int spaceCredits;
   final int balance;
   final Phase1State? phase1State;
   final VoidCallback onCheckIn;
@@ -158,6 +162,9 @@ class DashboardPage extends StatelessWidget {
                               const SizedBox(height: 3),
                               _Stat(
                                   'SCORE', _fmt(momentumScore), Colors.white),
+                              const SizedBox(height: 3),
+                              _Stat('CREDITS', '${_fmt(spaceCredits)} 💎',
+                                  MM.yellow),
                               const SizedBox(height: 3),
                               _Stat('BALANCE', '$balance%', MM.teal),
                             ],
