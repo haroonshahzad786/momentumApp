@@ -359,9 +359,18 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
     Profile header shows a `💎` chip. Curl-verified: 0→25 credits, MP unchanged (123), idempotent re-run;
     profile returns spaceCredits. Analyzer-clean; both endpoints deployed. On-device visual blocked by the
     recurring emulator display-freeze (backend is the source of truth here).
-    🔒 **NEEDS FROM USER (set ①) to wire the rest of earning:** base credits/check-in, high-score(5/5)
-    bonus, habit-formation bonus, streak-milestone credits (per 3/7/14/30/60/90/180/365). Then wire into
-    `flutterAwardCheckinPoints` (+ level mult) / `flutterSetHabitFormed`.
+  - **[x] 13a-earning WIRED + verified 2026-07-07 (user gave base 10 · high-score 5 · formation 25).**
+    `flutterAwardCheckinPoints` now awards **10💎 base + 5💎 if any Core=5/5** on a completed weekday check-in
+    (× level mult; idempotent per day via deterministic `checkin_<date>`/`highscore_<date>` credit-history
+    ids; returns `creditsEarned`+`spaceCredits`). `flutterSetHabitFormed` awards **25💎 once** per habit on
+    first formed (guard: `formed_<habitId>` history id). Shared `creditAwardInTx` helper + `CHECKIN_CREDITS`/
+    `HIGH_SCORE_CREDITS`/`FORMATION_CREDITS` consts. Client: `CheckinAward.creditsEarned`/`spaceCredits`,
+    `_creditsOverride` in momentum_home (mirrors `_momentumOverride`) → dashboard + summary update instantly.
+    Curl-verified: check-in +15 (10+5) idempotent, formation +25 idempotent; **device-verified on Pixel**
+    (dashboard CREDITS 25→65). Both endpoints deployed.
+    🔒 **STILL PENDING (streak-milestone credits) to finish set ①:** the credit bonus per streak milestone
+    (3/7/14/30/60/90/180/365) — `flutterAwardCheckinPoints` DETECTS the milestone but awards no credits yet
+    (`bonusHooks.streakMilestone` stubbed). Give me the 8 amounts to finish.
   - [ ] **13b Leveling** (Cadet→Navigator→Commander, 3 simultaneous criteria). NEEDS set ②: formed-habits/
     planet/streak thresholds per transition. Levels never downgrade.
   - [ ] **13c Planet journey** (Moon→Mars→Jupiter→Saturn→Pluto + arrival: alien guide, list unlock, bonus

@@ -65,6 +65,10 @@ class _MomentumHomeState extends State<MomentumHome> {
   int? _streakOverride;
   int? _streakMilestone;
 
+  // Space Credits (#13): optimistic override of the balance after a check-in
+  // earns credits (cleared on the next authoritative profile fetch).
+  int? _creditsOverride;
+
   // Phase 1 progress. Seeded from the persisted profile on launch (see
   // _fetchProfile) and written back to Firestore on every change via
   // _persistPhase1 so it survives an app restart.
@@ -155,6 +159,7 @@ class _MomentumHomeState extends State<MomentumHome> {
         // Fresh profile is authoritative — drop the optimistic overrides.
         _momentumOverride = null;
         _streakOverride = null;
+        _creditsOverride = null;
       });
       // Compute the Core Balance 5-day alert badges (#8) from real check-ins.
       _loadCoreBalance();
@@ -363,6 +368,9 @@ class _MomentumHomeState extends State<MomentumHome> {
       // Streak (#10): reflect the new streak immediately + surface any milestone.
       if (award.streak != null) _streakOverride = award.streak;
       _streakMilestone = award.milestone;
+      // Space Credits (#13): reflect the new balance immediately on the
+      // dashboard + summary (base + high-score earned this check-in).
+      if (award.spaceCredits != null) _creditsOverride = award.spaceCredits;
     }
     // Stash for the summary's Balance Meter so today's scores fold into the
     // rolling 7-day average immediately, without waiting on the read.
@@ -417,7 +425,7 @@ class _MomentumHomeState extends State<MomentumHome> {
         atRiskCores: _atRiskCores,
         level: p?.level ?? 'cadet',
         momentumScore: _momentumOverride ?? (p?.momentumScore ?? 0),
-        spaceCredits: p?.spaceCredits ?? 0,
+        spaceCredits: _creditsOverride ?? (p?.spaceCredits ?? 0),
         balance: p?.balance ?? 0,
         phase1State: _phase1,
         onCheckIn: _startCheckin,
@@ -467,7 +475,7 @@ class _MomentumHomeState extends State<MomentumHome> {
         streakMilestone: _streakMilestone,
         activeCores: activeCores,
         momentumScore: _momentumOverride ?? (p?.momentumScore ?? 0),
-        spaceCredits: p?.spaceCredits ?? 0,
+        spaceCredits: _creditsOverride ?? (p?.spaceCredits ?? 0),
         earnedToday: _earnedToday,
         todayScores: _lastCheckinScores,
         onClose: () => _go('dashboard'),

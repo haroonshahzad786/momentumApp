@@ -13,6 +13,8 @@ class CheckinAward {
     this.streak,
     this.streakUpdated = false,
     this.milestone,
+    this.creditsEarned = 0,
+    this.spaceCredits,
   });
 
   /// True only when this call newly credited the day's points.
@@ -36,6 +38,13 @@ class CheckinAward {
 
   /// The streak milestone reached (3/7/14/30/60/90/180/365), else null.
   final int? milestone;
+
+  /// Space Credits added by THIS check-in (base + high-score, #13). 0 if the
+  /// day was already awarded.
+  final int creditsEarned;
+
+  /// New Space Credits balance after this check-in (null when unknown/failed).
+  final int? spaceCredits;
 
   static const none =
       CheckinAward(awarded: false, pointsAdded: 0, dayPoints: 0);
@@ -84,6 +93,8 @@ class PointsService {
         streak: (d['streak'] as num?)?.toInt(),
         streakUpdated: d['streakUpdated'] == true,
         milestone: (d['milestone'] as num?)?.toInt(),
+        creditsEarned: (d['creditsEarned'] as num? ?? 0).toInt(),
+        spaceCredits: (d['spaceCredits'] as num?)?.toInt(),
       );
     } catch (_) {
       return CheckinAward.none;
