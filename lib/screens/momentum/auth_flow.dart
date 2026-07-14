@@ -102,11 +102,13 @@ class _IntroScreenState extends State<IntroScreen> {
       backgroundColor: MM.pageBg,
       body: Stack(
         children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 600),
-            child: Positioned.fill(
-              key: ValueKey(_idx),
-              child: StarfieldBackground(accent: slide.accent),
+          Positioned.fill(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 600),
+              child: StarfieldBackground(
+                key: ValueKey(_idx),
+                accent: slide.accent,
+              ),
             ),
           ),
           SafeArea(

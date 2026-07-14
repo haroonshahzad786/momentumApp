@@ -7,6 +7,7 @@ import 'screens/momentum/auth_flow.dart';
 import 'screens/momentum/momentum_home.dart';
 import 'services/notification_service.dart';
 import 'theme/momentum_tokens.dart';
+import 'widgets/momentum/web_shell.dart';
 
 class MomentumApp extends StatelessWidget {
   const MomentumApp({super.key});
@@ -60,7 +61,9 @@ class _RootGateState extends State<_RootGate> {
   @override
   Widget build(BuildContext context) {
     if (_booting) {
-      return BootSplash(onDone: () => setState(() => _booting = false));
+      return WebCenteredFlow(
+        child: BootSplash(onDone: () => setState(() => _booting = false)),
+      );
     }
     return const _AuthGate();
   }
@@ -83,7 +86,7 @@ class _AuthGate extends StatelessWidget {
           );
         }
         if (snap.data == null) {
-          return const AuthFlow();
+          return const WebCenteredFlow(child: AuthFlow());
         }
         return const MomentumHome();
       },

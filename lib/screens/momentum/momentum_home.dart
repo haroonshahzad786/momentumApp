@@ -16,6 +16,7 @@ import '../../widgets/momentum/menu_drawer.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 import '../../widgets/momentum/offline_banner.dart';
 import '../../widgets/momentum/starfield.dart';
+import '../../widgets/momentum/web_shell.dart';
 import '../ai_chat_page.dart';
 import 'checkin_page.dart';
 import 'daily_ritual_step0.dart';
@@ -23,6 +24,8 @@ import 'dashboard_page.dart';
 import 'phase1_flow.dart';
 import 'sub_screens.dart';
 import 'summary_page.dart';
+import 'web_cockpit.dart';
+import 'web_screens.dart';
 
 /// Post-auth shell. Owns the active screen, menu drawer, and routing
 /// between Dashboard / Check-in / Summary / sub-screens / chat.
@@ -604,6 +607,12 @@ class _MomentumHomeState extends State<MomentumHome> {
         ),
       );
     }
+    // At desktop widths render the web shell (sidebar + topbar + Cockpit);
+    // below the breakpoint the existing full-bleed mobile screens are kept.
+    if (MediaQuery.of(context).size.width >= kWebBreakpoint) {
+      return _buildDesktop();
+    }
+
     return Stack(
       children: [
         Positioned.fill(child: _buildBody()),
@@ -618,6 +627,179 @@ class _MomentumHomeState extends State<MomentumHome> {
             ),
           ),
         // iCore Alert (#8) — opened by tapping a Core's red ⚠️ badge.
+        if (_coreAlertCore != null) Positioned.fill(child: _buildCoreAlert()),
+      ],
+    );
+  }
+
+  /// Nav destinations that live inside the desktop shell's content column.
+  /// The immersive full-flow screens (check-in, summary, phase1, ritual0) fall
+  /// outside it and render centered instead.
+  static const _shellScreens = <String>{
+    'dashboard',
+    'routines',
+    'habits',
+    'tasks',
+    'lists',
+    'cantina',
+    'trophy',
+    'profile',
+  };
+
+  /// Desktop (>= [kWebBreakpoint]) presentation. Wraps shell destinations in
+  /// [WebShell] with the flagship [WebCockpit] for the dashboard; centers the
+  /// immersive flows to a phone-width column so nothing stretches.
+  Widget _buildDesktop() {
+    final isShell = _shellScreens.contains(_screen) ||
+        _screen.startsWith('crew:') ||
+        _screen.startsWith('thread:');
+
+    if (!isShell) {
+      return Stack(
+        children: [
+          const Positioned.fill(child: StarfieldBackground()),
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: _buildBody(),
+            ),
+          ),
+          if (_coreAlertCore != null)
+            Positioned.fill(child: _buildCoreAlert()),
+        ],
+      );
+    }
+
+    final p = _profile;
+    final idx = MM.planets.indexWhere((e) => e['id'] == (p?.planet ?? 'earth'));
+    final planetName = MM.planets[idx < 0 ? 0 : idx]['name'] as String;
+    final activeCores = p?.activeCores ?? const <String>[];
+    final name = (p?.displayName.isNotEmpty ?? false)
+        ? p!.displayName
+        : (FirebaseAuth.instance.currentUser?.displayName ?? 'Commander');
+    final streak = _streakOverride ?? (p?.streak ?? 0);
+    final level = p?.level ?? 'cadet';
+
+    Widget content;
+    var showTopbar = true;
+    var title = 'Cockpit';
+    var subtitle = 'Mission Control';
+    var accent = MM.blue;
+    switch (_screen) {
+      case 'dashboard':
+        content = WebCockpit(
+          name: name,
+          streak: streak,
+          planet: p?.planet ?? 'earth',
+          activeCores: activeCores,
+          atRiskCores: _atRiskCores,
+          level: level,
+          momentumScore: _momentumOverride ?? (p?.momentumScore ?? 0),
+          spaceCredits: _creditsOverride ?? (p?.spaceCredits ?? 0),
+          balance: p?.balance ?? 0,
+          onNav: _go,
+          onCheckIn: _startCheckin,
+          onCoreAlert: _showCoreAlert,
+        );
+        break;
+      case 'routines':
+        title = 'Routines';
+        subtitle = 'Daily Orbit';
+        accent = MM.teal;
+        content = const WebRoutines();
+        break;
+      case 'habits':
+        title = 'Habits';
+        subtitle = 'Golden Habits';
+        accent = MM.magenta;
+        content = const WebHabits();
+        break;
+      case 'tasks':
+        title = 'Tasks';
+        subtitle = 'Missions · Today';
+        accent = MM.yellow;
+        content = const WebTasks();
+        break;
+      case 'lists':
+        title = 'Lists';
+        subtitle = 'Manifest';
+        accent = MM.blue;
+        content = const WebLists();
+        break;
+      case 'trophy':
+        title = 'Trophy Room';
+        subtitle = 'Identity';
+        accent = MM.yellow;
+        content = const WebTrophy();
+        break;
+      case 'profile':
+        title = 'Profile';
+        subtitle = 'Commander';
+        accent = MM.violet;
+        content = WebProfile(onSignOut: () => _auth.signOut());
+        break;
+      case 'cantina':
+        if (!_phase1.stage2Completed) {
+          // Locked until Stage 2 — reuse the mobile locked view, centered.
+          showTopbar = false;
+          content = Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: _buildBody(),
+            ),
+          );
+        } else {
+          title = 'Cantina';
+          subtitle = 'Cosmic Social Hub';
+          accent = MM.teal;
+          content = WebCantina(onNav: _go);
+        }
+        break;
+      default:
+        // crew: DM/profile and thread: messaging keep their full-interaction
+        // mobile screen, centered so it doesn't stretch.
+        showTopbar = false;
+        content = Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 820),
+            child: _buildBody(),
+          ),
+        );
+    }
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: WebShell(
+            current: _screen,
+            onNav: _go,
+            name: name,
+            streak: streak,
+            planetName: planetName,
+            level: level,
+            onCheckIn: _startCheckin,
+            onChat: _openChat,
+            onSignOut: () => _auth.signOut(),
+            content: content,
+            showTopbar: showTopbar,
+            title: title,
+            subtitle: subtitle,
+            accent: accent,
+          ),
+        ),
+        if (_menuOpen)
+          Positioned.fill(
+            child: MenuDrawer(
+              user: FirebaseAuth.instance.currentUser,
+              onClose: () => setState(() => _menuOpen = false),
+              onNav: _go,
+              onChat: _openChat,
+              onSignOut: () => _auth.signOut(),
+            ),
+          ),
         if (_coreAlertCore != null) Positioned.fill(child: _buildCoreAlert()),
       ],
     );
