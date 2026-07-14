@@ -9,6 +9,10 @@ import 'starfield.dart';
 /// at or above it the desktop [WebShell] (sidebar + topbar + content) renders.
 const double kWebBreakpoint = 900;
 
+/// The shell's content column is centered and capped at this width so it stays
+/// readable on ultra-wide / maximized screens instead of stretching edge-to-edge.
+const double kWebContentMaxWidth = 1680;
+
 /// Centers an intro / immersive screen (boot splash, auth, check-in flow) into
 /// a phone-width column on desktop so it doesn't stretch across the viewport;
 /// passes the child through unchanged below [kWebBreakpoint].
@@ -118,18 +122,35 @@ class WebShell extends StatelessWidget {
                   onSignOut: onSignOut,
                 ),
                 Expanded(
-                  child: Column(
-                    children: [
-                      if (showTopbar)
-                        _WebTopbar(
-                          title: title,
-                          subtitle: subtitle,
-                          accent: accent,
-                          onCheckIn: onCheckIn,
-                          onChat: onChat,
+                  child: LayoutBuilder(
+                    builder: (context, c) {
+                      // Cap the content column on ultra-wide / maximized
+                      // screens so it stays readable and centered instead of
+                      // sprawling edge-to-edge.
+                      final w = c.maxWidth > kWebContentMaxWidth
+                          ? kWebContentMaxWidth
+                          : c.maxWidth;
+                      return Align(
+                        alignment: Alignment.topCenter,
+                        child: SizedBox(
+                          width: w,
+                          height: c.maxHeight,
+                          child: Column(
+                            children: [
+                              if (showTopbar)
+                                _WebTopbar(
+                                  title: title,
+                                  subtitle: subtitle,
+                                  accent: accent,
+                                  onCheckIn: onCheckIn,
+                                  onChat: onChat,
+                                ),
+                              Expanded(child: content),
+                            ],
+                          ),
                         ),
-                      Expanded(child: content),
-                    ],
+                      );
+                    },
                   ),
                 ),
               ],
