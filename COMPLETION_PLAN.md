@@ -27,9 +27,11 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
 >   · **13f Badges** (full library) · **13h Skip-Check-in** purchase (skip-day options + costs). Only the
 >   **Balance bonus** credit remains undesigned. Recommended next: 13b, or 13h (small).
 > - **#14** ⏳ IN PROGRESS: **Momentum Lists editing ✅** + **Tasks screen ✅** both DONE + Pixel-verified
->   2026-07-18 (Lists reuses `UpdateMomentumList`; Tasks = new `TaskService` direct Firestore, no new
->   cloud fn). Remaining #14: **Cantina native V1** (Ideas Well / Tribes / anti-shame leaderboard, per docs)
->   — larger, and the only remaining unblocked-ish #14 work.
+>   2026-07-18. **Cantina V1 STARTED** — Pillar 1 **Ideas Well BUILT + committed (analyzer-clean) but
+>   ⚠️ NOT device-verified** (Pixel USB kept dropping — that was the ONLY blocker). **▶ NEXT SESSION: first
+>   device-verify Ideas Well** (upvote persistence + real click-to-adopt→Golden Habit + cold-restart
+>   round-trip — steps in the #14 Cantina block below), THEN build Pillar 2 (Tribes/Accountability) and
+>   Pillar 3 (anti-shame Leaderboard). Pillar 4 (Arena) = V2/deferred.
 > **Verify on the PHYSICAL Pixel 6** (serial 19301FDF600F0S, `--target-platform android-arm64`); emulators
 > keep freezing their display. Pixel sleeps fast → `adb shell svc power stayon true`. Test uid
 > `aGFJOhlFG3Oz8wdRICmKabiNdU33` (credits balance now 65💎). Backend edits live in vf-bridge/functions-flutter
@@ -440,7 +442,31 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
     so no fabricated rewards. Analyzer-clean. **DEVICE-VERIFIED (Pixel 6, uid aGFJOhlFG3Oz8wdRICmKabiNdU33):**
     added "Finish Q3 report" to Today → checked it done → moved to Later → **force-stop + cold relaunch
     round-tripped from Firestore** (still in Later, still done) → deleted (all buckets empty).
-  - [ ] **Cantina native V1** — Ideas Well / Tribes / Accountability / anti-shame leaderboard (per docs).
+  - [~] **Cantina native V1** — 4-tab hub already exists (Ideas Well / Tribes / Leaderboard / Arena) but
+    was mock. Building the pillars real, one slice at a time (see [[reference_cantina_spec]] for the full
+    4-pillar spec + anti-shame UI rules).
+    - **[~] Pillar 1 — Ideas Well: BUILT 2026-07-18, ⚠️ NOT YET DEVICE-VERIFIED (commit after Tasks).**
+      New `lib/services/cantina_ideas_service.dart` (`CantinaIdea` / `CantinaIdeasFeed` / `CantinaIdeasService`)
+      — DIRECT Firestore, top-level `space_cantina_posts` collection (same rules-permitted top-level pattern
+      as `cantina_dms`), plus per-user state at `users/{uid}/cantina/ideas_state` (`voted{}` / `adopted{}`).
+      Seeds the 8 curated starter ideas (`seed_1..8`) on first empty load. **Upvote** = idempotent/toggleable
+      Firestore transaction on `upvotes` (optimistic UI, revert on fail). **Click-to-Adopt is REAL**: habit/mbm
+      → creates a Golden Habit via the dual-write (`HabitsService.addGoldenHabit` + `CoreListsService.addHabit`,
+      short→full coreId map in `_IdeasWellState._shortToFull`); tech → appended to the "Resources List" Momentum
+      List via new `MomentumListsService.appendItem`. `markAdopted` bumps the community adopt count once/user.
+      Rewired `_IdeasWell` in sub_screens.dart (removed the `_IdeaItem`/`_ideasWell` mock consts). Analyzer-clean.
+      **▶ RESUME: device-verify on the Pixel** — (1) open Cantina→Ideas Well, confirm the seeded feed loads +
+      upvote a card → count persists across a cold restart; (2) Adopt a *habit* card → confirm it appears as a
+      real Golden Habit on the Habits + Routines screens (GET `flutterGetGoldenHabits`); (3) Adopt a *tech* card
+      → confirm it lands in the Resources Momentum List; (4) confirm "✓ ADDED" state persists on reload.
+      *(Pixel USB kept dropping this session — connection was the only blocker; code is committed.)*
+    - [ ] **Pillar 2 — Tribes** (public/private, ≤20 members, ≤3 joined per player) + Accountability Partners
+      (1 active, daily/weekly cadence). Currently `_TribesTab` is mock threads. Collections per spec:
+      `tribes`, `tribe_posts`, `accountability_partners`.
+    - [ ] **Pillar 3 — Leaderboard** — `_LeaderboardList` already merges real `users` + demo crew by score;
+      make it the multi-factor anti-shame board (60% momentum/planet/level + 25% ship + 15% achievements),
+      recomputed 6h. NOTE: ship-upgrade weighting depends on 13d (blocked on [PLACEHOLDER] numbers).
+    - [ ] **Pillar 4 — Weekly Competitions (Arena)** — explicitly V2/deferred; `_ArenaTab` stays coming-soon.
 
 ---
 
