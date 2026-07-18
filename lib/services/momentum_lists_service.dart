@@ -59,6 +59,25 @@ class MomentumListsService {
       .map((m) => MomentumList.fromJson(m.cast<String, dynamic>()))
       .toList();
 
+  /// Appends a single item to the named Momentum List (creating the list if it
+  /// doesn't exist yet), preserving the existing items. Used by the Cantina
+  /// Ideas Well "adopt" flow to file a Tech/App pick into the user's list.
+  /// Skips an exact-duplicate line.
+  Future<void> appendItem(String userId, String listName, String item) async {
+    final trimmed = item.trim();
+    if (trimmed.isEmpty) return;
+    final current = await getAllLists(userId);
+    final existing = current.data.firstWhere(
+      (l) => l.name.trim().toLowerCase() == listName.trim().toLowerCase(),
+      orElse: () => MomentumList(name: listName, items: const []),
+    );
+    if (existing.items
+        .any((i) => i.trim().toLowerCase() == trimmed.toLowerCase())) {
+      return; // already there
+    }
+    await saveList(userId, existing.name, [...existing.items, trimmed]);
+  }
+
   /// Persists the full item set for one Momentum List (create-or-replace).
   /// Reuses the existing `UpdateMomentumList` endpoint in the default codebase
   /// — the same "reuse a deployed write endpoint" pattern as

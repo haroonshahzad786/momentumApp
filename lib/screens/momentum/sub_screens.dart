@@ -12,6 +12,7 @@ import '../../services/core_lists_service.dart';
 import '../../services/checkin_service.dart';
 import '../../services/onboarding_service.dart';
 import '../../services/task_service.dart';
+import '../../services/cantina_ideas_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/glass_panel.dart';
 import '../../widgets/momentum/mm_buttons.dart';
@@ -3228,49 +3229,6 @@ class _ArenaTab extends StatelessWidget {
 
 // ─── IDEAS WELL ────────────────────────────────────────────
 /// A crowdsourced suggestion: a Golden Habit, MBM, or Tech/App (Pillar 1).
-class _IdeaItem {
-  const _IdeaItem(this.id, this.kind, this.core, this.pain, this.title,
-      this.desc, this.up, this.adopted,
-      {this.link = false});
-  final int id;
-  final String kind; // 'habit' | 'mbm' | 'tech'
-  final String core;
-  final String pain;
-  final String title;
-  final String desc;
-  final int up;
-  final int adopted;
-  final bool link;
-}
-
-const _ideasWell = <_IdeaItem>[
-  _IdeaItem(1, 'habit', 'physical', 'consistent exercise',
-      'Lay gym clothes out the night before',
-      'Cuts morning decisions to zero — shoes by the door, kit on the chair.',
-      412, 1180),
-  _IdeaItem(2, 'habit', 'mindset', 'racing thoughts',
-      '10-min "brain dump" before bed',
-      'Empty every open loop onto paper so sleep comes faster.', 388, 902),
-  _IdeaItem(3, 'mbm', 'career', 'procrastination',
-      'Make It Easy · 2-minute start rule',
-      'Commit to just opening the doc. Momentum does the rest.', 356, 1410),
-  _IdeaItem(4, 'habit', 'relationships', 'staying in touch',
-      'Weekly 1-on-1 coffee, rotate friends',
-      'One scheduled connection beats ten missed intentions.', 301, 640),
-  _IdeaItem(5, 'mbm', 'physical', 'better sleep',
-      'Make It Obvious · phone charges outside bedroom',
-      'No screen = earlier lights-out, automatically.', 289, 733),
-  _IdeaItem(6, 'tech', 'career', 'auto-saving',
-      'Auto-transfer app · "round-up" savings',
-      'Rounds every purchase up and banks the difference.', 254, 521,
-      link: true),
-  _IdeaItem(7, 'habit', 'emotional', 'stress spikes',
-      'Box-breathing on the first deep breath cue',
-      '4-4-4-4 the moment you notice tension in your chest.', 233, 455),
-  _IdeaItem(8, 'tech', 'mindset', 'focus', 'Focus-timer app · 25/5 pomodoros',
-      'Community top pick for deep-work blocks.', 198, 389, link: true),
-];
-
 const _ideasCores = <List<dynamic>>[
   ['mindset', 'Mind', MM.blue],
   ['career', 'Career', MM.yellow],
@@ -3287,18 +3245,172 @@ class _IdeasWell extends StatefulWidget {
 }
 
 class _IdeasWellState extends State<_IdeasWell> {
+  final _service = CantinaIdeasService();
+  final _habits = HabitsService();
+  final _coreLists = CoreListsService();
+  final _lists = MomentumListsService();
+
   String? _core; // null = all
   String _kind = 'habit';
-  final Set<int> _votes = {};
+
+  List<CantinaIdea> _ideas = const [];
+  final Set<String> _voted = {}; // post ids this user upvoted
+  final Set<String> _adopted = {}; // post ids this user added to their system
+  final Set<String> _voteBusy = {}; // in-flight vote toggles (dedupe taps)
+  bool _loading = true;
+  String? _uid;
+
+  /// SHORT ideas-well core id → the FULL backend coreId the habit services want.
+  static const Map<String, String> _shortToFull = {
+    'mindset': 'mindset_core',
+    'career': 'career_finance_core',
+    'relationships': 'relationships_core',
+    'physical': 'physical_health_core',
+    'emotional': 'emotional_mental_core',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _habits.dispose();
+    _coreLists.dispose();
+    _lists.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) {
+      setState(() => _loading = false);
+      return;
+    }
+    _uid = uid;
+    try {
+      final feed = await _service.getFeed(uid);
+      if (!mounted) return;
+      setState(() {
+        _ideas = feed.ideas;
+        _voted
+          ..clear()
+          ..addAll(feed.votedIds);
+        _adopted
+          ..clear()
+          ..addAll(feed.adoptedIds);
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _toast('Could not load the Ideas Well.');
+    }
+  }
 
   Color _hexOf(String id) => MM.coreColor[id] ?? Colors.white;
   String _shortOf(String id) =>
       (_ideasCores.firstWhere((c) => c[0] == id, orElse: () => const ['', '', MM.white])[1]) as String;
 
-  void _showAdoptSheet(_IdeaItem item) {
+  void _replaceIdea(CantinaIdea updated) {
+    _ideas =
+        _ideas.map((i) => i.id == updated.id ? updated : i).toList();
+  }
+
+  /// Persisted, idempotent, toggleable upvote (optimistic; reverts on failure).
+  Future<void> _toggleVote(CantinaIdea idea) async {
+    final uid = _uid;
+    if (uid == null || _voteBusy.contains(idea.id)) return;
+    final wasVoted = _voted.contains(idea.id);
+    setState(() {
+      _voteBusy.add(idea.id);
+      if (wasVoted) {
+        _voted.remove(idea.id);
+      } else {
+        _voted.add(idea.id);
+      }
+      _replaceIdea(idea.copyWith(
+          upvotes: (idea.upvotes + (wasVoted ? -1 : 1)).clamp(0, 1 << 30)));
+    });
+    try {
+      final newCount =
+          await _service.toggleVote(uid, idea.id, currentlyVoted: wasVoted);
+      if (!mounted) return;
+      setState(() => _replaceIdea(
+          _ideas.firstWhere((i) => i.id == idea.id).copyWith(upvotes: newCount)));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        if (wasVoted) {
+          _voted.add(idea.id);
+        } else {
+          _voted.remove(idea.id);
+        }
+        _replaceIdea(idea); // restore original count
+      });
+      _toast("Vote didn't save.");
+    } finally {
+      if (mounted) setState(() => _voteBusy.remove(idea.id));
+    }
+  }
+
+  /// Real Click-to-Adopt: create the actual artifact in the user's system, then
+  /// record the adoption (bumping the community count once per user). A
+  /// habit/MBM becomes a Golden Habit (dual-write, like quick-add); a tech pick
+  /// is filed into the Resources Momentum List.
+  Future<void> _adopt(CantinaIdea idea, String name) async {
+    final uid = _uid;
+    if (uid == null) return;
+    final trimmed = name.trim().isEmpty ? idea.title : name.trim();
+    final already = _adopted.contains(idea.id);
+    try {
+      if (!already) {
+        if (idea.kind == 'tech') {
+          await _lists.appendItem(uid, 'Resources List', trimmed);
+        } else {
+          final full = _shortToFull[idea.core] ?? idea.core;
+          await _habits.addGoldenHabit(
+            userId: uid,
+            coreId: full,
+            habitName: trimmed,
+            isRoutine: true,
+          );
+          await _coreLists.addHabit(
+            userId: uid,
+            coreId: full,
+            isRoutine: true,
+            itemLine: trimmed,
+          );
+        }
+      }
+      final isNew = await _service.markAdopted(uid, idea.id);
+      if (!mounted) return;
+      setState(() {
+        _adopted.add(idea.id);
+        if (isNew) {
+          _replaceIdea(_ideas
+              .firstWhere((i) => i.id == idea.id)
+              .copyWith(adopted: idea.adopted + 1));
+        }
+      });
+      final shown =
+          trimmed.length > 24 ? '${trimmed.substring(0, 24)}…' : trimmed;
+      _toast(idea.kind == 'tech'
+          ? '✓ Saved "$shown" to your Resources'
+          : '✓ Added "$shown" to your system');
+    } catch (_) {
+      if (!mounted) return;
+      _toast("Couldn't add that — try again.");
+    }
+  }
+
+  void _showAdoptSheet(CantinaIdea item) {
     final hex = _hexOf(item.core);
     final nameCtrl = TextEditingController(text: item.title);
     final freqCtrl = TextEditingController(text: 'Daily');
+    final isTech = item.kind == 'tech';
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -3320,17 +3432,16 @@ class _IdeasWellState extends State<_IdeasWell> {
                   style: MM.displayX(size: 10, color: hex)),
               const SizedBox(height: 12),
               _sheetField('NAME', nameCtrl),
-              const SizedBox(height: 12),
-              _sheetField('FREQUENCY', freqCtrl),
+              if (!isTech) ...[
+                const SizedBox(height: 12),
+                _sheetField('FREQUENCY', freqCtrl),
+              ],
               const SizedBox(height: 16),
               MMPrimaryButton(
-                label: 'Add to my system →',
+                label: isTech ? 'Save to Resources →' : 'Add to my system →',
                 onPressed: () {
                   Navigator.of(ctx).pop();
-                  final shown = item.title.length > 24
-                      ? '${item.title.substring(0, 24)}…'
-                      : item.title;
-                  _toast('✓ Added "$shown" to your system');
+                  _adopt(item, nameCtrl.text);
                 },
               ),
             ],
@@ -3392,12 +3503,11 @@ class _IdeasWellState extends State<_IdeasWell> {
 
   @override
   Widget build(BuildContext context) {
-    final feed = _ideasWell
+    final feed = _ideas
         .where((x) => x.kind == _kind)
         .where((x) => _core == null || x.core == _core)
-        .map((x) => (item: x, up: x.up + (_votes.contains(x.id) ? 1 : 0)))
         .toList()
-      ..sort((a, b) => b.up.compareTo(a.up));
+      ..sort((a, b) => b.upvotes.compareTo(a.upvotes));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -3442,93 +3552,106 @@ class _IdeasWellState extends State<_IdeasWell> {
         ),
         const SizedBox(height: 12),
         // Feed
-        ...feed.map((row) {
-          final x = row.item;
-          final hex = _hexOf(x.core);
-          final voted = _votes.contains(x.id);
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: GlassPanel(
-              leftAccentColor: hex,
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Upvote
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() =>
-                        voted ? _votes.remove(x.id) : _votes.add(x.id)),
-                    child: SizedBox(
-                      width: 34,
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 36),
+            child: Center(child: CircularProgressIndicator(color: MM.teal)),
+          )
+        else if (feed.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 28),
+            child: Center(
+              child: Text('No community ideas here yet.',
+                  style:
+                      MM.body(color: Colors.white.withOpacity(0.45), size: 12)),
+            ),
+          )
+        else
+          ...feed.map((x) {
+            final hex = _hexOf(x.core);
+            final voted = _voted.contains(x.id);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: GlassPanel(
+                leftAccentColor: hex,
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Upvote
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _toggleVote(x),
+                      child: SizedBox(
+                        width: 34,
+                        child: Column(
+                          children: [
+                            Icon(Icons.arrow_drop_up,
+                                size: 26,
+                                color: voted
+                                    ? hex
+                                    : Colors.white.withOpacity(0.5)),
+                            Text('${x.upvotes}',
+                                style: MM.mono(
+                                    size: 11,
+                                    color: voted
+                                        ? hex
+                                        : Colors.white.withOpacity(0.7))),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.arrow_drop_up,
-                              size: 26,
-                              color: voted
-                                  ? hex
-                                  : Colors.white.withOpacity(0.5)),
-                          Text('${row.up}',
-                              style: MM.mono(
-                                  size: 11,
-                                  color: voted
-                                      ? hex
-                                      : Colors.white.withOpacity(0.7))),
+                          Row(children: [
+                            MMChip(
+                                label: _shortOf(x.core).toUpperCase(),
+                                color: hex),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text('· ${x.pain}',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: MM.body(
+                                      color: Colors.white.withOpacity(0.4),
+                                      size: 9)),
+                            ),
+                          ]),
+                          const SizedBox(height: 3),
+                          Text(x.title,
+                              style: MM.body(
+                                  color: Colors.white,
+                                  size: 13,
+                                  weight: FontWeight.w600)),
+                          const SizedBox(height: 4),
+                          Text(x.desc,
+                              style: MM.body(
+                                  color: Colors.white.withOpacity(0.65),
+                                  size: 11)),
+                          const SizedBox(height: 8),
+                          Row(children: [
+                            Text('${x.adopted} adopted',
+                                style: MM.mono(
+                                    size: 10,
+                                    color: Colors.white.withOpacity(0.45))),
+                            const Spacer(),
+                            if (x.link) ...[
+                              Text('↗ OPEN APP',
+                                  style: MM.displayX(size: 10, color: hex)),
+                              const SizedBox(width: 10),
+                            ],
+                            _addButton(x, hex),
+                          ]),
                         ],
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(children: [
-                          MMChip(
-                              label: _shortOf(x.core).toUpperCase(),
-                              color: hex),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text('· ${x.pain}',
-                                overflow: TextOverflow.ellipsis,
-                                style: MM.body(
-                                    color: Colors.white.withOpacity(0.4),
-                                    size: 9)),
-                          ),
-                        ]),
-                        const SizedBox(height: 3),
-                        Text(x.title,
-                            style: MM.body(
-                                color: Colors.white,
-                                size: 13,
-                                weight: FontWeight.w600)),
-                        const SizedBox(height: 4),
-                        Text(x.desc,
-                            style: MM.body(
-                                color: Colors.white.withOpacity(0.65),
-                                size: 11)),
-                        const SizedBox(height: 8),
-                        Row(children: [
-                          Text('${x.adopted} adopted',
-                              style: MM.mono(
-                                  size: 10,
-                                  color: Colors.white.withOpacity(0.45))),
-                          const Spacer(),
-                          if (x.link) ...[
-                            Text('↗ OPEN APP',
-                                style: MM.displayX(size: 10, color: hex)),
-                            const SizedBox(width: 10),
-                          ],
-                          _addButton(x, hex),
-                        ]),
-                      ],
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          );
-        }),
+            );
+          }),
       ],
     );
   }
@@ -3571,19 +3694,22 @@ class _IdeasWellState extends State<_IdeasWell> {
     );
   }
 
-  Widget _addButton(_IdeaItem x, Color hex) {
+  Widget _addButton(CantinaIdea x, Color hex) {
+    final adopted = _adopted.contains(x.id);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () => _showAdoptSheet(x),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: hex.withOpacity(0.13),
+          color: hex.withOpacity(adopted ? 0.06 : 0.13),
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: hex.withOpacity(0.4)),
+          border: Border.all(color: hex.withOpacity(adopted ? 0.25 : 0.4)),
         ),
-        child: Text('＋ ADD',
-            style: MM.displayX(size: 10, color: Colors.white)),
+        child: Text(adopted ? '✓ ADDED' : '＋ ADD',
+            style: MM.displayX(
+                size: 10,
+                color: adopted ? Colors.white.withOpacity(0.6) : Colors.white)),
       ),
     );
   }
