@@ -26,7 +26,9 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
 >   regression) · **13d Ship** (per-tier credit costs + rocket ART assets) · **13e Mystery Box** (exact % 10–15)
 >   · **13f Badges** (full library) · **13h Skip-Check-in** purchase (skip-day options + costs). Only the
 >   **Balance bonus** credit remains undesigned. Recommended next: 13b, or 13h (small).
-> - **#14** Cantina full build + Lists editing + Tasks — still deferred.
+> - **#14** ⏳ IN PROGRESS: **Momentum Lists editing ✅ DONE + Pixel-verified 2026-07-18** (add/edit/delete/
+>   create, reuses `UpdateMomentumList`, no new backend). Remaining #14: **Tasks screen** (mock → wire, no
+>   numbers needed — good next unblocked task) and **Cantina native V1** (per docs).
 > **Verify on the PHYSICAL Pixel 6** (serial 19301FDF600F0S, `--target-platform android-arm64`); emulators
 > keep freezing their display. Pixel sleeps fast → `adb shell svc power stayon true`. Test uid
 > `aGFJOhlFG3Oz8wdRICmKabiNdU33` (credits balance now 65💎). Backend edits live in vf-bridge/functions-flutter
@@ -187,7 +189,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
 - [x] **#6 Real numbers in Progress Summary.** `summary_page.dart` hardcodes +125 MP, 2,740 credits,
   focus, daily challenge. Use real MP earned (from #9), updated streak, credits balance, and the
   5-Core Balance Meter = rolling 7-day average of check-in scores. AI focus reminders may stay static
-  but must be clearly marked not-yet-real (no fake numbers).
+  /twuse but must be clearly marked not-yet-real (no fake numbers).
   *Built + device-verified 2026-06-29:* `summary_page.dart` rewritten — **Total Momentum** = real profile
   `momentumScore`; **streak** = real persisted value (removed the optimistic +1); **5-Core Balance Meter**
   = real rolling 7-day average computed in-screen from `CheckinService.getRecent(limit:7)` + today's just-
@@ -406,13 +408,28 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
   - [ ] **13h Skip-Check-in / streak-protection purchase** (image-surfaced, `gam-09`) — a "Bonus" screen to
     spend credits and skip 1/2/5 days (mockup 5/10/15 💎) protecting the streak. Ties into #10 streak +
     Armor grace (#13d). NEEDS set: the skip-day options + credit costs. (Was not an explicit task before.)
-- [ ] **#14 Cantina full build + Lists editing + Tasks** — Cantina: DMs are real Firestore but threads
+- [~] **#14 Cantina full build + Lists editing + Tasks** — Cantina: DMs are real Firestore but threads
   are seeded mocks; docs want MVP Reddit-bridge gateway, then V1 native (Ideas Well upvote/click-to-
   adopt, Tribes ≤20 members/≤3 joined, Accountability Partners, anti-shame leaderboards recalced 6h).
-  Momentum Lists are read-only → add editing (20-list Command Center spec). Tasks screen is pure mock →
-  wire to real storage or descope. (Cantina competitions + pro marketplace are explicitly post-MVP.)
+  Tasks screen is pure mock → wire to real storage or descope. (Cantina competitions + pro marketplace
+  are explicitly post-MVP.)
   UI ref (image-surfaced): the **Leaderboard** (`gam-08-cantina-leaderboard`) = rank · avatar · name · score ·
   medal (gold/silver/bronze), current player's row highlighted; anti-shame ordering per the Cantina doc.
+  - **[x] Momentum Lists editing — DONE + device-verified 2026-07-18.** The read-only Lists screen
+    (`ListsScreen`, sub_screens.dart) is now fully editable: expand a list → tap an item to **edit**,
+    × to **delete**, "+ Add item" to **append**, and a "+ NEW LIST" action to **create** (with the 17
+    canonical Build-Guide names offered as suggestion chips + free-text). Every mutation is optimistic
+    with revert-on-failure + snackbar. Persists via `MomentumListsService.saveList` which REUSES the
+    deployed `UpdateMomentumList` endpoint (default codebase; `ff_uid`/`ListName`/`ItemsCSV` array) —
+    the same "reuse a deployed write endpoint" pattern as `CoreListsService.addHabit` (`saveCoreListItems`),
+    so **no new backend** and the offline cache is kept in sync. Analyzer-clean.
+    **DEVICE-VERIFIED (physical Pixel 6, uid aGFJOhlFG3Oz8wdRICmKabiNdU33):** added "No time after work"
+    to Obstacles → edited it to "Not enough time" → deleted it; created a new "Values" list → added
+    "Integrity". `fetchAllMomentumLists` GET confirmed the round-trip (Obstacles back to just its original
+    item; Values=["Integrity"]). *(XP-for-updates is a Phase-2 economy quest — needs [PLACEHOLDER] numbers,
+    left as a hook; not wired here.)*
+  - [ ] **Tasks screen** — still pure mock → wire to real storage or descope (no placeholder numbers needed).
+  - [ ] **Cantina native V1** — Ideas Well / Tribes / Accountability / anti-shame leaderboard (per docs).
 
 ---
 

@@ -46,10 +46,21 @@ class _ListsScreenState extends State<ListsScreen> {
   final _service = MomentumListsService();
   List<MomentumList> _lists = const [];
   late final Set<String> _expanded = {...widget.expand};
+  String? _uid;
   bool _loading = true;
   bool _offline = false;
   bool _errorOffline = false;
+  bool _saving = false;
   String? _error;
+
+  /// The 17 canonical Momentum Lists (Build Guide §Feature 4) offered when the
+  /// user creates a new list — free-text names are allowed too.
+  static const List<String> _canonicalLists = [
+    'Strengths', 'Passions', 'Fears', 'Goals', 'Obstacles',
+    'Values', 'Triggers', 'Rewards', 'Accountability', 'Environment',
+    'Time Availability', 'Energy Patterns', 'Social Support', 'Resources',
+    'Past Successes', 'Past Failures', 'Back to the Future',
+  ];
 
   @override
   void initState() {
@@ -72,6 +83,7 @@ class _ListsScreenState extends State<ListsScreen> {
       });
       return;
     }
+    _uid = uid;
     setState(() {
       _loading = true;
       _error = null;
@@ -92,6 +104,232 @@ class _ListsScreenState extends State<ListsScreen> {
         _loading = false;
       });
     }
+  }
+
+  // ── Editing ───────────────────────────────────────────────
+  // Every mutation updates local state optimistically, persists via
+  // MomentumListsService.saveList (reusing the deployed UpdateMomentumList
+  // endpoint), and reverts + surfaces a snackbar on failure.
+
+  void _replaceList(int index, MomentumList updated) {
+    final next = [..._lists];
+    next[index] = updated;
+    setState(() => _lists = next);
+  }
+
+  Future<void> _persist(MomentumList list, List<MomentumList> previous) async {
+    final uid = _uid;
+    if (uid == null) return;
+    setState(() => _saving = true);
+    try {
+      await _service.saveList(uid, list.name, list.items);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _lists = previous); // revert
+      _snack(isNetworkError(e)
+          ? 'Offline — change not saved. Try again.'
+          : 'Could not save change.');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  void _snack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  Future<void> _addItem(int index) async {
+    final text = await _promptText(title: 'Add to ${_lists[index].name}');
+    if (text == null || text.trim().isEmpty) return;
+    final prev = [..._lists];
+    final list = _lists[index];
+    final updated = MomentumList(
+      name: list.name,
+      items: [...list.items, text.trim()],
+    );
+    _expanded.add(list.name);
+    _replaceList(index, updated);
+    await _persist(updated, prev);
+  }
+
+  Future<void> _editItem(int index, int itemIndex) async {
+    final list = _lists[index];
+    final text = await _promptText(
+      title: 'Edit item',
+      initial: list.items[itemIndex],
+    );
+    if (text == null) return;
+    final prev = [..._lists];
+    final items = [...list.items];
+    if (text.trim().isEmpty) {
+      items.removeAt(itemIndex);
+    } else {
+      items[itemIndex] = text.trim();
+    }
+    final updated = MomentumList(name: list.name, items: items);
+    _replaceList(index, updated);
+    await _persist(updated, prev);
+  }
+
+  Future<void> _deleteItem(int index, int itemIndex) async {
+    final prev = [..._lists];
+    final list = _lists[index];
+    final items = [...list.items]..removeAt(itemIndex);
+    final updated = MomentumList(name: list.name, items: items);
+    _replaceList(index, updated);
+    await _persist(updated, prev);
+  }
+
+  Future<void> _createList() async {
+    final existing =
+        _lists.map((l) => l.name.trim().toLowerCase()).toSet();
+    final name = await _promptListName(existing);
+    if (name == null || name.trim().isEmpty) return;
+    final trimmed = name.trim();
+    if (existing.contains(trimmed.toLowerCase())) {
+      _expanded.add(trimmed);
+      _snack('That list already exists.');
+      return;
+    }
+    final prev = [..._lists];
+    final created = MomentumList(name: trimmed, items: const []);
+    _expanded.add(trimmed);
+    setState(() => _lists = [..._lists, created]);
+    // Immediately open the item prompt so a new list isn't left empty.
+    await _persist(created, prev);
+    if (!mounted) return;
+    // Only chain the add-item prompt if the create actually stuck (a failed
+    // persist reverts _lists, dropping the new list).
+    final idx = _lists.indexWhere((l) => l.name == trimmed);
+    if (idx >= 0) await _addItem(idx);
+  }
+
+  Future<String?> _promptText({required String title, String? initial}) {
+    final controller = TextEditingController(text: initial ?? '');
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: MM.panel,
+        title: Text(title,
+            style: MM.display(size: 15, color: Colors.white)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: null,
+          textCapitalization: TextCapitalization.sentences,
+          style: MM.body(color: Colors.white, size: 14),
+          cursorColor: MM.blue,
+          decoration: InputDecoration(
+            hintText: 'Type here…',
+            hintStyle:
+                MM.body(color: Colors.white.withOpacity(0.4), size: 14),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+            ),
+            focusedBorder:
+                const UnderlineInputBorder(borderSide: BorderSide(color: MM.blue)),
+          ),
+          onSubmitted: (v) => Navigator.of(ctx).pop(v),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Cancel',
+                style: MM.body(color: Colors.white.withOpacity(0.6))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text),
+            child: Text('Save', style: MM.body(color: MM.blue)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<String?> _promptListName(Set<String> existing) {
+    final controller = TextEditingController();
+    final suggestions = _canonicalLists
+        .where((n) => !existing.contains(n.toLowerCase()))
+        .toList();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: MM.panel,
+        title: Text('New Momentum List',
+            style: MM.display(size: 15, color: Colors.white)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: controller,
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                style: MM.body(color: Colors.white, size: 14),
+                cursorColor: MM.blue,
+                decoration: InputDecoration(
+                  hintText: 'List name',
+                  hintStyle:
+                      MM.body(color: Colors.white.withOpacity(0.4), size: 14),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide:
+                        BorderSide(color: Colors.white.withOpacity(0.2)),
+                  ),
+                  focusedBorder: const UnderlineInputBorder(
+                      borderSide: BorderSide(color: MM.blue)),
+                ),
+                onSubmitted: (v) => Navigator.of(ctx).pop(v),
+              ),
+              if (suggestions.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text('SUGGESTED',
+                    style: MM.body(
+                        color: Colors.white.withOpacity(0.45), size: 10)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final s in suggestions)
+                      InkWell(
+                        onTap: () => Navigator.of(ctx).pop(s),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: MM.blue.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                                color: MM.blue.withOpacity(0.4)),
+                          ),
+                          child: Text(s,
+                              style: MM.body(color: Colors.white, size: 11)),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Cancel',
+                style: MM.body(color: Colors.white.withOpacity(0.6))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text),
+            child: Text('Create', style: MM.body(color: MM.blue)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -147,25 +385,54 @@ class _ListsScreenState extends State<ListsScreen> {
                     style: MM.display(size: 14, color: Colors.white)),
                 const SizedBox(height: 6),
                 Text(
-                  'Lists are created automatically as you go through onboarding with the AI.',
+                  'Lists are created automatically as you go through onboarding '
+                  'with the AI — or start one yourself.',
                   textAlign: TextAlign.center,
                   style:
                       MM.body(color: Colors.white.withOpacity(0.55), size: 12),
                 ),
+                const SizedBox(height: 16),
+                MMGhostButton(label: '+ New List', onPressed: _createList),
               ],
             ),
           )
-        else
-          for (final l in _lists) ...[
+        else ...[
+          for (var i = 0; i < _lists.length; i++) ...[
             _ListTile(
-              list: l,
-              expanded: _expanded.contains(l.name),
+              list: _lists[i],
+              expanded: _expanded.contains(_lists[i].name),
               onToggle: () => setState(() {
-                if (!_expanded.add(l.name)) _expanded.remove(l.name);
+                if (!_expanded.add(_lists[i].name)) {
+                  _expanded.remove(_lists[i].name);
+                }
               }),
+              onAddItem: () => _addItem(i),
+              onEditItem: (itemIndex) => _editItem(i, itemIndex),
+              onDeleteItem: (itemIndex) => _deleteItem(i, itemIndex),
             ),
             const SizedBox(height: 10),
           ],
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: MMGhostButton(label: '+ New List', onPressed: _createList),
+          ),
+        ],
+        if (_saving)
+          const Padding(
+            padding: EdgeInsets.only(top: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: MM.blue),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -176,23 +443,29 @@ class _ListTile extends StatelessWidget {
     required this.list,
     required this.expanded,
     required this.onToggle,
+    required this.onAddItem,
+    required this.onEditItem,
+    required this.onDeleteItem,
   });
   final MomentumList list;
   final bool expanded;
   final VoidCallback onToggle;
+  final VoidCallback onAddItem;
+  final void Function(int itemIndex) onEditItem;
+  final void Function(int itemIndex) onDeleteItem;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onToggle,
-      borderRadius: BorderRadius.circular(8),
-      child: GlassPanel(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        leftAccentColor: MM.blue,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
+    return GlassPanel(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      leftAccentColor: MM.blue,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InkWell(
+            onTap: onToggle,
+            borderRadius: BorderRadius.circular(8),
+            child: Row(children: [
               _CoreDot(color: MM.blue),
               const SizedBox(width: 12),
               Expanded(
@@ -212,36 +485,79 @@ class _ListTile extends StatelessWidget {
                 size: 18,
               ),
             ]),
-            if (expanded) ...[
-              const SizedBox(height: 10),
-              ...list.items.map((item) => Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 6, right: 8),
-                          child: Container(
-                            width: 4,
-                            height: 4,
-                            decoration: const BoxDecoration(
-                              color: MM.blue,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
+          ),
+          if (expanded) ...[
+            const SizedBox(height: 10),
+            if (list.items.isEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 2),
+                child: Text(
+                  'No items yet — add your first one.',
+                  style:
+                      MM.body(color: Colors.white.withOpacity(0.4), size: 12),
+                ),
+              ),
+            for (var i = 0; i < list.items.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8, right: 8),
+                      child: Container(
+                        width: 4,
+                        height: 4,
+                        decoration: const BoxDecoration(
+                          color: MM.blue,
+                          shape: BoxShape.circle,
                         ),
-                        Expanded(
+                      ),
+                    ),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => onEditItem(i),
+                        borderRadius: BorderRadius.circular(6),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Text(
-                            item,
+                            list.items[i],
                             style: MM.body(color: Colors.white, size: 12),
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  )),
-            ],
+                    InkWell(
+                      onTap: () => onDeleteItem(i),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(Icons.close,
+                            size: 15,
+                            color: Colors.white.withOpacity(0.35)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 6),
+            InkWell(
+              onTap: onAddItem,
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    const Icon(Icons.add, size: 16, color: MM.blue),
+                    const SizedBox(width: 6),
+                    Text('Add item',
+                        style: MM.body(color: MM.blue, size: 12)),
+                  ],
+                ),
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

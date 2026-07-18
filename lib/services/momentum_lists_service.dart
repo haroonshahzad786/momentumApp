@@ -59,5 +59,61 @@ class MomentumListsService {
       .map((m) => MomentumList.fromJson(m.cast<String, dynamic>()))
       .toList();
 
+  /// Persists the full item set for one Momentum List (create-or-replace).
+  /// Reuses the existing `UpdateMomentumList` endpoint in the default codebase
+  /// — the same "reuse a deployed write endpoint" pattern as
+  /// `CoreListsService.addHabit` (`saveCoreListItems`), so no new backend is
+  /// added. The endpoint merge-writes `{ name, items[] }` to
+  /// `/users/{uid}/momentum_lists/{listName}` (doc id = list name) and accepts
+  /// `ItemsCSV` as an array (commas inside an item are preserved).
+  ///
+  /// After a successful write the local cache is refreshed so an offline reopen
+  /// shows the edit.
+  Future<void> saveList(
+    String userId,
+    String name,
+    List<String> items,
+  ) async {
+    final cleaned = items.map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    final response = await _client.post(
+      Uri.parse('$_baseUrl/UpdateMomentumList'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'secret': _secret,
+        'ff_uid': userId,
+        'ListName': name.trim(),
+        'ItemsCSV': cleaned,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw Exception(
+        'UpdateMomentumList failed (${response.statusCode}): ${response.body}',
+      );
+    }
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic> || decoded['ok'] != true) {
+      throw Exception(
+        'UpdateMomentumList error: '
+        '${decoded is Map ? decoded['error'] ?? 'unknown' : 'bad response'}',
+      );
+    }
+
+    // Keep the offline cache in sync so a reopen (or offline reload) reflects
+    // the edit without waiting for the next network fetch.
+    final cacheKey = 'cache:momentum_lists:$userId';
+    final cached = await LocalCache.getJson(cacheKey);
+    final list = (cached is List) ? [...cached] : <dynamic>[];
+    final entry = {'name': name.trim(), 'items': cleaned};
+    final idx = list.indexWhere(
+      (e) => e is Map && (e['name'] ?? '').toString() == name.trim(),
+    );
+    if (idx >= 0) {
+      list[idx] = entry;
+    } else {
+      list.add(entry);
+    }
+    await LocalCache.putJson(cacheKey, list);
+  }
+
   void dispose() => _client.close();
 }
