@@ -11,6 +11,7 @@ import '../../services/momentum_lists_service.dart';
 import '../../services/core_lists_service.dart';
 import '../../services/checkin_service.dart';
 import '../../services/onboarding_service.dart';
+import '../../services/task_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/glass_panel.dart';
 import '../../widgets/momentum/mm_buttons.dart';
@@ -2542,116 +2543,395 @@ class _KV extends StatelessWidget {
 }
 
 // ─── TASKS ─────────────────────────────────────────────────
-class TasksScreen extends StatelessWidget {
+class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key, this.onBack, this.onChat, this.onNav});
   final VoidCallback? onBack;
   final VoidCallback? onChat;
   final void Function(String key)? onNav;
 
   @override
+  State<TasksScreen> createState() => _TasksScreenState();
+}
+
+class _TasksScreenState extends State<TasksScreen> {
+  final _service = TaskService();
+  List<TaskItem> _tasks = const [];
+  String? _uid;
+  bool _loading = true;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) {
+      setState(() {
+        _loading = false;
+        _error = 'Not signed in';
+      });
+      return;
+    }
+    _uid = uid;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final tasks = await _service.getAll(uid);
+      if (!mounted) return;
+      setState(() {
+        _tasks = tasks;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  List<TaskItem> _inBucket(TaskBucket b) =>
+      _tasks.where((t) => t.bucket == b).toList();
+
+  void _snack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  // Optimistic mutate → persist → revert + snackbar on failure.
+  Future<void> _run(
+    List<TaskItem> next,
+    Future<void> Function() op,
+  ) async {
+    final prev = _tasks;
+    setState(() {
+      _tasks = next;
+      _saving = true;
+    });
+    try {
+      await op();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _tasks = prev);
+      _snack('Could not save. Check your connection.');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _addTask(TaskBucket bucket) async {
+    final uid = _uid;
+    if (uid == null) return;
+    final title = await _promptText(title: 'New task · ${bucket.label}');
+    if (title == null || title.trim().isEmpty) return;
+    final createdAt = DateTime.now().millisecondsSinceEpoch;
+    // Optimistic temp row; swapped for the real id after the write returns.
+    final tempId = 'temp_$createdAt';
+    final optimistic = TaskItem(
+      id: tempId,
+      title: title.trim(),
+      bucket: bucket,
+      done: false,
+      createdAt: createdAt,
+    );
+    final prev = _tasks;
+    setState(() {
+      _tasks = [..._tasks, optimistic];
+      _saving = true;
+    });
+    try {
+      final id = await _service.add(
+        uid: uid,
+        title: title.trim(),
+        bucket: bucket,
+        createdAt: createdAt,
+      );
+      if (!mounted) return;
+      setState(() {
+        // Swap the optimistic temp id for the real Firestore doc id.
+        _tasks = [
+          for (final t in _tasks)
+            if (t.id == tempId)
+              TaskItem(
+                id: id,
+                title: t.title,
+                bucket: t.bucket,
+                done: t.done,
+                createdAt: t.createdAt,
+              )
+            else
+              t
+        ];
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _tasks = prev);
+      _snack('Could not add task. Check your connection.');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _toggleDone(TaskItem task) async {
+    final uid = _uid;
+    if (uid == null) return;
+    final next = _tasks
+        .map((t) => t.id == task.id ? t.copyWith(done: !t.done) : t)
+        .toList();
+    await _run(next, () => _service.update(uid, task.id, done: !task.done));
+  }
+
+  Future<void> _editTask(TaskItem task) async {
+    final uid = _uid;
+    if (uid == null) return;
+    final title = await _promptText(title: 'Edit task', initial: task.title);
+    if (title == null) return;
+    if (title.trim().isEmpty) {
+      await _deleteTask(task);
+      return;
+    }
+    final next = _tasks
+        .map((t) => t.id == task.id ? t.copyWith(title: title.trim()) : t)
+        .toList();
+    await _run(
+        next, () => _service.update(uid, task.id, title: title.trim()));
+  }
+
+  Future<void> _moveTask(TaskItem task, TaskBucket bucket) async {
+    final uid = _uid;
+    if (uid == null || task.bucket == bucket) return;
+    final next = _tasks
+        .map((t) => t.id == task.id ? t.copyWith(bucket: bucket) : t)
+        .toList();
+    await _run(next, () => _service.update(uid, task.id, bucket: bucket));
+  }
+
+  Future<void> _deleteTask(TaskItem task) async {
+    final uid = _uid;
+    if (uid == null) return;
+    final next = _tasks.where((t) => t.id != task.id).toList();
+    await _run(next, () => _service.delete(uid, task.id));
+  }
+
+  Future<String?> _promptText({required String title, String? initial}) {
+    final controller = TextEditingController(text: initial ?? '');
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: MM.panel,
+        title: Text(title, style: MM.display(size: 15, color: Colors.white)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: null,
+          textCapitalization: TextCapitalization.sentences,
+          style: MM.body(color: Colors.white, size: 14),
+          cursorColor: MM.yellow,
+          decoration: InputDecoration(
+            hintText: 'What needs doing?',
+            hintStyle: MM.body(color: Colors.white.withOpacity(0.4), size: 14),
+            enabledBorder: UnderlineInputBorder(
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+            ),
+            focusedBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: MM.yellow)),
+          ),
+          onSubmitted: (v) => Navigator.of(ctx).pop(v),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Cancel',
+                style: MM.body(color: Colors.white.withOpacity(0.6))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text),
+            child: Text('Save', style: MM.body(color: MM.yellow)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final buckets = [
-      [
-        'Today',
-        [
-          ['Q3 report draft', MM.yellow, 30, false],
-          ['10m breathwork', MM.blue, 15, true],
-          ['Grocery run', MM.teal, 10, false],
-        ]
-      ],
-      [
-        'Tomorrow',
-        [
-          ['1:1 with Sara', MM.magenta, 20, false],
-          ['Yoga class', MM.teal, 25, false],
-        ]
-      ],
-      [
-        'Later',
-        [
-          ['Tax filing prep', MM.yellow, 60, false],
-        ]
-      ],
-    ];
     return ScreenShell(
       title: 'Tasks',
-      subtitle: 'MISSIONS · TODAY',
+      subtitle: 'MISSIONS · ${_tasks.where((t) => !t.done).length} OPEN',
       accent: MM.yellow,
-      onBack: onBack,
-      onChat: onChat,
-      onNav: onNav,
-      child: Column(
-        children: buckets.map((b) {
-          final name = b[0] as String;
-          final items = b[1] as List<List<dynamic>>;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
-                  child: Text(
-                    '${name.toUpperCase()} · ${items.length}',
-                    style: MM.displayX(
-                        size: 10, color: Colors.white.withOpacity(0.5)),
-                  ),
-                ),
-                ...items.map((it) {
-                  final t = it[0] as String;
-                  final hex = it[1] as Color;
-                  final pts = it[2] as int;
-                  final done = it[3] as bool;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Opacity(
-                      opacity: done ? 0.55 : 1,
-                      child: GlassPanel(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
-                        child: Row(children: [
-                          Container(
-                            width: 16,
-                            height: 16,
-                            decoration: BoxDecoration(
-                              color: done ? hex : Colors.transparent,
-                              border: Border.all(
-                                  color: done
-                                      ? hex
-                                      : Colors.white.withOpacity(0.3),
-                                  width: 1.5),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: done
-                                ? const Icon(Icons.check,
-                                    color: Colors.black, size: 11)
-                                : null,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              t,
-                              style: MM
-                                  .body(color: Colors.white, size: 13)
-                                  .copyWith(
-                                      decoration: done
-                                          ? TextDecoration.lineThrough
-                                          : null),
-                            ),
-                          ),
-                          _CoreDot(color: hex, size: 6),
-                          const SizedBox(width: 6),
-                          Text('+$pts',
-                              style: MM.display(size: 10, color: hex)),
-                        ]),
-                      ),
-                    ),
-                  );
-                }),
-              ],
+      onBack: widget.onBack,
+      onChat: widget.onChat,
+      onNav: widget.onNav,
+      child: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 48),
+        child: Center(child: CircularProgressIndicator(color: MM.yellow)),
+      );
+    }
+    if (_error != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Column(
+          children: [
+            Text('Could not load tasks',
+                style: MM.display(size: 14, color: Colors.white)),
+            const SizedBox(height: 6),
+            Text('Something went wrong. Please try again.',
+                textAlign: TextAlign.center,
+                style: MM.body(color: Colors.white.withOpacity(0.6), size: 12)),
+            const SizedBox(height: 14),
+            MMGhostButton(label: 'Retry', onPressed: _load),
+          ],
+        ),
+      );
+    }
+    return Column(
+      children: [
+        for (final bucket in TaskBucket.values) ...[
+          _bucketSection(bucket),
+          const SizedBox(height: 14),
+        ],
+        if (_saving)
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(strokeWidth: 2, color: MM.yellow),
             ),
-          );
-        }).toList(),
+          ),
+      ],
+    );
+  }
+
+  Widget _bucketSection(TaskBucket bucket) {
+    final items = _inBucket(bucket);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+          child: Text(
+            '${bucket.label.toUpperCase()} · ${items.length}',
+            style: MM.displayX(size: 10, color: Colors.white.withOpacity(0.5)),
+          ),
+        ),
+        if (items.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 4),
+            child: Text('Nothing here yet.',
+                style: MM.body(color: Colors.white.withOpacity(0.35), size: 12)),
+          ),
+        for (final task in items)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: _taskRow(task),
+          ),
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: InkWell(
+            onTap: () => _addTask(bucket),
+            borderRadius: BorderRadius.circular(6),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.add, size: 16, color: MM.yellow),
+                  const SizedBox(width: 6),
+                  Text('Add task',
+                      style: MM.body(color: MM.yellow, size: 12)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _taskRow(TaskItem task) {
+    final done = task.done;
+    return Opacity(
+      opacity: done ? 0.55 : 1,
+      child: GlassPanel(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(children: [
+          // Checkbox — toggles completion.
+          InkWell(
+            onTap: () => _toggleDone(task),
+            borderRadius: BorderRadius.circular(4),
+            child: Container(
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                color: done ? MM.yellow : Colors.transparent,
+                border: Border.all(
+                    color: done ? MM.yellow : Colors.white.withOpacity(0.3),
+                    width: 1.5),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: done
+                  ? const Icon(Icons.check, color: Colors.black, size: 12)
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: InkWell(
+              onTap: () => _editTask(task),
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(
+                  task.title,
+                  style: MM.body(color: Colors.white, size: 13).copyWith(
+                      decoration:
+                          done ? TextDecoration.lineThrough : null),
+                ),
+              ),
+            ),
+          ),
+          // Move-between-buckets menu.
+          PopupMenuButton<TaskBucket>(
+            icon: Icon(Icons.swap_horiz,
+                size: 17, color: Colors.white.withOpacity(0.4)),
+            color: MM.panel,
+            tooltip: 'Move',
+            onSelected: (b) => _moveTask(task, b),
+            itemBuilder: (_) => [
+              for (final b in TaskBucket.values)
+                if (b != task.bucket)
+                  PopupMenuItem(
+                    value: b,
+                    child: Text('Move to ${b.label}',
+                        style: MM.body(color: Colors.white, size: 12)),
+                  ),
+            ],
+          ),
+          InkWell(
+            onTap: () => _deleteTask(task),
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(4),
+              child: Icon(Icons.close,
+                  size: 15, color: Colors.white.withOpacity(0.35)),
+            ),
+          ),
+        ]),
       ),
     );
   }

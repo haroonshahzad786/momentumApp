@@ -26,9 +26,10 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
 >   regression) · **13d Ship** (per-tier credit costs + rocket ART assets) · **13e Mystery Box** (exact % 10–15)
 >   · **13f Badges** (full library) · **13h Skip-Check-in** purchase (skip-day options + costs). Only the
 >   **Balance bonus** credit remains undesigned. Recommended next: 13b, or 13h (small).
-> - **#14** ⏳ IN PROGRESS: **Momentum Lists editing ✅ DONE + Pixel-verified 2026-07-18** (add/edit/delete/
->   create, reuses `UpdateMomentumList`, no new backend). Remaining #14: **Tasks screen** (mock → wire, no
->   numbers needed — good next unblocked task) and **Cantina native V1** (per docs).
+> - **#14** ⏳ IN PROGRESS: **Momentum Lists editing ✅** + **Tasks screen ✅** both DONE + Pixel-verified
+>   2026-07-18 (Lists reuses `UpdateMomentumList`; Tasks = new `TaskService` direct Firestore, no new
+>   cloud fn). Remaining #14: **Cantina native V1** (Ideas Well / Tribes / anti-shame leaderboard, per docs)
+>   — larger, and the only remaining unblocked-ish #14 work.
 > **Verify on the PHYSICAL Pixel 6** (serial 19301FDF600F0S, `--target-platform android-arm64`); emulators
 > keep freezing their display. Pixel sleeps fast → `adb shell svc power stayon true`. Test uid
 > `aGFJOhlFG3Oz8wdRICmKabiNdU33` (credits balance now 65💎). Backend edits live in vf-bridge/functions-flutter
@@ -428,7 +429,17 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
     "Integrity". `fetchAllMomentumLists` GET confirmed the round-trip (Obstacles back to just its original
     item; Values=["Integrity"]). *(XP-for-updates is a Phase-2 economy quest — needs [PLACEHOLDER] numbers,
     left as a hook; not wired here.)*
-  - [ ] **Tasks screen** — still pure mock → wire to real storage or descope (no placeholder numbers needed).
+  - **[x] Tasks screen — DONE + device-verified 2026-07-18.** The pure-mock `TasksScreen` (hardcoded
+    "Q3 report draft" etc.) is now a real CRUD to-do list backed by direct Firestore
+    (`/users/{uid}/tasks/{taskId}` via new `lib/services/task_service.dart` + `TaskItem`/`TaskBucket` —
+    same direct-write pattern as CheckinService/Cantina, no cloud function). Three buckets
+    (Today/Tomorrow/Later): **add** (per-bucket "+ Add task"), **toggle done** (checkbox → strikethrough,
+    header "N OPEN" updates), **edit** (tap title), **move** between buckets (swap-icon popup), **delete**
+    (×). Optimistic UI with revert-on-failure + snackbar; Firestore's on-device cache covers offline.
+    **Points deliberately NOT wired** — per-task MP reward is the undesigned Phase-2 economy ([PLACEHOLDER]),
+    so no fabricated rewards. Analyzer-clean. **DEVICE-VERIFIED (Pixel 6, uid aGFJOhlFG3Oz8wdRICmKabiNdU33):**
+    added "Finish Q3 report" to Today → checked it done → moved to Later → **force-stop + cold relaunch
+    round-tripped from Firestore** (still in Later, still done) → deleted (all buckets empty).
   - [ ] **Cantina native V1** — Ideas Well / Tribes / Accountability / anti-shame leaderboard (per docs).
 
 ---
