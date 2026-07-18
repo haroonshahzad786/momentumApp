@@ -450,6 +450,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
 Momentum Lists / Routines / Habits reads, Cantina DMs, AI chat (Voiceflow), notifications, offline cache.
 **PARTIAL:** Phase 1 flow (UI real, content hardcoded, state NOT persisted), Summary (UI real, numbers
 fake), gamification (display-only).
-**MOCK:** Trophy Room, Profile, Tasks.
+**MOCK (as of the 2026-06-20 audit — now RESOLVED):** Trophy Room (#11 ✅), Profile (#12 ✅), Tasks
+(#14 Tasks ✅ 2026-07-18). Remaining mock surface: Cantina seeded threads (#14 Cantina V1).
 **Already done this session:** Phase 1 Re-Entry Bridge — the dead "Return to Phase 1" button + Mission
 Control "Go Deeper" Path A (→HHS) / Path B (→MBS) now navigate; Path A verified on emulator.
