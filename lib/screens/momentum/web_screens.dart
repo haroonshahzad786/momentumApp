@@ -24,6 +24,7 @@ import '../../services/habits_service.dart';
 import '../../services/momentum_lists_service.dart';
 import '../../services/onboarding_service.dart';
 import '../../services/profile_service.dart';
+import '../../services/tribes_service.dart';
 import '../../theme/momentum_tokens.dart';
 
 const Map<String, String> kCoreIcon = {
@@ -55,23 +56,34 @@ class WebPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: background ?? const Color(0xFF111C4E).withOpacity(0.55),
-        borderRadius: BorderRadius.circular(8),
-        border: Border(
-          top: BorderSide(color: borderColor ?? Colors.white.withOpacity(0.10)),
-          right:
-              BorderSide(color: borderColor ?? Colors.white.withOpacity(0.10)),
-          bottom:
-              BorderSide(color: borderColor ?? Colors.white.withOpacity(0.10)),
-          left: leftAccent != null
-              ? BorderSide(color: leftAccent!, width: 3)
-              : BorderSide(color: borderColor ?? Colors.white.withOpacity(0.10)),
+    // NOTE: a non-uniform Border (thick left accent + thin other sides) combined
+    // with borderRadius paints BLANK on the web/CanvasKit renderer (see
+    // project_habits_card_blank). So the border is kept UNIFORM and the left
+    // accent is drawn as a separate clipped stripe instead of a wide border side.
+    const radius = BorderRadius.all(Radius.circular(8));
+    return ClipRRect(
+      borderRadius: radius,
+      child: Container(
+        decoration: BoxDecoration(
+          color: background ?? const Color(0xFF111C4E).withOpacity(0.55),
+          borderRadius: radius,
+          border: Border.all(
+              color: borderColor ?? Colors.white.withOpacity(0.10)),
+        ),
+        child: Stack(
+          children: [
+            if (leftAccent != null)
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: 3,
+                child: ColoredBox(color: leftAccent!),
+              ),
+            Padding(padding: padding, child: child),
+          ],
         ),
       ),
-      child: child,
     );
   }
 }
@@ -1438,11 +1450,83 @@ class _WebCantinaState extends State<WebCantina> {
     MM.red
   ];
 
-  final _tribes = const [
-    ('Dawn Patrol', 14, 'physical', 'Early risers logging before 7am'),
-    ('Deep Work Guild', 22, 'career', 'Focus-block accountability'),
-    ('Mind Gardeners', 9, 'mindset', 'Daily journaling + meditation'),
-  ];
+  // Real Space Tribes (Pillar 2), same service the mobile Tribes tab uses.
+  final _tribesSvc = TribesService();
+  List<Tribe> _myTribes = const [];
+  List<Tribe> _discoverTribes = const [];
+  bool _tribesLoading = true;
+  bool _showDiscover = false;
+  final Set<String> _tribeBusy = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTribes();
+  }
+
+  Future<void> _loadTribes() async {
+    final uid = _myUid;
+    if (uid.isEmpty) {
+      setState(() => _tribesLoading = false);
+      return;
+    }
+    try {
+      final mine = await _tribesSvc.getMyTribes(uid);
+      final disc = await _tribesSvc.getDiscover(uid);
+      if (!mounted) return;
+      setState(() {
+        _myTribes = mine;
+        _discoverTribes = disc;
+        _tribesLoading = false;
+        if (mine.isEmpty) _showDiscover = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _tribesLoading = false);
+    }
+  }
+
+  void _toast(String m) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(m), duration: const Duration(seconds: 2)));
+  }
+
+  Future<void> _joinTribe(Tribe t) async {
+    final uid = _myUid;
+    if (uid.isEmpty || _tribeBusy.contains(t.id)) return;
+    if (_myTribes.length >= Tribe.maxJoinedPerUser) {
+      _toast('You can be in up to ${Tribe.maxJoinedPerUser} tribes.');
+      return;
+    }
+    setState(() => _tribeBusy.add(t.id));
+    try {
+      await _tribesSvc.join(uid, t.id);
+      await _loadTribes();
+      if (mounted) _toast('Joined ${t.name} 🚀');
+    } on TribeFullException {
+      if (mounted) _toast('${t.name} is full.');
+    } catch (_) {
+      if (mounted) _toast("Couldn't join — try again.");
+    } finally {
+      if (mounted) setState(() => _tribeBusy.remove(t.id));
+    }
+  }
+
+  Future<void> _leaveTribe(Tribe t) async {
+    final uid = _myUid;
+    if (uid.isEmpty || _tribeBusy.contains(t.id)) return;
+    setState(() => _tribeBusy.add(t.id));
+    try {
+      await _tribesSvc.leave(uid, t.id);
+      await _loadTribes();
+    } catch (_) {
+      if (mounted) _toast("Couldn't leave — try again.");
+    } finally {
+      if (mounted) setState(() => _tribeBusy.remove(t.id));
+    }
+  }
+
   final _ideas = const [
     ('Habit-stack journaling right after coffee — the cue is already there.',
         'Nova_Rey', 42),
@@ -1478,16 +1562,33 @@ class _WebCantinaState extends State<WebCantina> {
             ),
           ],
         );
+        final tribesList = _showDiscover ? _discoverTribes : _myTribes;
         final right = WebSection(
-          title: 'YOUR TRIBES',
-          meta: 'ACCOUNTABILITY CREW',
+          title: _showDiscover ? 'DISCOVER TRIBES' : 'YOUR TRIBES',
+          meta: _showDiscover
+              ? 'JOIN A CREW'
+              : 'ACCOUNTABILITY CREW · ${_myTribes.length}',
           accent: MM.magenta,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              ..._tribes.map((t) => _tribeCard(t.$1, t.$2, t.$3, t.$4)),
+              if (_tribesLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 32),
+                  child: Center(
+                      child: CircularProgressIndicator(color: MM.magenta)),
+                )
+              else if (tribesList.isEmpty)
+                _empty(
+                    _showDiscover ? 'No tribes yet' : 'No tribes joined',
+                    _showDiscover
+                        ? 'Check back soon.'
+                        : 'Tap “Find a tribe” to join your first crew.')
+              else
+                ...tribesList.map(_tribeCard),
               const SizedBox(height: 4),
-              _ghost('+ Find a tribe', () {}),
+              _ghost(_showDiscover ? '← Back to my tribes' : '+ Find a tribe',
+                  () => setState(() => _showDiscover = !_showDiscover)),
             ],
           ),
         );
@@ -1691,8 +1792,10 @@ class _WebCantinaState extends State<WebCantina> {
     );
   }
 
-  Widget _tribeCard(String name, int members, String focus, String desc) {
-    final hex = coreHex(focus);
+  Widget _tribeCard(Tribe t) {
+    final hex = coreHex(t.core);
+    final joined = t.isMember(_myUid);
+    final busy = _tribeBusy.contains(t.id);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: WebPanel(
@@ -1704,7 +1807,7 @@ class _WebCantinaState extends State<WebCantina> {
           children: [
             Row(
               children: [
-                Text(kCoreIcon[focus] ?? '•',
+                Text(kCoreIcon[t.core] ?? '•',
                     style: const TextStyle(fontSize: 20)),
                 const SizedBox(width: 10),
                 Expanded(
@@ -1712,13 +1815,13 @@ class _WebCantinaState extends State<WebCantina> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(name,
+                      Text(t.name,
                           style: MM.body(
                               size: 14,
                               color: Colors.white,
                               weight: FontWeight.w600)),
                       const SizedBox(height: 2),
-                      Text('$members MEMBERS',
+                      Text('${t.memberCount} MEMBERS',
                           style: GoogleFonts.orbitron(
                               fontSize: 8,
                               fontWeight: FontWeight.w700,
@@ -1727,15 +1830,51 @@ class _WebCantinaState extends State<WebCantina> {
                     ],
                   ),
                 ),
+                _tribeButton(t, joined, busy, hex),
               ],
             ),
             const SizedBox(height: 10),
-            Text(desc,
+            Text(t.description,
                 style: MM.body(
                     size: 11.5,
                     color: Colors.white.withOpacity(0.6),
                     height: 1.5)),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _tribeButton(Tribe t, bool joined, bool busy, Color hex) {
+    final full = !joined && t.isFull;
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(7),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(7),
+        onTap: busy || full
+            ? null
+            : () => joined ? _leaveTribe(t) : _joinTribe(t),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(7),
+            color: joined ? Colors.transparent : hex.withOpacity(0.16),
+            border: Border.all(
+                color: hex.withOpacity(joined ? 0.3 : 0.5)),
+          ),
+          child: busy
+              ? SizedBox(
+                  width: 12,
+                  height: 12,
+                  child:
+                      CircularProgressIndicator(strokeWidth: 2, color: hex))
+              : Text(full ? 'FULL' : (joined ? 'LEAVE' : 'JOIN'),
+                  style: GoogleFonts.orbitron(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1,
+                      color: joined ? Colors.white.withOpacity(0.7) : Colors.white)),
         ),
       ),
     );
