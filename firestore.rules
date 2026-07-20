@@ -1,0 +1,114 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{parent}/momentum_lists/{document} {
+      allow create: if request.auth.uid == parent;
+      allow read: if request.auth.uid == parent;
+      allow write: if request.auth.uid == parent;
+      allow delete: if request.auth.uid == parent;
+    }
+
+    match /users/{parent}/golden_habits/{document} {
+      allow create: if request.auth.uid == parent;
+      allow read: if request.auth.uid == parent;
+      allow write: if request.auth.uid == parent;
+      allow delete: if request.auth.uid == parent;
+    }
+
+    match /{document=**} {
+      allow read, write: if request.auth.token.email.matches("firebase@flutterflow.io");
+    }
+
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isFlutterFlowService() {
+      return isSignedIn()
+        && request.auth.token.email != null
+        && request.auth.token.email.matches("firebase@flutterflow.io");
+    }
+
+    /***** Public demo chat (keep) *****/
+    match /chippChat/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if false;
+      allow delete: if false;
+    }
+
+    /***** FlutterFlow service account (keep) *****/
+    match /{document=**} {
+      allow read, write: if isFlutterFlowService();
+    }
+
+    /***** USERS COLLECTION (owner access) *****/
+    match /users/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if false;
+      allow delete: if false;
+    }
+
+    match /users/{uid}/{document=**} {
+      allow read, write: if isOwner(uid);
+    }
+
+    /***** VOICEFLOWP COLLECTION (per-user docs) *****/
+    match /voiceflowP/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    match /voiceflowP/{uid}/{document=**} {
+      allow read, write: if isOwner(uid);
+    }
+
+    /***** VOICEFLOW EVENT DOC (one-per-user) *****/
+    match /vf_events/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow write: if false;
+      allow delete: if false;
+    }
+
+    /***** CANTINA squad threads + messages (Flutter app) *****/
+    match /cantina_threads/{threadId} {
+      allow read, write: if isSignedIn();
+
+      match /messages/{messageId} {
+        // Any signed-in crew member can read a thread and post to it.
+        // Seed writes use synthetic `crew:{id}` senderIds, so create is
+        // not pinned to senderId == uid. Messages are immutable.
+        allow read: if isSignedIn();
+        allow create: if isSignedIn();
+        allow update, delete: if false;
+      }
+    }
+
+    /***** CANTINA real-user DMs (shared, two-way) *****/
+    match /cantina_dms/{pairId}/messages/{messageId} {
+      // pairId is the two participant uids, sorted and joined with '__'.
+      // Only the two participants may read or post. Messages are immutable and
+      // never deleted: "clear history" is one-sided and tracked client-side via
+      // a private `clearedAt` cutoff in users/{uid}/cantina_inbox, so one user
+      // clearing their view must not remove the other participant's copy.
+      allow read, create: if request.auth != null
+          && request.auth.uid in pairId.split('__');
+      allow update, delete: if false;
+    }
+
+    /***** CANTINA Ideas Well (shared community posts) *****/
+    match /space_cantina_posts/{postId} {
+      // Community-shared idea cards: any signed-in crew member can read the
+      // feed, upvote (transactional counter), adopt (counter) and seed the
+      // curated starter set.
+      allow read, write: if isSignedIn();
+    }
+
+  }
+}

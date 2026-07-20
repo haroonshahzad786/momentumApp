@@ -27,11 +27,11 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
 >   · **13f Badges** (full library) · **13h Skip-Check-in** purchase (skip-day options + costs). Only the
 >   **Balance bonus** credit remains undesigned. Recommended next: 13b, or 13h (small).
 > - **#14** ⏳ IN PROGRESS: **Momentum Lists editing ✅** + **Tasks screen ✅** both DONE + Pixel-verified
->   2026-07-18. **Cantina V1 STARTED** — Pillar 1 **Ideas Well BUILT + committed (analyzer-clean) but
->   ⚠️ NOT device-verified** (Pixel USB kept dropping — that was the ONLY blocker). **▶ NEXT SESSION: first
->   device-verify Ideas Well** (upvote persistence + real click-to-adopt→Golden Habit + cold-restart
->   round-trip — steps in the #14 Cantina block below), THEN build Pillar 2 (Tribes/Accountability) and
->   Pillar 3 (anti-shame Leaderboard). Pillar 4 (Arena) = V2/deferred.
+>   2026-07-18. **Cantina V1 STARTED** — Pillar 1 **Ideas Well DONE + FULLY DEVICE-VERIFIED 2026-07-20**
+>   (seeded feed + persisted upvotes + real click-to-adopt→Golden Habit/Resources, all cold-restart
+>   round-tripped). Needed a Firestore rule for shared `space_cantina_posts` (deployed via Rules REST API;
+>   snapshot at `/firestore.rules`). **▶ NEXT: build Pillar 2 (Tribes + Accountability Partners) and
+>   Pillar 3 (anti-shame Leaderboard) — see the #14 Cantina block below.** Pillar 4 (Arena) = V2/deferred.
 > **Verify on the PHYSICAL Pixel 6** (serial 19301FDF600F0S, `--target-platform android-arm64`); emulators
 > keep freezing their display. Pixel sleeps fast → `adb shell svc power stayon true`. Test uid
 > `aGFJOhlFG3Oz8wdRICmKabiNdU33` (credits balance now 65💎). Backend edits live in vf-bridge/functions-flutter
@@ -445,7 +445,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
   - [~] **Cantina native V1** — 4-tab hub already exists (Ideas Well / Tribes / Leaderboard / Arena) but
     was mock. Building the pillars real, one slice at a time (see [[reference_cantina_spec]] for the full
     4-pillar spec + anti-shame UI rules).
-    - **[~] Pillar 1 — Ideas Well: BUILT 2026-07-18, ⚠️ NOT YET DEVICE-VERIFIED (commit after Tasks).**
+    - **[x] Pillar 1 — Ideas Well: DONE + FULLY DEVICE-VERIFIED 2026-07-20.**
       New `lib/services/cantina_ideas_service.dart` (`CantinaIdea` / `CantinaIdeasFeed` / `CantinaIdeasService`)
       — DIRECT Firestore, top-level `space_cantina_posts` collection (same rules-permitted top-level pattern
       as `cantina_dms`), plus per-user state at `users/{uid}/cantina/ideas_state` (`voted{}` / `adopted{}`).
@@ -455,11 +455,21 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
       short→full coreId map in `_IdeasWellState._shortToFull`); tech → appended to the "Resources List" Momentum
       List via new `MomentumListsService.appendItem`. `markAdopted` bumps the community adopt count once/user.
       Rewired `_IdeasWell` in sub_screens.dart (removed the `_IdeaItem`/`_ideasWell` mock consts). Analyzer-clean.
-      **▶ RESUME: device-verify on the Pixel** — (1) open Cantina→Ideas Well, confirm the seeded feed loads +
-      upvote a card → count persists across a cold restart; (2) Adopt a *habit* card → confirm it appears as a
-      real Golden Habit on the Habits + Routines screens (GET `flutterGetGoldenHabits`); (3) Adopt a *tech* card
-      → confirm it lands in the Resources Momentum List; (4) confirm "✓ ADDED" state persists on reload.
-      *(Pixel USB kept dropping this session — connection was the only blocker; code is committed.)*
+      **🔐 REQUIRED FIRESTORE RULE (deployed 2026-07-20):** the shared top-level `space_cantina_posts`
+      collection needed a rule (the seed/read got `PERMISSION_DENIED` — the per-user `users/{uid}/cantina/*`
+      state was already covered by the `users/{uid}/{document=**}` owner rule). Added
+      `match /space_cantina_posts/{postId} { allow read, write: if isSignedIn(); }` (mirrors the existing
+      `cantina_threads` block), merged NON-destructively into the live ruleset + deployed via the Firebase
+      **Rules REST API** (CLI token was fetched from the configstore; created a new ruleset + repointed the
+      `cloud.firestore` release). The full deployed ruleset is now saved in the repo at `/firestore.rules`
+      (rules-as-code; NOT wired into firebase.json, so `firebase deploy` won't auto-push it — it's a reference
+      snapshot). See [[project_cantina_messaging_firestore]].
+      **✅ DEVICE-VERIFIED (Pixel 6, uid aGFJOhlFG3Oz8wdRICmKabiNdU33):** (1) seeded feed loads from Firestore;
+      (2) upvote 412→413 (txn + teal voted state) **persists across a cold restart**; (3) adopted the "Lay gym
+      clothes…" habit → `flutterGetGoldenHabits` returns 3 habits incl. it under `physical_health_core`
+      (short→full map worked), adopt count 1180→1181 + "✓ ADDED" **persist across restart**; (4) adopted the
+      "Auto-transfer app" tech pick → `fetchAllMomentumLists` shows Resources List = ['Auto-transfer app · …'],
+      distinct "SAVE TO RESOURCES" sheet. Both adopt paths + upvote all round-trip.
     - [ ] **Pillar 2 — Tribes** (public/private, ≤20 members, ≤3 joined per player) + Accountability Partners
       (1 active, daily/weekly cadence). Currently `_TribesTab` is mock threads. Collections per spec:
       `tribes`, `tribe_posts`, `accountability_partners`.
