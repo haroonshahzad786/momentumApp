@@ -13,6 +13,7 @@ import '../../services/checkin_service.dart';
 import '../../services/onboarding_service.dart';
 import '../../services/task_service.dart';
 import '../../services/cantina_ideas_service.dart';
+import '../../services/tribes_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/glass_panel.dart';
 import '../../widgets/momentum/mm_buttons.dart';
@@ -3123,72 +3124,693 @@ class _TribeBoard extends StatelessWidget {
   }
 }
 
-/// Tribes pillar — squad threads list.
-class _TribesTab extends StatelessWidget {
+/// Tribes pillar (Pillar 2 — Interstellar Collaboration). Real Space Tribes on
+/// Firestore: My Tribes / Discover, join (≤3 per player, ≤20 per tribe), create,
+/// and an in-place tribe detail with a discussion feed.
+class _TribesTab extends StatefulWidget {
   const _TribesTab({this.onNav});
   final void Function(String key)? onNav;
 
   @override
+  State<_TribesTab> createState() => _TribesTabState();
+}
+
+class _TribesTabState extends State<_TribesTab> {
+  final _service = TribesService();
+  String? _uid;
+  String _seg = 'mine'; // 'mine' | 'discover'
+  List<Tribe> _mine = const [];
+  List<Tribe> _discover = const [];
+  bool _loading = true;
+  Tribe? _open; // non-null → showing a tribe's detail in place
+  final Set<String> _busy = {}; // tribeIds with an in-flight join/leave
+
+  String get _name {
+    final u = FirebaseAuth.instance.currentUser;
+    final dn = u?.displayName?.trim();
+    if (dn != null && dn.isNotEmpty) return dn;
+    final email = u?.email;
+    if (email != null && email.contains('@')) return email.split('@').first;
+    return 'Pilot';
+  }
+
+  static Color coreHex(String core) => MM.coreColor[core] ?? Colors.white;
+  static String coreLabel(String core) {
+    if (core == 'general') return 'GENERAL';
+    final m = _ideasCores.firstWhere((c) => c[0] == core,
+        orElse: () => const ['', '', MM.white]);
+    final label = m[1] as String;
+    return (label.isEmpty ? core : label).toUpperCase();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) {
+      setState(() => _loading = false);
+      return;
+    }
+    _uid = uid;
+    try {
+      final mine = await _service.getMyTribes(uid);
+      final discover = await _service.getDiscover(uid);
+      if (!mounted) return;
+      setState(() {
+        _mine = mine;
+        _discover = discover;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      _snack('Could not load tribes.');
+    }
+  }
+
+  void _snack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  Future<void> _join(Tribe t) async {
+    final uid = _uid;
+    if (uid == null || _busy.contains(t.id)) return;
+    if (_mine.length >= Tribe.maxJoinedPerUser) {
+      _snack('You can be in up to ${Tribe.maxJoinedPerUser} tribes. Leave one first.');
+      return;
+    }
+    setState(() => _busy.add(t.id));
+    try {
+      await _service.join(uid, t.id);
+      await _load();
+      if (mounted) _snack('Joined ${t.name} 🚀');
+    } on TribeFullException {
+      if (mounted) _snack('${t.name} is full (${Tribe.maxMembers} members).');
+    } catch (_) {
+      if (mounted) _snack("Couldn't join — try again.");
+    } finally {
+      if (mounted) setState(() => _busy.remove(t.id));
+    }
+  }
+
+  Future<void> _leave(Tribe t) async {
+    final uid = _uid;
+    if (uid == null || _busy.contains(t.id)) return;
+    setState(() => _busy.add(t.id));
+    try {
+      await _service.leave(uid, t.id);
+      await _load();
+      if (mounted && _open?.id == t.id) setState(() => _open = null);
+    } catch (_) {
+      if (mounted) _snack("Couldn't leave — try again.");
+    } finally {
+      if (mounted) setState(() => _busy.remove(t.id));
+    }
+  }
+
+  Future<void> _createTribe() async {
+    final uid = _uid;
+    if (uid == null) return;
+    if (_mine.length >= Tribe.maxJoinedPerUser) {
+      _snack('You can be in up to ${Tribe.maxJoinedPerUser} tribes. Leave one first.');
+      return;
+    }
+    final draft = await showModalBottomSheet<_TribeDraft>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => const _CreateTribeSheet(),
+    );
+    if (draft == null || draft.name.trim().isEmpty) return;
+    try {
+      await _service.createTribe(
+        uid: uid,
+        name: draft.name,
+        description: draft.description,
+        core: draft.core,
+        isPublic: draft.isPublic,
+        createdAt: DateTime.now().millisecondsSinceEpoch,
+      );
+      await _load();
+      if (mounted) {
+        setState(() => _seg = 'mine');
+        _snack('Created ${draft.name.trim()} 🚀');
+      }
+    } catch (_) {
+      if (mounted) _snack("Couldn't create the tribe — try again.");
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Center(child: CircularProgressIndicator(color: MM.teal)),
+      );
+    }
+    if (_open != null) {
+      final live = [..._mine, ..._discover].firstWhere(
+          (t) => t.id == _open!.id,
+          orElse: () => _open!);
+      return _TribeDetailView(
+        tribe: live,
+        uid: _uid ?? '',
+        authorName: _name,
+        busy: _busy.contains(live.id),
+        onBack: () => setState(() => _open = null),
+        onJoin: () => _join(live),
+        onLeave: () => _leave(live),
+      );
+    }
+
+    final list = _seg == 'mine' ? _mine : _discover;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
-          child: Text('SQUAD THREADS · ${_threads.length}',
-              style: MM.displayX(
-                  size: 10, color: Colors.white.withOpacity(0.5))),
+        _SegTabs(
+          tabs: [
+            ['mine', 'My Tribes · ${_mine.length}'],
+            ['discover', 'Discover'],
+          ],
+          active: _seg,
+          onTap: (s) => setState(() => _seg = s),
+          fontSize: 11,
+          radius: 8,
         ),
-        ..._threads.map((t) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: InkWell(
-                onTap: () => onNav?.call('thread:${t.id}'),
-                child: GlassPanel(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  child: Row(children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration:
-                          BoxDecoration(shape: BoxShape.circle, color: t.hex),
-                      child: Center(
-                        child: Text(t.name[0],
-                            style: const TextStyle(
-                                color: Colors.black,
-                                fontWeight: FontWeight.w700)),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(t.name,
-                              style: MM.body(
-                                  color: Colors.white,
-                                  weight: FontWeight.w600)),
-                          const SizedBox(height: 2),
-                          Text(t.preview,
-                              style: MM.body(
-                                  color: Colors.white.withOpacity(0.6),
-                                  size: 11)),
-                        ],
-                      ),
-                    ),
-                    Text(t.time,
-                        style: MM.mono(
-                            color: Colors.white.withOpacity(0.4), size: 10)),
-                  ]),
-                ),
+        const SizedBox(height: 12),
+        if (list.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 22),
+            child: Center(
+              child: Text(
+                _seg == 'mine'
+                    ? "You haven't joined a tribe yet — hit Discover."
+                    : 'No tribes to show.',
+                style: MM.body(color: Colors.white.withOpacity(0.45), size: 12),
               ),
-            )),
+            ),
+          )
+        else
+          ...list.map((t) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _tribeRow(t),
+              )),
         const SizedBox(height: 8),
         MMGhostButton(
-          label: '+ Discover Tribes',
+          label: '+ Create Tribe',
           expand: true,
           padding: const EdgeInsets.symmetric(vertical: 12),
-          onPressed: () {},
+          onPressed: _createTribe,
+        ),
+      ],
+    );
+  }
+
+  Widget _tribeRow(Tribe t) {
+    final hex = coreHex(t.core);
+    final uid = _uid ?? '';
+    final joined = t.isMember(uid);
+    final busy = _busy.contains(t.id);
+    return InkWell(
+      onTap: () => setState(() => _open = t),
+      borderRadius: BorderRadius.circular(8),
+      child: GlassPanel(
+        leftAccentColor: hex,
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              MMChip(label: coreLabel(t.core), color: hex),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(t.name,
+                    style: MM.body(
+                        color: Colors.white,
+                        size: 14,
+                        weight: FontWeight.w600)),
+              ),
+              if (!t.isPublic)
+                Icon(Icons.lock_outline,
+                    size: 13, color: Colors.white.withOpacity(0.4)),
+            ]),
+            const SizedBox(height: 5),
+            Text(t.description,
+                style: MM.body(color: Colors.white.withOpacity(0.6), size: 11)),
+            const SizedBox(height: 10),
+            Row(children: [
+              Icon(Icons.group_outlined,
+                  size: 13, color: Colors.white.withOpacity(0.45)),
+              const SizedBox(width: 4),
+              Text('${t.memberCount}/${Tribe.maxMembers}',
+                  style: MM.mono(
+                      size: 10, color: Colors.white.withOpacity(0.5))),
+              const Spacer(),
+              if (joined)
+                _pillButton('LEAVE', hex,
+                    filled: false, busy: busy, onTap: () => _leave(t))
+              else if (t.isFull)
+                Text('FULL',
+                    style: MM.displayX(
+                        size: 10, color: Colors.white.withOpacity(0.35)))
+              else
+                _pillButton('JOIN', hex,
+                    filled: true, busy: busy, onTap: () => _join(t)),
+            ]),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _pillButton(String label, Color hex,
+      {required bool filled, required bool busy, required VoidCallback onTap}) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: busy ? null : onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+          color: filled ? hex.withOpacity(0.16) : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: hex.withOpacity(filled ? 0.5 : 0.3)),
+        ),
+        child: busy
+            ? SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(strokeWidth: 2, color: hex))
+            : Text(label,
+                style: MM.displayX(
+                    size: 10,
+                    color: filled ? Colors.white : Colors.white.withOpacity(0.7))),
+      ),
+    );
+  }
+}
+
+/// A tribe's detail: header + member count + discussion feed + composer.
+class _TribeDetailView extends StatefulWidget {
+  const _TribeDetailView({
+    required this.tribe,
+    required this.uid,
+    required this.authorName,
+    required this.busy,
+    required this.onBack,
+    required this.onJoin,
+    required this.onLeave,
+  });
+  final Tribe tribe;
+  final String uid;
+  final String authorName;
+  final bool busy;
+  final VoidCallback onBack;
+  final VoidCallback onJoin;
+  final VoidCallback onLeave;
+
+  @override
+  State<_TribeDetailView> createState() => _TribeDetailViewState();
+}
+
+class _TribeDetailViewState extends State<_TribeDetailView> {
+  final _service = TribesService();
+  final _composer = TextEditingController();
+  List<TribePost> _posts = const [];
+  bool _loading = true;
+  bool _sending = false;
+
+  bool get _joined => widget.tribe.isMember(widget.uid);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPosts();
+  }
+
+  @override
+  void dispose() {
+    _composer.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadPosts() async {
+    try {
+      final posts = await _service.getPosts(widget.tribe.id);
+      if (!mounted) return;
+      setState(() {
+        _posts = posts;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _send() async {
+    final text = _composer.text.trim();
+    if (text.isEmpty || _sending) return;
+    setState(() => _sending = true);
+    try {
+      await _service.addPost(
+        tribeId: widget.tribe.id,
+        uid: widget.uid,
+        authorName: widget.authorName,
+        text: text,
+        createdAt: DateTime.now().millisecondsSinceEpoch,
+      );
+      _composer.clear();
+      await _loadPosts();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Message not sent — try again.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hex = _TribesTabState.coreHex(widget.tribe.core);
+    final t = widget.tribe;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onBack,
+          child: Row(children: [
+            Icon(Icons.arrow_back, size: 16, color: hex),
+            const SizedBox(width: 6),
+            Text('ALL TRIBES', style: MM.displayX(size: 10, color: hex)),
+          ]),
+        ),
+        const SizedBox(height: 10),
+        GlassPanel(
+          leftAccentColor: hex,
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                MMChip(
+                    label: _TribesTabState.coreLabel(t.core), color: hex),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(t.name,
+                      style: MM.display(size: 16, color: Colors.white)),
+                ),
+                if (!t.isPublic)
+                  Icon(Icons.lock_outline,
+                      size: 14, color: Colors.white.withOpacity(0.4)),
+              ]),
+              const SizedBox(height: 6),
+              Text(t.description,
+                  style:
+                      MM.body(color: Colors.white.withOpacity(0.65), size: 12)),
+              const SizedBox(height: 10),
+              Row(children: [
+                Icon(Icons.group_outlined,
+                    size: 14, color: Colors.white.withOpacity(0.45)),
+                const SizedBox(width: 4),
+                Text('${t.memberCount}/${Tribe.maxMembers} members',
+                    style: MM.mono(
+                        size: 10, color: Colors.white.withOpacity(0.5))),
+                const Spacer(),
+                if (_joined)
+                  GestureDetector(
+                    onTap: widget.busy ? null : widget.onLeave,
+                    child: Text('LEAVE TRIBE',
+                        style: MM.displayX(
+                            size: 10, color: Colors.white.withOpacity(0.5))),
+                  )
+                else if (!t.isFull)
+                  GestureDetector(
+                    onTap: widget.busy ? null : widget.onJoin,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: hex.withOpacity(0.16),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: hex.withOpacity(0.5)),
+                      ),
+                      child: Text('JOIN',
+                          style:
+                              MM.displayX(size: 10, color: Colors.white)),
+                    ),
+                  ),
+              ]),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text('DISCUSSION',
+            style: MM.displayX(size: 10, color: Colors.white.withOpacity(0.5))),
+        const SizedBox(height: 8),
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+                child: CircularProgressIndicator(color: MM.teal)),
+          )
+        else if (_posts.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(
+                _joined
+                    ? 'No messages yet — start the conversation.'
+                    : 'No messages yet. Join to post.',
+                style: MM.body(color: Colors.white.withOpacity(0.4), size: 12)),
+          )
+        else
+          ..._posts.map((p) => _postRow(p, hex)),
+        if (_joined) ...[
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(
+              child: TextField(
+                controller: _composer,
+                style: MM.body(color: Colors.white, size: 13),
+                cursorColor: hex,
+                textCapitalization: TextCapitalization.sentences,
+                onSubmitted: (_) => _send(),
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: 'Message the tribe…',
+                  hintStyle:
+                      MM.body(color: Colors.white.withOpacity(0.4), size: 13),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.05),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 10),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide:
+                        BorderSide(color: Colors.white.withOpacity(0.15)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: hex),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: _send,
+              child: Container(
+                padding: const EdgeInsets.all(11),
+                decoration: BoxDecoration(
+                  color: hex.withOpacity(0.16),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: hex.withOpacity(0.5)),
+                ),
+                child: _sending
+                    ? SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: hex))
+                    : Icon(Icons.send, size: 14, color: hex),
+              ),
+            ),
+          ]),
+        ],
+      ],
+    );
+  }
+
+  Widget _postRow(TribePost p, Color hex) {
+    final mine = p.authorUid == widget.uid;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GlassPanel(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(mine ? 'You' : p.authorName,
+                style: MM.displayX(
+                    size: 10, color: mine ? hex : Colors.white.withOpacity(0.6))),
+            const SizedBox(height: 3),
+            Text(p.text, style: MM.body(color: Colors.white, size: 13)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Draft returned by the create-tribe sheet.
+class _TribeDraft {
+  const _TribeDraft(this.name, this.description, this.core, this.isPublic);
+  final String name;
+  final String description;
+  final String core;
+  final bool isPublic;
+}
+
+/// Bottom sheet to create a new tribe (name, description, Core focus, privacy).
+class _CreateTribeSheet extends StatefulWidget {
+  const _CreateTribeSheet();
+  @override
+  State<_CreateTribeSheet> createState() => _CreateTribeSheetState();
+}
+
+class _CreateTribeSheetState extends State<_CreateTribeSheet> {
+  final _name = TextEditingController();
+  final _desc = TextEditingController();
+  String _core = 'general';
+  bool _public = true;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _desc.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cores = <String>['general', ..._ideasCores.map((c) => c[0] as String)];
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: MM.navy,
+          border: Border(top: BorderSide(color: MM.teal, width: 2)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('NEW TRIBE', style: MM.displayX(size: 10, color: MM.teal)),
+            const SizedBox(height: 12),
+            _field('NAME', _name, 'e.g. Sunrise Runners'),
+            const SizedBox(height: 12),
+            _field('DESCRIPTION', _desc, 'What is this tribe about?'),
+            const SizedBox(height: 14),
+            Text('CORE FOCUS',
+                style: MM.displayX(size: 9, color: Colors.white.withOpacity(0.5))),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final c in cores)
+                  GestureDetector(
+                    onTap: () => setState(() => _core = c),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _core == c
+                            ? _TribesTabState.coreHex(c).withOpacity(0.2)
+                            : Colors.white.withOpacity(0.04),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: _core == c
+                                ? _TribesTabState.coreHex(c)
+                                : Colors.white.withOpacity(0.12)),
+                      ),
+                      child: Text(_TribesTabState.coreLabel(c),
+                          style: MM.displayX(size: 9, color: Colors.white)),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(children: [
+              Text('PUBLIC',
+                  style: MM.displayX(
+                      size: 10, color: Colors.white.withOpacity(0.6))),
+              const Spacer(),
+              Switch(
+                value: _public,
+                activeColor: MM.teal,
+                onChanged: (v) => setState(() => _public = v),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            MMPrimaryButton(
+              label: 'Create tribe →',
+              onPressed: () => Navigator.of(context).pop(
+                  _TribeDraft(_name.text, _desc.text, _core, _public)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _field(String label, TextEditingController ctrl, String hint) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: MM.displayX(size: 9, color: Colors.white.withOpacity(0.5))),
+        const SizedBox(height: 5),
+        TextField(
+          controller: ctrl,
+          style: MM.body(color: Colors.white, size: 13),
+          cursorColor: MM.teal,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: InputDecoration(
+            isDense: true,
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.05),
+            hintText: hint,
+            hintStyle: MM.body(color: Colors.white.withOpacity(0.35), size: 12),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.15)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.15)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: MM.teal),
+            ),
+          ),
         ),
       ],
     );

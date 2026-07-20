@@ -30,8 +30,10 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
 >   2026-07-18. **Cantina V1 STARTED** — Pillar 1 **Ideas Well DONE + FULLY DEVICE-VERIFIED 2026-07-20**
 >   (seeded feed + persisted upvotes + real click-to-adopt→Golden Habit/Resources, all cold-restart
 >   round-tripped). Needed a Firestore rule for shared `space_cantina_posts` (deployed via Rules REST API;
->   snapshot at `/firestore.rules`). **▶ NEXT: build Pillar 2 (Tribes + Accountability Partners) and
->   Pillar 3 (anti-shame Leaderboard) — see the #14 Cantina block below.** Pillar 4 (Arena) = V2/deferred.
+>   snapshot at `/firestore.rules`). **Pillar 2 Tribes DONE + Pixel-verified 2026-07-20** (Discover/Join/
+>   Leave/Create + tribe discussion feed, all cold-restart round-tripped; `tribes` collection + rule deployed).
+>   **▶ NEXT: Pillar 2b Accountability Partners (small), then Pillar 3 anti-shame Leaderboard.** Pillar 4
+>   (Arena) = V2/deferred.
 > **Verify on the PHYSICAL Pixel 6** (serial 19301FDF600F0S, `--target-platform android-arm64`); emulators
 > keep freezing their display. Pixel sleeps fast → `adb shell svc power stayon true`. Test uid
 > `aGFJOhlFG3Oz8wdRICmKabiNdU33` (credits balance now 65💎). Backend edits live in vf-bridge/functions-flutter
@@ -470,9 +472,22 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
       (short→full map worked), adopt count 1180→1181 + "✓ ADDED" **persist across restart**; (4) adopted the
       "Auto-transfer app" tech pick → `fetchAllMomentumLists` shows Resources List = ['Auto-transfer app · …'],
       distinct "SAVE TO RESOURCES" sheet. Both adopt paths + upvote all round-trip.
-    - [ ] **Pillar 2 — Tribes** (public/private, ≤20 members, ≤3 joined per player) + Accountability Partners
-      (1 active, daily/weekly cadence). Currently `_TribesTab` is mock threads. Collections per spec:
-      `tribes`, `tribe_posts`, `accountability_partners`.
+    - **[x] Pillar 2 — Tribes: DONE + FULLY DEVICE-VERIFIED 2026-07-20.** Replaced the mock `_TribesTab`
+      (squad-thread list) with real Space Tribes on direct Firestore. New `lib/services/tribes_service.dart`
+      (`Tribe`/`TribePost`/`TribesService`, top-level `tribes` collection + `tribes/{id}/posts` subcollection).
+      UI (`_TribesTab` stateful + `_TribeDetailView` + `_CreateTribeSheet` in sub_screens.dart): **My Tribes /
+      Discover** segments, **Join/Leave** (Firestore transaction on `memberUids`+`memberCount`; ≤20-member cap
+      via `TribeFullException`, ≤3-joined-per-player enforced client-side), **Create tribe** (name/description/
+      Core-focus chips/public toggle; creator = first member), and an in-place **tribe detail with a discussion
+      feed** (post → `addPost` → reload). Seeds 5 starter tribes (`tribe_seed_1..5`) on first empty load.
+      `memberCount` is a display/social-proof size; `memberUids` is real membership (NPC-vs-real split, like the
+      leaderboard crew). **🔐 Deployed a Firestore rule** for `tribes/{tribeId}` (+`/posts`) via the Rules REST
+      API (snapshot in `/firestore.rules`). **DEVICE-VERIFIED (Pixel 6):** Discover lists 5 seeded tribes;
+      joined Dawn Patrol → 14→15 members + "LEAVE" + My Tribes 0→1; opened detail, posted "Morning crew…" →
+      **cold restart round-tripped BOTH membership and the message**; created "Night Owls" → appears in My
+      Tribes at 1/20. **Accountability Partners** (1 active, daily/weekly cadence, `accountability_partners`)
+      is the remaining Pillar-2 sub-feature — deferred to a follow-up slice.
+    - [ ] **Pillar 2b — Accountability Partners** (1 active partner, daily/weekly cadence). Not yet built.
     - [ ] **Pillar 3 — Leaderboard** — `_LeaderboardList` already merges real `users` + demo crew by score;
       make it the multi-factor anti-shame board (60% momentum/planet/level + 25% ship + 15% achievements),
       recomputed 6h. NOTE: ship-upgrade weighting depends on 13d (blocked on [PLACEHOLDER] numbers).

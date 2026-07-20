@@ -110,5 +110,19 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+
+    /***** CANTINA Space Tribes (Pillar 2 — groups + discussion) *****/
+    match /tribes/{tribeId} {
+      // Public/private group tribes: any signed-in crew member can browse,
+      // join/leave (mutating memberUids), create and seed. V1 trust model.
+      allow read, write: if isSignedIn();
+
+      match /posts/{postId} {
+        // Tribe discussion feed. Immutable, never deleted.
+        allow read, create: if isSignedIn();
+        allow update, delete: if false;
+      }
+    }
+
   }
 }
