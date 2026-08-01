@@ -2,7 +2,7 @@
 
 **Prepared for:** Will Moore (client)
 **App:** Moore Momentum (plain‑Flutter rebuild)
-**Last updated:** 2026‑06‑30
+**Last updated:** 2026‑07‑22
 
 This document maps **every feature built so far** back to **your original specification documents**, quotes the exact passage each feature was built from, and shows a **screenshot of the working app**. The goal is a single place where you can see *what was built*, *why* (which of your docs drove it), and *that it works*.
 
@@ -19,6 +19,7 @@ All features are traced to the four specification files you provided in
 | B | **Gamification Mechanics Specs Reference (Pre‑PRD).docx** | Momentum Points, streaks, badges, Space Credits economy. |
 | C | **Product Design Rationale.docx** | The *why* behind the AI flagging + Core Balance enforcement. |
 | D | **Space Cantina – Social Component Of The MM System.docx** | The social hub (Cantina) gating + rollout. |
+| E | **MM Build Guide.docx** | The master 80‑feature MVP spec (WHAT/WHY per feature). Cross‑referenced feature‑by‑feature in `COMPLETION_PLAN.md`; used to confirm nothing in the MVP scope is untracked. |
 
 > **How to find a quote in your docs:** Word `.docx` files don't have stable page numbers, so each citation below gives the **section heading** + the **verbatim quoted text**. Open the document, use **Ctrl‑F**, and paste the quote to jump straight to it. For our internal traceability we also note the line number in the plain‑text extraction stored in `design/ref/_extracted/…`.
 
@@ -42,8 +43,23 @@ All features are traced to the four specification files you provided in
 | | #10 Streak system | ✅ Done |
 | | #11 Trophy Room from real formation | ✅ Done |
 | **M4** | #12 Profile screen real data | ✅ Done |
+| **M5 Space Credits** | #13a Space Credits ledger + earning (Set ①) | ✅ Done |
+| | #13g Dashboard Space Credits readout | ✅ Done |
+| | #13b–f leveling / planets / ship / mystery box / badges | 🔒 Blocked on your numbers |
+| **M6 Social & tools** | #14 Momentum Lists editing | ✅ Done |
+| | #14 Tasks screen (real to‑do) | ✅ Done |
+| | #14 Cantina V1 — Ideas Well | ✅ Done |
+| | #14 Cantina V1 — Space Tribes | ✅ Done |
+| | #14 Cantina V1 — Accountability Partners | ✅ Done |
+| | #14 Cantina — Leaderboard / Arena | ⏳ Next / V2 |
+| **Web** | Desktop web shell + Cockpit + secondary screens | ✅ Done |
+| **Mobile** | Journey stage on mobile (planet states at parity with desktop) | ✅ Done |
 
 The canonical living backlog is `COMPLETION_PLAN.md` in the project root.
+
+> **Platform note (2026‑07):** the **web / desktop build is now the primary shipping surface**. Every
+> feature below is verified in the browser as well as on device where noted; the desktop layouts live
+> in `web_screens.dart` behind a ≥900px responsive shell.
 
 ![Dashboard / cockpit](images/01-dashboard-cockpit.png)
 *The main cockpit (Screen 3.1). The rocket's 5 panels are the 5 Core Areas of Life; the phase pill shows whether the player is in Phase 1 (build) or Phase 2 (daily execution).*
@@ -219,19 +235,212 @@ The canonical living backlog is `COMPLETION_PLAN.md` in the project root.
 
 ---
 
+## M5 — Space Credits economy (the parts you've specified)
+
+The full gamified economy (leveling thresholds, planet journey, ship upgrades, Mystery Box odds, the
+badge library) is still **blocked on numbers only you can set** — those remain `[PLACEHOLDER]` in your
+Gamification doc and are listed in *"What's next."* But the **Space Credits earning loop** you *did*
+specify is now fully built and live.
+
+### #13a Space Credits ledger + earning ✅
+
+**What this is:** Space Credits (💎) are the app's spendable currency. There's now a real credits ledger, and the player **earns credits** on every qualifying weekday check‑in, on a perfect 5/5 Core, on habit formation, and at each streak milestone — all multiplied by their level rank.
+
+**Source — Document B (Gamification Mechanics Specs Reference)**, the Space Credits economy + the level‑rank multiplier, and the amounts you confirmed on 2026‑07‑07:
+
+> Base **10💎** per completed weekday check‑in · **+5💎** high‑score bonus when any Core scores 5/5 · **25💎** on habit formation · streak‑milestone credits **3/7/14/30/60/90/180/365 → 10/25/50/100/200/300/500/1000💎** · all × the level multiplier (Cadet 1× / Navigator 1.25× / Commander 1.5×) · plus the **25💎 Space Cantina welcome bonus** at Stage 2 completion.
+
+**Built:** a credits schema mirroring the points schema — `users/{uid}/credits/summary.total` + immutable `history` sub‑collection + a `users/{uid}.spaceCredits` mirror. `flutterAwardCheckinPoints` now awards the base 10💎 + 5💎 high‑score + the streak‑milestone credits (each × level multiplier, idempotent per day via deterministic history ids); `flutterSetHabitFormed` awards the 25💎 formation bonus once per habit; `flutterSaveMomentumMethods` awards the 25💎 Cantina welcome once. The one still‑undesigned amount — the **Balance bonus** — is left as a stub (surfaces "needs spec", never fabricated). **Verified:** curl‑verified across simulated weekdays (check‑in +15 = 10+5, streak day‑3 milestone +10, formation +25, all idempotent) and **device‑verified on the physical Pixel 6** (dashboard credits 25 → 65).
+
+![Web Cockpit with Space Credits](images/16-web-cockpit.jpg)
+*The desktop Web Cockpit (also the flagship web surface — see the Web section). "Flight Data" shows the real economy: Momentum Score 153, **Space Credits 90**, a 1‑day streak, and the active quest — all from the #13a ledger.*
+
+### #13g Dashboard Space Credits readout ✅
+
+**What this is:** The dashboard's top status bar now shows the player's live **Space Credits** balance, next to Planet, Score and Balance — matching your design mockups (`gam-05`, `phase-01`, `phase-03`), which all show credits in that bar.
+
+**Source — Document B / design‑reference images**, which show the cockpit status bar carrying 💎 Space Credits alongside the Momentum Score and Planet.
+
+**Built:** a `CREDITS · N 💎` readout added to the dashboard status bar, fed by the real `profile.spaceCredits` from the #13a ledger. **Device‑verified** on the physical Pixel 6 (shows "CREDITS · 25 💎").
+
+> **Note on placeholders:** the rest of #13 — the Cadet→Navigator→Commander leveling thresholds, the planet journey (MP per planet + arrival bonuses), ship upgrades (per‑tier credit costs **and** the rocket art assets, which don't exist yet), the Mystery Box odds, and the badge library — is **ready to wire the moment you confirm the numbers/assets.** Nothing there is guessed. See *"What's next."*
+
+---
+
+## M6 — Social hub & productivity tools
+
+### #14 Momentum Lists — now editable ✅
+
+**What this is:** The Command Center's Momentum Lists were read‑only; they're now fully editable. The player can add, edit and delete items in any list, and create brand‑new lists (with your 17 canonical Build‑Guide list names offered as suggestions).
+
+**Source — Document A**, the Command Center / Momentum Lists as the player's living workspace (the same Lists that Step 0 and Ideas Well read from) — a workspace the player must be able to curate.
+
+**Built:** the `ListsScreen` gained inline edit / delete / add‑item / create‑list, each an optimistic mutation with revert‑on‑failure. It persists by **reusing the already‑deployed `UpdateMomentumList` endpoint** (no new backend), keeping the offline cache in sync. **Device‑verified** on the physical Pixel 6: added → edited → deleted an item, and created a new "Values" list; `fetchAllMomentumLists` confirmed the round‑trip.
+
+![Momentum Lists on desktop web](images/18-web-lists.jpg)
+*The Command Center Lists on the desktop web build — the player's real 17‑list workspace (including the "Values" list created during verification and the "Resources List" that Ideas Well adopts write into). Expanding a list reveals its items for editing.*
+
+### #14 Tasks screen — real to‑do list ✅
+
+**What this is:** The Tasks screen was pure mock ("Q3 report draft"…). It's now a real, persistent to‑do list with three buckets — **Today / Tomorrow / Later** — supporting add, complete, edit, move‑between‑buckets and delete.
+
+**Source — Document A**, the Command Center's task/checklist surface for day‑to‑day execution (distinct from the habit system).
+
+**Built:** a new `TaskService` backed by direct Firestore at `/users/{uid}/tasks/{taskId}` (the same direct‑write pattern as check‑ins), with optimistic UI. **Points are deliberately NOT wired** — a per‑task MP reward is undesigned Phase‑2 economy (`[PLACEHOLDER]`), so nothing is fabricated. **Device‑verified** on the physical Pixel 6, including a **force‑stop + cold relaunch round‑trip** (task stayed in its bucket, still marked done).
+
+![Tasks on desktop web](images/17-web-tasks.jpg)
+*The real Tasks board on the desktop web build — three persistent buckets (Today / Tomorrow / Later) with add, complete (strikethrough + "N OPEN" count), edit, move and delete, all backed by Firestore.*
+
+### #14 Space Cantina V1 — the social hub goes real ✅
+
+Completing Stage 2 unlocks the Space Cantina (see #4). Its four‑tab hub used to be seeded mocks; three of the four pillars are now real, backed by Firestore.
+
+**Source — Document D (Space Cantina – Social Component)**, the V1 native rollout: Ideas Well (upvote + click‑to‑adopt), Space Tribes (≤20 members, ≤3 joined), Accountability Partners (one active, daily/weekly cadence), and the anti‑shame leaderboard — all under the doc's anti‑shame UI rules.
+
+**Built — Pillar 1 · Ideas Well:** a real community idea feed (`space_cantina_posts`) with **idempotent upvoting** and **click‑to‑adopt** — adopting a habit idea forges a real Golden Habit (and lights up its Core), a tech idea appends to the player's Resources List. Needed a new Firestore rule for the shared collection (deployed via the Rules REST API; snapshot saved at `/firestore.rules`). **Fully device‑verified** on the Pixel 6 — seeded feed loads, upvote and both adopt paths round‑trip across a cold restart.
+
+**Built — Pillar 2 · Space Tribes:** real tribes on a top‑level `tribes` collection with **My Tribes / Discover** segments, **Join/Leave** (≤20‑member cap, ≤3‑joined limit), **Create tribe**, and an in‑tribe **discussion feed**. **Fully device‑verified** — joined a tribe, posted a message, created a tribe; membership and message both survived a cold restart.
+
+**Built — Pillar 2b · Accountability Partners:** one active partner with daily/weekly cadence, stored at `users/{uid}/accountability/active` (under the player's own doc → no new Firestore rule needed). Pair with a buddy → **check in** (gated once per cadence period) → **end partnership** (frees the slot). V1 pairs with a curated NPC crew (same NPC‑vs‑real honesty as the leaderboard); real 2‑way matching is a V2 cloud function. **Browser‑verified end‑to‑end** on the web (the primary surface): pair → check‑in → cold reload + re‑login round‑trip → end. The cadence due‑date logic is unit‑tested **9/9** (`test/accountability_pairing_test.dart`).
+
+**Still open:** Pillar 3 (anti‑shame Leaderboard — the multi‑factor 60/25/15 board recomputed every 6h; its ship‑upgrade weighting depends on the blocked #13d numbers) and Pillar 4 (Weekly Competitions / Arena — explicitly V2/deferred).
+
+![Cantina Ideas Well](images/19-web-cantina-ideas.jpg) ![Cantina Tribes & Accountability](images/20-web-cantina-tribes.jpg)
+*The Space Cantina on desktop web. Left: the Leaderboard + Ideas Well (real community tips with upvote counts). Right: the same hub scrolled to the Accountability Partner panel ("Find a Partner") and Your Tribes — 3 real joined tribes (Dawn Patrol / Deep Work Guild / Night Owls) each with Leave, plus the anti‑shame Leaderboard where the player sits at their real 153 momentum among the crew.*
+
+---
+
+## Web — desktop is now the primary product ✅
+
+**What this is:** Moore Momentum now ships a proper **desktop web experience**, not a stretched phone screen. At ≥900px the app renders a desktop shell (persistent left sidebar + top bar) around a flagship **Web Cockpit** built on the player's real data, plus desktop layouts for the secondary screens.
+
+**Source — product direction (2026‑07):** the web/desktop surface is the main shipping product; the desktop UI is designed distinctly from the mobile UI rather than reused.
+
+**Built:** a responsive `WebShell` (sidebar + topbar) that engages at ≥900px and caps content width on ultra‑wide screens; a `WebCockpit` on the real profile/check‑in data; and desktop variants of the secondary screens (including a `WebCantina` with the Accountability Partner section). Several web‑specific fixes shipped alongside — non‑blocking startup notification init so a fresh browser paints immediately, a dark page background to avoid white flashes on resize, and Co‑Pilot layout/icon corrections. **Browser‑verified** via the running dev server and claude‑in‑chrome. The flagship desktop layout is the **Web Cockpit shown in the Space Credits section above** — a persistent left sidebar (Cockpit / Routines / Habits / Tasks / Lists / Cantina / Trophy) around a three‑column mission‑control cockpit; the Tasks, Lists and Cantina screenshots above are all this same desktop web build.
+
+---
+
+## Mobile — planet states brought to parity with the Cockpit ✅
+
+**What this is:** the phone build could show *where* the player was (a small journey arc at the bottom of
+the dashboard) but none of the **planet‑state functionality** the desktop Cockpit's centre stage has. The
+mobile dashboard now runs that same stage.
+
+**Source — gap reported 2026‑07‑29:** "mobile view is missing all the functionality to view the planet states."
+
+**Built:** the mobile Rocket Dashboard's hero is now the shared `JourneyStage` (replacing the static
+`RocketWidget` **and** the bottom `JourneyArc`), in a new `compact` mode:
+
+- **Zoomed in it is the cockpit rocket** — the same tappable Cores, at‑risk badges and streak, so nothing
+  from the old dashboard is lost.
+- **Planet rail** down the **left** edge — the whole Earth → Station route with each stop marked
+  *visited · current · locked*; tapping one **replays that arrival** (the rail keeps the player's real
+  position — a replay is a preview, never a move).
+- **Zoom control** beside it flies between the cockpit and the whole route without leaving the dashboard;
+  on touch the route also **pinches**.
+- **Arrival cinematic** now plays on mobile when the player reaches a new planet — pull back, cruise the
+  leg, land with touchdown dust, then the hull peels open back onto the cockpit. Persisted per planet, so
+  a refresh never replays it.
+- **Warp starfield** — the stage publishes its star speed to the page's `MovingStarfield`, so the stars
+  streak during a leg and settle to idle drift when parked.
+- The **Daily Check‑in** pill and the **Co‑Pilot** now share one line beneath the stage (the Co‑Pilot no
+  longer floats over the rocket).
+
+**Also built:** a full‑screen **Journey Map** (`journey_page.dart`) for the same route with a vertical
+control rail (back · NOW / NEXT / TO NEXT readouts · zoom · the state of the stop being shown), reachable
+from the dashboard's PLANET readout and the menu drawer. On desktop that route redirects to the Cockpit,
+which already *is* the journey stage.
+
+**Shared‑widget changes:** `JourneyStage` gained `compact` (phone‑sized rail/zoom metrics), `controlsOnLeft`
+(rail + zoom on the left so the right edge stays free), an optional external `zoomController` so a host can
+place the zoom control itself, pinch‑to‑zoom, and an `onDockedChanged` callback. The desktop Cockpit's use
+of it is unchanged.
+
+**Verification:** analyzer‑clean; run in the browser at phone width against the dev server. The release
+web bundle (`build/web`) was rebuilt on top of these changes.
+
+---
+
+### Parabolic flight path (client change, 2026‑08‑01)
+
+**What this is:** the rocket flew every leg as a **straight vertical line** up a single lane. The client
+asked for the route to curve. Only the flight path changed — the hull reveal, cockpit dashboard, planet
+rail, zoom control and warp starfield are untouched.
+
+**Source:** the client‑approved prototype is the **project‑root `Rocket Journey.html`** in the claude.ai
+design project (`019e1281‑94ae‑723b‑997d‑a45b175e35fc`). ⚠️ The bundled
+`design_handoff_rocket_journey/README.md` is **out of date** — it still documents the straight‑line route,
+a 1600‑wide world and "legs are straight vertical lines, so a simple lerp is enough", and it has no `dx`
+column at all. Use the root prototype for route geometry; the README is still correct for timings, hull
+bounding boxes and the dashboard overlay tables.
+
+**Built** (all in `lib/widgets/momentum/journey_stage.dart`):
+
+- **World widened 1600 → 2000**, lane centre 800 → 1000. Planets are now **staggered** left and right of
+  the lane via a new per‑stop `dx` (earth 0 · moon +360 · mars −340 · jupiter +380 · saturn −300 ·
+  pluto +360 · station 0); Earth and the Station stay centred.
+- **`JourneyLeg`** — each leg is a **quadratic bezier** whose control point bows `kBow = 330` to one side,
+  **alternating by leg index**, giving the route its S‑sweep.
+- **The nose follows the curve's tangent** (`atan2` → degrees, 0° upright), so the rocket leans into the
+  arc on liftoff and **straightens to upright as it lands**. Rotation pivots at 50% / 88% of the sprite —
+  near the engine — so the nose swings rather than the whole body sliding.
+- **Camera gained a focus‑x.** `_Cam` now carries `fx`; `landedCam` focuses the planet's own centre and
+  `_camPin` lerps focus x across the zoom beats. Previously the transform hard‑coded the lane.
+- **Leg framing spans the arc, not the planets.** The bow carries the rocket outside both bodies, so
+  `_legCam` fits the curve's true horizontal extent (via the quadratic's x‑extremum) plus the rocket's
+  half‑width — otherwise the rocket flies off the side of the ~500 px Cockpit panel mid‑cruise.
+- **The drawn trajectory** is now a dashed **bezier** matching the flown path, walked with `PathMetrics`
+  (a curve can't be dashed by stepping a straight direction vector). Completed legs stay teal.
+- Planet **labels** now centre on each body rather than the world, since the bodies are off‑lane.
+
+Unchanged by design: three‑beat timing (1000 / 2600 × 0.88^i / 1500 ms), `easeInOutCubic` + `easeOutCubic`,
+geometric scale blending, screen‑position pinning, touchdown dust, hull reveal depth and frames, the planet
+rail, the zoom bar, and the warp starfield.
+
+**Verification:** analyzer‑clean (0 errors); `flutter build web --release` succeeds. Verified visually in
+Chrome against a release build — staggered planets, dashed arcs bowing alternately, the rocket rotated
+mid‑cruise following the tangent, straightening upright on touchdown, and the hull reveal playing after
+arrival exactly as before.
+
+**Also fixed:** `lib/services/notification_service.dart:16` carried an uncommitted stray `i` after
+`NotificationService._();` that broke the build outright (two analyzer errors). Removing it restores the
+file to its committed content.
+
+---
+
 ## 3. Engineering notes (for your technical reviewer)
 
-- **Backend isolation:** all new cloud functions live in the **Flutter‑only** functions codebase (`vf-bridge/functions-flutter`), never in the FlutterFlow `index.js`. New endpoints added this phase: `flutterSavePhase1State`, `flutterSaveMomentumMethods`, `flutterFlagGoldenHabit` (client wiring), `flutterAwardCheckinPoints`, plus read endpoints `flutterGetUserProfile` / `flutterGetGoldenHabits` / `flutterSyncOnboarding`.
+- **Backend isolation:** all new cloud functions live in the **Flutter‑only** functions codebase (`vf-bridge/functions-flutter`), never in the FlutterFlow `index.js`. Cloud endpoints added across the build: `flutterSavePhase1State`, `flutterSaveMomentumMethods`, `flutterFlagGoldenHabit` (client wiring), `flutterAwardCheckinPoints` (points **and** streak **and** Space Credits in one transaction), `flutterSetHabitFormed` (formation + 25💎), plus read endpoints `flutterGetUserProfile` / `flutterGetGoldenHabits` / `flutterSyncOnboarding`.
 - **Points schema:** `users/{uid}/points/summary.total` is the source of truth for `momentumScore`, mirrored to `users/{uid}.points`, with an immutable `history` sub‑collection of awards.
-- **Verification:** every feature was exercised on a real device/emulator and, where it touches the backend, confirmed against the live endpoints. Two effects need multi‑day history to trigger live (the #7 auto‑flag and #8 5‑day alert); their UI and persistence are verified, and the day‑counting logic is covered — they simply can't be "clicked" without several calendar days of data.
+- **Credits schema (#13a):** parallels the points schema — `users/{uid}/credits/summary.total` (source of truth for `spaceCredits`) + immutable `history` sub‑collection + a `users/{uid}.spaceCredits` mirror. Credit awards are idempotent via deterministic history‑doc ids (`checkin_<date>`, `highscore_<date>`, `streak_<date>`, `formed_<habitId>`).
+- **Direct‑Firestore features (#14):** Tasks (`users/{uid}/tasks/*`), Cantina Ideas Well (`space_cantina_posts` + `users/{uid}/cantina/*`), Space Tribes (`tribes/*` + `tribes/{id}/posts`), and Accountability Partners (`users/{uid}/accountability/active`) write directly to Firestore (no cloud function), the same pattern as check‑ins. The two shared top‑level collections (`space_cantina_posts`, `tribes`) each needed a Firestore security rule, deployed via the Rules REST API; the full ruleset snapshot lives at `/firestore.rules`. The owner‑scoped collections (tasks, accountability) are already covered by the `users/{uid}/{document=**}` rule.
+- **Web build:** the desktop layouts live in `web_screens.dart` behind a responsive `WebShell` (≥900px). New backend was not required for the web build — it renders the same real data as mobile.
+- **One background everywhere (browser fix):** every screen's starfield `Stack` now uses `fit: StackFit.expand` — Scaffold hands its body *loose* height constraints, so on short pages (sign‑up / sign‑in) the Stack shrank to its content and left a black band of page background below the fold. On desktop the starfield is now painted **once**, full‑bleed, by `WebCenteredFlow`; screens inside it find a `WebFlowScope` and render transparently over it (previously the centred phone‑width column repainted its own starfield and read as a brighter stripe). The intro carousel still tints that shared starfield per page via the scope's accent.
+- **Verification:** every feature was exercised on a real device/emulator or in the browser and, where it touches the backend, confirmed against the live endpoints (many via a cold‑restart round‑trip). Effects that need multi‑day history to fire live (the #7 auto‑flag, #8 5‑day alert, auto habit‑formation) have their UI, persistence and day‑counting logic verified — they simply can't be "clicked" without several calendar days of data.
 
 ---
 
 ## 4. What's next
 
-The core product loop (#1–#12) is complete. What remains are the two large **deferred** buckets — both **blocked on decisions/numbers from you**:
+The core product loop (#1–#12), the **Space Credits earning loop** (#13a/#13g), the **productivity tools**
+(Lists editing + Tasks), and **three of the four Cantina pillars** (Ideas Well, Tribes, Accountability
+Partners) are all built and verified. What remains splits into work that's ready and work that's **blocked
+on decisions/numbers only you can provide**:
 
-- **Gamified economy** — Space Credits ledger, the Cadet → Navigator → Commander leveling thresholds, the planet journey + alien guides, ship upgrades, the Mystery Box, and the badge library. **Nearly every threshold is marked `[PLACEHOLDER — DETAIL NEEDED]` in your Gamification doc** (e.g. how many formed habits / what streak to reach Navigator, credit amounts per milestone, Mystery Box odds). These are ready to build the moment you confirm the values.
-- **Full Space Cantina + Lists editing + Tasks** — the social hub (MVP Reddit bridge → native Tribes / Ideas Well / Leaderboards), making Momentum Lists editable, and wiring the Tasks screen.
+**Ready to build now:**
+- **Cantina Pillar 3 — anti‑shame Leaderboard** (the multi‑factor 60% momentum / 25% ship / 15% achievements board, recomputed every 6h). *Caveat: the ship‑upgrade weighting depends on the #13d ship numbers below.*
 
-*All screenshots in `./images/` were captured from the working app during this build.*
+**Blocked on your input (`[PLACEHOLDER — DETAIL NEEDED]` in your Gamification doc):**
+- **#13b Leveling** — the Cadet → Navigator → Commander thresholds (formed‑habits / planet / streak per transition).
+- **#13c Planet journey** — MP per planet, arrival bonus credits, regression threshold.
+- **#13d Ship upgrades** — per‑tier credit costs **and** the rocket art assets (the 12 functional variants don't exist yet — this is asset production, not just numbers).
+- **#13e Mystery Box** — the exact drop rate (you specified a 10–15% range; pick one).
+- **#13f Badge / Trophy library** — the full badge list (names / criteria / rarity), which also fills the Trophy Room "Achievements" tab.
+- **#13h Skip‑Check‑in purchase** — the skip‑day options + credit costs (surfaced by your `gam‑09` mockup).
+- The **Space Credits Balance bonus** amount (the only earning source still undesigned).
+
+**Explicitly deferred (V2):** Cantina Pillar 4 — Weekly Competitions / Arena.
+
+*All screenshots in `./images/` were captured from the working app during this build — #1–#12 on a
+physical Pixel 6 / emulator, and #13 / #14 / web from the desktop web build in‑browser (signed in as a
+real account) on 2026‑07‑22.*
