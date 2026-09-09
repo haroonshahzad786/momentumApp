@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "590666654018",
+    "firebase_url": "https://momentum-2020n.firebaseio.com",
+    "project_id": "momentum-2020n",
+    "storage_bucket": "momentum-2020n.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:590666654018:android:527761f2bdc5fc3c2828db",
+        "android_client_info": {
+          "package_name": "com.momentum"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "590666654018-2odrnhq81r74dmg7ce3tqpaek9qtc353.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4VfTPiv09TyLnBBvHiA02h7D5he4w3xA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "590666654018-2odrnhq81r74dmg7ce3tqpaek9qtc353.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "590666654018-7bdr55o63rr5jnmd19jvr4lj1beq5a1g.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "co.coderio.5lc"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

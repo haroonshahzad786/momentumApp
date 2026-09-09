@@ -1,0 +1,75 @@
+version: '3'
+
+volumes:
+  production_traefik: {}
+  local_postgres_data: {}
+  local_postgres_data_backups: {}
+
+services:
+  django: &django
+    image: registry.gitlab.com/coderio/backend/5corelife:$CI_COMMIT_SHORT_SHA
+    depends_on:
+      - redis
+    command: /start
+    environment:
+      - POSTGRES_HOST
+      - POSTGRES_PORT
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - REDIS_URL
+      - DATABASE_URL
+      - CELERY_BROKER_URL
+      - CELERY_FLOWER_USER
+      - CELERY_FLOWER_PASSWORD
+      - DJANGO_SETTINGS_MODULE
+      - DJANGO_ADMIN_URL
+      - DJANGO_AWS_ACCESS_KEY_ID
+      - DJANGO_AWS_SECRET_ACCESS_KEY
+      - DJANGO_AWS_STORAGE_BUCKET_NAME
+      - DJANGO_AWS_S3_REGION_NAME
+      - DJANGO_SECRET_KEY
+      - SENTRY_DSN
+      - SENTRY_ENVIRONMENT
+      - FMC_TOKEN
+      - SENGRID_TOKEN
+      - DJANGO_DEFAULT_FROM_EMAIL
+
+  traefik:
+    build:
+      context: .
+      dockerfile: ./compose/production/traefik/Dockerfile
+      args:
+      - WEB_DOMAIN=${HOSTNAME}
+      - FLOWER_DOMAIN=${FLOWER_HOSTNAME}
+    image: api_momentum_traefik
+    depends_on:
+      - django
+    volumes:
+      - production_traefik:/etc/traefik/acme
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
+      - "0.0.0.0:5555:5555"
+    environment:
+      - HOSTNAME
+      - FLOWER_HOSTNAME
+
+  redis:
+    image: redis:5.0
+
+  celeryworker:
+    <<: *django
+    image: registry.gitlab.com/coderio/backend/5corelife:$CI_COMMIT_SHORT_SHA
+    command: /start-celeryworker
+
+  celerybeat:
+    <<: *django
+    image: registry.gitlab.com/coderio/backend/5corelife:$CI_COMMIT_SHORT_SHA
+    command: /start-celerybeat
+
+  flower:
+    <<: *django
+    image: registry.gitlab.com/coderio/backend/5corelife:$CI_COMMIT_SHORT_SHA
+    command: /start-flower

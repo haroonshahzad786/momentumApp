@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "6676392550",
+    "project_id": "corelife-ddad6",
+    "storage_bucket": "corelife-ddad6.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:6676392550:android:6af81bbd4a440f7270dba7",
+        "android_client_info": {
+          "package_name": "com.momentum"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "6676392550-vleov29boe9pe3tro6d4d6d75eguj06p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD_HSjdgP5I1O4CFiGemO1AaIofvtMNByg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "6676392550-vleov29boe9pe3tro6d4d6d75eguj06p.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "6676392550-fna34jjg192897sgqrlnpt1jkh0sdrvu.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.5corelife.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,29 @@
+version: '3'
+
+volumes:
+  test_postgres_data: {}
+  test_postgres_data_backups: {}
+
+services:
+  django: &django
+    build:
+      context: ..
+      dockerfile: compose/local/django/Dockerfile
+    image: api_momentum_test_django
+    depends_on:
+      - postgres
+    env_file:
+      - ../.envs/.local/.django
+      - ../.envs/.local/.postgres
+    command: /start
+
+  postgres:
+    build:
+      context: ..
+      dockerfile: compose/local/postgres/Dockerfile
+    image: api_momentum_test_postgres
+    volumes:
+      - test_postgres_data:/var/lib/postgresql/data
+      - test_postgres_data_backups:/backups
+    env_file:
+      - ../.envs/.local/.postgres

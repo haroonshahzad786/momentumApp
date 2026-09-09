@@ -1,0 +1,72 @@
+stages:
+  - lint
+  - build
+  - deploy
+
+flake8:
+  stage: lint
+  image: python:3.8-alpine
+  before_script:
+    - pip install -q flake8
+  script:
+    - flake8
+  only:
+    - master
+    - develop
+    - staging
+    - merge_requests
+
+build:
+  image: docker:18.03.0
+  stage: build
+  services:
+    - docker:dind
+  environment:
+    name: "$CI_COMMIT_REF_SLUG"
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+  script:
+    - docker build -f compose/production/django/Dockerfile --rm --compress --pull -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA" .
+    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+  after_script:
+    - docker logout "$CI_REGISTRY"
+  only:
+    - master
+    - staging
+    - develop
+    - ci
+
+deploy:
+  image: registry.gitlab.com/coderio/infra/compose-in-docker:master
+  stage: deploy
+  services:
+    - docker:dind
+  variables:
+    COMPOSE_PROJECT_NAME: "5cl"
+  environment:
+    name: "$CI_COMMIT_REF_SLUG"
+  before_script:
+    - mkdir -p ~/.ssh
+    - cp $SSH_DEPLOY_KEY ~/.ssh/id_rsa
+    - cp $SSH_DEPLOY_KEY_PUB ~/.ssh/id_rsa.pub
+    - chmod 600 ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa.pub
+    - ssh-keyscan -H -t rsa $DEPLOY_ADDRESS >> ~/.ssh/known_hosts
+    - docker context create $DOCKER_CONTEXT_NAME --docker "host=ssh://$DOCKER_DEPLOY_USER@$DEPLOY_ADDRESS" --default-stack-orchestrator swarm
+    - docker --context $DOCKER_CONTEXT_NAME login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+  script:
+    - docker-compose --context $DOCKER_CONTEXT_NAME -f $COMPOSE_FILE pull
+    - docker-compose --context $DOCKER_CONTEXT_NAME -f $COMPOSE_FILE down --rmi local --remove-orphans
+    - docker-compose --context $DOCKER_CONTEXT_NAME -f $COMPOSE_FILE up -d --build
+    - docker --context $DOCKER_CONTEXT_NAME exec 5cl_django_1 python /app/src/manage.py migrate
+    - docker --context $DOCKER_CONTEXT_NAME exec 5cl_django_1 python /app/src/manage.py collectstatic --noinput
+
+  after_script:
+    - docker --context $DOCKER_CONTEXT_NAME logout $CI_REGISTRY
+    - rm -f ~/.ssh/id_rsa
+    - rm -f ~/.ssh/id_rsa.pub
+  only:
+    - master
+    - staging
+    - develop
+    - ci
