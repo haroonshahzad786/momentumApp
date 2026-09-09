@@ -2,7 +2,7 @@
 
 **Prepared for:** Will Moore (client)
 **App:** Moore Momentum (plain‑Flutter rebuild)
-**Last updated:** 2026‑07‑22
+**Last updated:** 2026‑08‑03
 
 This document maps **every feature built so far** back to **your original specification documents**, quotes the exact passage each feature was built from, and shows a **screenshot of the working app**. The goal is a single place where you can see *what was built*, *why* (which of your docs drove it), and *that it works*.
 
@@ -54,6 +54,7 @@ All features are traced to the four specification files you provided in
 | | #14 Cantina — Leaderboard / Arena | ⏳ Next / V2 |
 | **Web** | Desktop web shell + Cockpit + secondary screens | ✅ Done |
 | **Mobile** | Journey stage on mobile (planet states at parity with desktop) | ✅ Done |
+| **Co‑Pilot** | Console layout — text on the cockpit screen, images play as a take‑over | ✅ Done (parallel page, awaiting your pick) |
 
 The canonical living backlog is `COMPLETION_PLAN.md` in the project root.
 
@@ -405,6 +406,126 @@ arrival exactly as before.
 **Also fixed:** `lib/services/notification_service.dart:16` carried an uncommitted stray `i` after
 `NotificationService._();` that broke the build outright (two analyzer errors). Removing it restores the
 file to its committed content.
+
+---
+
+### Co‑Pilot console — text on the cockpit screen (client change, 2026‑08‑03)
+
+**What this is:** the Co‑Pilot (Nova) reply arrives in two parts — text and images. Until now the page
+stacked them: image stage on top (≈40% of the screen), transcript underneath, input bar at the bottom.
+The client asked for a different split, so this is a **second, parallel page** — the original is untouched
+and still on disk, so the two can be compared before one is dropped.
+
+**Built** — `lib/screens/copilot_console_page.dart` (`CopilotConsolePage`), new file:
+
+- **Text lives inside the cockpit monitor.** The screen art `design/ref/pagewise/6/mantra.png` is now
+  `assets/images/mantra.png`, drawn at its true aspect (1174×2390) with the transcript positioned on the
+  glass. The glass rect was measured off the PNG (x 0.089→0.908, y 0.143→0.967) and the content inset
+  inside it so text clears the large corner radius.
+- **The status band is reserved.** The art draws two curved teal rules across the top of the glass; the
+  status line (`NOVA · ONLINE`) sits between them and nothing else is drawn in that band — the transcript
+  starts below the lower rule. Both rules bow, so the band is measured at its tightest (upper rule as low
+  as y 0.187 at the edges, lower rule as high as y 0.279 at centre).
+- **The monitor hangs from the top of the screen.** Its cable has to reach the top edge to read as
+  hanging, so the artwork is top‑aligned (spare height goes below it, never above) and the `CO‑PILOT /
+  Nova` title floats over the empty space beside the cable instead of pushing the whole rig down.
+- **One input bar** directly under the monitor — a dark console pill (`_ConsoleInputBar`, local to the
+  page so the original page keeps its light `ChatInputBar` unchanged).
+- **Images take the screen over instead of sharing it.** When a reply carries images the console is
+  hidden, the frames play full‑bleed in order (cross‑fade between frames), and when the last frame has had
+  its turn the page fades back to the console — where the reply's text is already waiting in the
+  transcript. Tap anywhere, or the SKIP control, to end it early; a dead image URL falls back to the
+  rocket art rather than stranding the player on a blank screen.
+- Bubbles are re‑styled for black glass (translucent teal / violet with a `NOVA` / `YOU` label) — the
+  original page's white pills glared against the dark screen.
+
+**Unchanged:** the backend contract. Same `ChatService`, same three Voiceflow‑backed endpoints
+(`vfLaunchConversation` / `vfSendMessage` / `vfGetLatestMessages`), same offline cache and banner. Only
+presentation moved.
+
+**Unlinked, not deleted:** every Co‑Pilot entry point (`momentum_home.dart` `_openChat`, used by the
+Dashboard FAB, the web sidebar button and the menu drawer, plus `welcome_page.dart`) now opens
+`CopilotConsolePage`. `lib/screens/ai_chat_page.dart` is still in the repo, marked as unlinked at the top
+of the file — swapping the import in `momentum_home.dart` back restores it.
+
+![Co‑Pilot console](images/21-copilot-console.png)
+*The transcript on the cockpit glass, the monitor hanging from the top of the screen. The status line is
+alone in the band between the two teal rules; the type bar sits directly under the monitor.*
+
+![Co‑Pilot animation take‑over](images/22-copilot-animation.png)
+*A reply carrying images hides the console and plays the frames full‑bleed (dots show the position in the
+sequence, SKIP ends it early); the console fades back when the last frame is done.*
+
+**Verification:** analyzer‑clean (0 errors, no new warnings). Run in Chrome against the dev server at
+phone width (430×900) and desktop width (1440×900): text framed on the glass at both, the status line
+centred in its band, a 3‑frame sequence taking the screen over and handing it back to the console
+automatically.
+
+**Fix (2026‑08‑10): Nova's markdown now renders as formatting.** The agent writes its replies in light
+markdown — `**The Law of Environment Design:**`, `*"Connect before you correct."*` — and the console was
+printing the asterisks literally. Text between `**` is now **bold** and text between single `*` is
+*italic*, with the markers removed. Anything unmatched (a stray `*`, an unclosed `**`, a multiplication
+sign) is left exactly as the agent wrote it, and emphasis can't run across a line break, so one loose
+asterisk can never bold the rest of a reply. Underscores are deliberately untouched — they appear in ids,
+urls and the agent's `>___` divider lines. Implemented as `lib/widgets/momentum/chat_markdown.dart`
+(`ChatMarkdownText`), used by the transcript on the glass and by the chat panel that opens over an image
+sequence. Covered by `test/chat_markdown_test.dart` — **9/9 passing**.
+
+**Fix (2026‑08‑10): the transcript came back at the top of the history.** When an image sequence finished
+and handed the screen back, the player was returned to the *oldest* message and had to scroll down to find
+their place. The page's `AnimatedSwitcher` swaps the whole console out for the animation, so the transcript
+widget is rebuilt from scratch on the way back — and it only scrolled in response to *new messages*, never
+on mount, leaving the fresh list at offset 0. It now pins to the newest message on mount (a jump, not an
+animated scroll — animating a first paint reads as the screen scrolling by itself), settles once more a
+frame later for late text reflow, and re‑settles after the new‑message scroll in case a reply is still
+growing while it animates. Verified in Chrome: a cold open of the Co‑Pilot lands on the last message.
+
+---
+
+### Celebrating points (client change, 2026‑08‑10)
+
+**What this is:** points were landing silently. Every award now gets a celebration — a confetti burst and
+a "+N MP" badge that pops in over whatever screen the player is on.
+
+**The Voiceflow path needed no new backend.** Nova already calls two FlutterFlow‑side endpoints when it
+awards points, and between them they carry everything the celebration needs:
+
+- `updateUserPoints({ userId, type: "Pain Points", points: 10 })` → writes the award to the points ledger
+  (`users/{uid}/points/summary/history`) and bumps the running total.
+- `handleVoiceflowEvent({ userId, eventName: "CELEBRATION" })` → merges one doc per player at
+  `vf_events/{uid}` = `{ eventName, status, payload, eventCount }`.
+
+The app **snapshot‑listens** to that event doc (real‑time, not polling), keys replay off `eventCount`, and
+reads the newest ledger entry for the amount and label — so the badge shows the agent's real award
+("+10 MP · PAIN POINTS"), never a fabricated number. If the ledger read comes back empty or stale the
+confetti still plays, without a figure. The `vf_events` rule is read‑only to clients, so "already
+celebrated" is remembered on the device rather than written back — **no Firestore rules change was needed**,
+and the first read after a fresh login only sets a baseline, so opening the app never replays an old
+celebration.
+
+**Built** — `lib/widgets/momentum/confetti_overlay.dart` (`ConfettiOverlay`, a hand‑rolled particle
+painter — no new dependency, and it renders identically on the web build; plus `PointsPopBadge`),
+`lib/widgets/momentum/celebration_host.dart` and `lib/services/celebration_service.dart`. The host is
+mounted once in `momentum_home.dart` and draws into the **root overlay**, so the burst appears over pushed
+routes (the Co‑Pilot console) as well as the cockpit screens. The award moments that don't raise a
+Voiceflow event are wired directly: the Daily Check‑In recap (`earnedToday`, bigger burst on a streak
+milestone), the Stage 2 "Momentified / Cantina unlocked" screen (+50 MP) and the Stage 1 Command Center
+unlock. A shared claim‑window stops the Voiceflow burst and the HHS achievement card from firing twice for
+the same award.
+
+**Verification:** analyzer‑clean. Verified live in Chrome on the logged‑in account: posting a real
+`updateUserPoints` + `handleVoiceflowEvent` pair produced confetti over the Cockpit with the matching
+badge — "+10 MP · PAIN POINTS", and again "+25 MP · KEYSTONE FORGER". **Bug found and fixed during that
+verification:** the first attempt painted nothing at all — an `OverlayEntry` is laid out with *loose*
+constraints, so the burst's `Stack` of `Positioned.fill` children collapsed to zero size; the entry now
+returns `Positioned.fill` as its root. (The in‑page bursts were never affected — their stacks get tight
+constraints from the surrounding scaffold.)
+
+**Open item for the client:** `handleVoiceflowEvent` rejects a call without the shared `secret` (verified
+by curl — `{"ok":false,"error":"Invalid secret"}`). The agent step as written passes only
+`userId`/`eventName`/`status`, so please confirm the Voiceflow API block sends the secret too, otherwise no
+event doc is ever written and the celebration can't fire. (`status` in that call is ignored — the function
+always writes `"New"` itself.)
 
 ---
 

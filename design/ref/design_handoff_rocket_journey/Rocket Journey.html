@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rocket Journey — Zoom Cinematic Prototype</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+html,body{height:100%;overflow:hidden}
+#root{height:100vh}
+a{color:var(--mm-blue)}a:hover{color:#4d9bff}
+.rj-stage{position:relative;width:100%;height:100%;overflow:hidden;background:#02030a;cursor:grab}
+.rj-neb{position:absolute;inset:0;pointer-events:none;background:radial-gradient(900px 620px at 22% 18%,rgba(88,60,190,.34),transparent 68%),radial-gradient(1000px 700px at 82% 72%,rgba(0,120,150,.26),transparent 70%),radial-gradient(700px 500px at 62% 12%,rgba(190,60,120,.18),transparent 72%),radial-gradient(ellipse at 50% 45%,#0a1030 0%,#06070d 58%,#02030a 100%);z-index:0}
+.rj-orbits{position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.5}
+.rj-orbits i{position:absolute;left:50%;top:50%;border:1px solid rgba(160,190,255,.13);border-radius:50%;transform:translate(-50%,-50%) rotate(-14deg)}
+.rj-starfield{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.rj-stage.flying{cursor:pointer}
+.rj-world{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform}
+.rj-planet{position:absolute;border-radius:50%;transform:translate(-50%,-50%)}
+.rj-label{position:absolute;transform:translate(-50%,0);font-family:var(--f-display,inherit);font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:rgba(241,241,241,.75);text-align:center;white-space:nowrap}
+.rj-pad{position:absolute;transform:translate(-50%,0);border-radius:10px;background:linear-gradient(180deg,#3a4666,#1a2138);border:1px solid rgba(241,241,241,.25);box-shadow:0 0 24px rgba(42,125,225,.35),inset 0 2px 0 rgba(241,241,241,.18)}
+.rj-pad::after{content:'';position:absolute;left:12%;right:12%;top:5px;height:3px;border-radius:2px;background:linear-gradient(90deg,transparent,rgba(255,198,41,.9),transparent);animation:rj-padlight 2s ease-in-out infinite}
+@keyframes rj-padlight{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes mm-plume{0%,100%{transform:translateX(-50%) scaleY(1)}50%{transform:translateX(-50%) scaleY(1.18)}}
+@keyframes rj-puff{0%{transform:translate(-50%,-50%) scale(.2);opacity:.9}100%{transform:translate(-50%,-50%) scale(2.6);opacity:0}}
+.rj-puff{position:absolute;width:220px;height:70px;border-radius:50%;background:radial-gradient(ellipse,rgba(241,241,241,.55),rgba(241,241,241,.15) 55%,transparent 75%);animation:rj-puff .9s ease-out forwards;pointer-events:none}
+.rj-hud{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 16px 20px;pointer-events:none}
+.rj-hud>*{pointer-events:auto}
+.rj-chips{display:flex;gap:6px;background:rgba(10,13,30,.7);backdrop-filter:blur(10px);border:1px solid rgba(241,241,241,.12);border-radius:999px;padding:6px}
+.rj-chip{border:0;border-radius:999px;padding:7px 14px;font-family:var(--f-display,inherit);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;background:transparent;color:rgba(241,241,241,.5);cursor:pointer}
+.rj-chip:hover{color:#f1f1f1}
+.rj-chip.cur{background:var(--mm-blue);color:#fff;box-shadow:0 0 16px rgba(42,125,225,.6)}
+.rj-chip.done{color:var(--mm-teal)}
+.rj-row{display:flex;gap:10px;align-items:center}
+.rj-btn{border:0;border-radius:999px;padding:12px 26px;font-family:var(--f-display,inherit);font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;background:linear-gradient(180deg,#4d9bff,var(--mm-blue));color:#fff;box-shadow:0 6px 24px rgba(42,125,225,.45)}
+.rj-btn:disabled{opacity:.35;cursor:default}
+.rj-btn.ghost{background:rgba(241,241,241,.08);border:1px solid rgba(241,241,241,.2);box-shadow:none;color:rgba(241,241,241,.85)}
+.rj-speed{display:flex;gap:2px;background:rgba(241,241,241,.08);border:1px solid rgba(241,241,241,.15);border-radius:999px;padding:3px}
+.rj-speed button{border:0;background:transparent;color:rgba(241,241,241,.5);font-size:11px;font-weight:700;padding:6px 10px;border-radius:999px;cursor:pointer}
+.rj-speed button.on{background:rgba(241,241,241,.16);color:#fff}
+.rj-top{position:fixed;top:16px;left:20px;z-index:20;pointer-events:none}
+.rj-top h1{margin:0;font-family:var(--f-display,inherit);font-size:15px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}
+.rj-top p{margin:4px 0 0;font-size:12px;color:rgba(241,241,241,.55)}
+.rj-hint{font-size:11px;color:rgba(241,241,241,.4);letter-spacing:.05em}
+.rj-cockpit{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(ellipse at 50% 40%,rgba(8,12,34,.82),rgba(2,3,10,.96));backdrop-filter:blur(6px);animation:rj-fade .35s ease both}
+@keyframes rj-fade{from{opacity:0}to{opacity:1}}
+.rj-cockpit h2{margin:0;font-family:var(--f-display,inherit);font-size:13px;font-weight:800;letter-spacing:.3em;text-transform:uppercase;color:rgba(241,241,241,.6)}
+.rj-cockpit .sub{margin:0;font-family:var(--f-display,inherit);font-size:30px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="rocket.jsx"></script>
+<script type="text/babel" src="dash-rocket.jsx"></script>
+<script type="text/babel" src="hull-sequence.jsx"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useEffect, useCallback } = React;
+
+// ── one fixed VERTICAL world; the CAMERA moves, planets never re-layout ──
+// Planets are stacked in ONE vertical line; the rocket flies straight up and lands on top of each planet.
+const WORLD = { w: 1600, h: 5800 }, LANE = 800, HUD_H = 150;
+const CONTENT = { top: 700, bottom: 5700 };
+// w/h are world px of the artwork; seatF = fraction of h above center where the rocket rests
+const PLANETS = [
+  { id:'earth',   name:'Earth',   y:5400, w:360, ar:595/594, src:'assets/planet-earth.png',   seatF:.5 },
+  { id:'moon',    name:'Moon',    y:4720, w:190, ar:256/256, src:'assets/planet-moon.png',    seatF:.5 },
+  { id:'mars',    name:'Mars',    y:4030, w:270, ar:588/594, src:'assets/planet-mars.png',    seatF:.5 },
+  { id:'jupiter', name:'Jupiter', y:3200, w:450, ar:608/595, src:'assets/planet-jupiter.png', seatF:.5 },
+  { id:'saturn',  name:'Saturn',  y:2300, w:780, ar:1096/595, src:'assets/planet-saturn.png', seatF:.45 },
+  { id:'pluto',   name:'Pluto',   y:1560, w:180, ar:594/594, src:'assets/planet-pluto.png',   seatF:.5 },
+  { id:'station', name:'Station', y:950,  w:330, ar:712/581, src:'assets/station3.png',       seatF:.42 },
+].map(p => { const h = p.w / p.ar; return { ...p, x: LANE, h, r: Math.max(p.w, h) / 2, halfH: h / 2 }; });
+const ROCKET_W = 86, ROCKET_H = ROCKET_W * 980 / 516;
+const seat = (p) => ({ x: LANE, y: p.y - p.h * p.seatF + 6 });       // rocket sits on top of the body
+const pad = seat;
+// straight vertical leg — rocket just moves upward, always upright
+const legOf = (a, b) => ({ A: seat(a), B: seat(b) });
+const qPos = (L,t) => ({ x: LANE, y: L.A.y + (L.B.y - L.A.y) * t });
+const qAng = () => 0;
+const ease = (t) => t<.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;      // easeInOutCubic
+const easeOut = (t) => 1 - Math.pow(1-t,3);
+const lerp = (a,b,t) => a + (b-a)*t;
+const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const ACTIVE_CORES = ['mindset','career','physical'];
+
+function Planet({ p }) {
+  return (
+    <React.Fragment>
+      <img src={p.src} alt={p.name} style={{ position:'absolute', left:p.x, top:p.y, width:p.w, height:p.h, transform:'translate(-50%,-50%)', zIndex:2, filter:'drop-shadow(0 0 40px rgba(42,125,225,.22))' }} />
+      <div className="rj-label" style={{ left:p.x, top:p.y + p.halfH + 30, transform:'translate(-50%,0)', fontSize:34, zIndex:3 }}>{p.name}</div>
+    </React.Fragment>
+  );
+}
+
+function App() {
+  const stageRef = useRef(null), worldRef = useRef(null), rocketRef = useRef(null), plumeRef = useRef(null), skyRef = useRef(null);
+  const [current, setCurrent] = useState(() => Math.max(0, PLANETS.findIndex(p => p.id === (localStorage.getItem('mm-journey-planet') || 'earth'))));
+  const [mode, setMode] = useState('idle');
+  const [speed, setSpeed] = useState(1);
+  const [puff, setPuff] = useState(null);
+  const [hull, setHull] = useState(null);              // {dir:'open'|'close'} — cockpit hull cinematic
+  const S = useRef({ cam:{fx:0,fy:0,s:1}, raf:0, vp:{w:innerWidth,h:innerHeight}, anim:null, queue:[], speed:1, drag:null, warp:10, warpT:10, auto:false }).current;
+  S.speed = speed; S.cur = current;
+
+  // all framing happens in the HUD-free band; the camera centers focus in THAT band (screen space, so it's scale-independent)
+  const visH = () => Math.max(200, S.vp.h - HUD_H);
+  const fit = () => Math.min(S.vp.w / WORLD.w, visH() / (CONTENT.bottom - CONTENT.top)) * 0.94;
+  // fit [planet top - rocket - headroom .. planet bottom + label] into the clear band, never above scale 1
+  const landedCam = (p) => {
+    const top = p.y - p.h * p.seatF - ROCKET_H - 40, bot = p.y + p.halfH + 100;
+    const s = Math.min(1, (visH() * 0.92) / (bot - top), (S.vp.w * 0.9) / (p.w * 1.1));
+    return { fx: p.x, fy: (top + bot) / 2, s };
+  };
+  const applyCam = () => { const c = S.cam; if (worldRef.current) worldRef.current.style.transform = `translate(${S.vp.w/2}px,${visH()/2}px) scale(${c.s}) translate(${-c.fx}px,${-c.fy}px)`; };
+  const applyRocket = (x, y, ang, plume) => {
+    if (rocketRef.current) rocketRef.current.style.transform = `translate(${x-ROCKET_W/2}px,${y-ROCKET_H}px) rotate(${ang}deg)`;
+    if (plumeRef.current) plumeRef.current.style.opacity = plume;
+  };
+  const settle = (i) => { const p = PLANETS[i]; S.cam = landedCam(p); applyCam(); const s = seat(p); applyRocket(s.x, s.y, 0, 0); };
+
+  useEffect(() => { settle(current); const onR = () => { S.vp = {w:innerWidth,h:innerHeight}; if (!S.anim && !S.drag) S.cam = landedCam(PLANETS[S.cur]); applyCam(); }; addEventListener('resize', onR); return () => removeEventListener('resize', onR); }, []);
+  useEffect(() => { localStorage.setItem('mm-journey-planet', PLANETS[current].id); }, [current]);
+
+  // ── galaxy starfield: stars stream downward; speed rises per leg (fastest near Pluto/Station) ──
+  useEffect(() => {
+    const cv = skyRef.current, ctx = cv.getContext('2d');
+    let stars = [], w = 0, h = 0, dpr = Math.min(2, devicePixelRatio || 1), raf = 0, last = performance.now();
+    const build = () => {
+      const box = cv.parentElement.getBoundingClientRect(); w = Math.round(cv.clientWidth || box.width); h = Math.round(cv.clientHeight || box.height); cv.width = w*dpr; cv.height = h*dpr; cv.style.width = w+'px'; cv.style.height = h+'px'; ctx.setTransform(dpr,0,0,dpr,0,0);
+      const n = Math.round(w*h/7000);
+      stars = Array.from({length:n}, () => { const d = Math.random(); return { x:Math.random()*w, y:Math.random()*h, d: .3 + d*d*1.5, r: .4 + Math.random()*1.5, a: .25 + Math.random()*.65, hue: Math.random()<.16 ? (Math.random()<.5?'190,215,255':'255,214,190') : '255,255,255' }; });
+    };
+    build();
+    const ro = new ResizeObserver(() => build()); ro.observe(cv.parentElement);
+    const onR = () => build(); addEventListener('resize', onR);
+    const tick = (now) => {
+      const dt = Math.min(0.05, (now-last)/1000); last = now;
+      S.warp += (S.warpT - S.warp) * Math.min(1, dt*3.2);
+      ctx.clearRect(0,0,w,h);
+      const streak = S.warp * 0.055;
+      for (const s of stars) {
+        const v = S.warp * s.d;
+        s.y += v * dt;
+        if (s.y - streak*s.d > h) { s.y = -streak*s.d - Math.random()*40; s.x = Math.random()*w; }
+        const len = streak * s.d;
+        if (len > 2.5) {
+          const g = ctx.createLinearGradient(s.x, s.y-len, s.x, s.y);
+          g.addColorStop(0, `rgba(${s.hue},0)`); g.addColorStop(1, `rgba(${s.hue},${s.a})`);
+          ctx.strokeStyle = g; ctx.lineWidth = s.r*1.1; ctx.lineCap = 'round';
+          ctx.beginPath(); ctx.moveTo(s.x, s.y-len); ctx.lineTo(s.x, s.y); ctx.stroke();
+        } else {
+          ctx.fillStyle = `rgba(${s.hue},${s.a})`;
+          ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.283); ctx.fill();
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); removeEventListener('resize', onR); };
+  }, []);
+
+  const IDLE_WARP = (i) => 8 + i*5;
+  const FLY_WARP  = (i) => 300 * Math.pow(1.42, i);                    // each leg noticeably faster than the Earth launch
+  useEffect(() => { if (!S.anim) S.warpT = IDLE_WARP(current); }, [current, mode]);
+
+  const finishLeg = useCallback(() => {
+    cancelAnimationFrame(S.raf); const a = S.anim; if (!a) return;
+    S.anim = null; settle(a.to); setCurrent(a.to);
+    setPuff({ ...seat(PLANETS[a.to]), k: Date.now() });
+    // every arrival ends the same way: zoom-in → hull opens → dashboard
+    setMode('idle'); setTimeout(() => setHull({ dir:'open' }), 850 / S.speed);
+  }, []);
+
+  const flyLeg = useCallback((from) => {
+    const to = from + 1; if (to >= PLANETS.length) return;
+    if (REDUCED) { S.anim = { to }; finishLeg(); return; }
+    const L = legOf(PLANETS[from], PLANETS[to]);
+    const F = fit();
+    const C0 = landedCam(PLANETS[from]);                              // start focus
+    const PB = landedCam(PLANETS[to]);
+    const CW = { x: LANE, y: (CONTENT.top + CONTENT.bottom) / 2 };    // whole route, centered in the clear band
+    const pace = Math.pow(0.88, from);                                 // later legs cover their distance quicker
+    const D1 = 1000/S.speed, D2 = 2600*pace/S.speed, D3 = 1500/S.speed;
+    S.anim = { to }; setMode('flying');
+    // geometric scale blend + pin the subject's SCREEN y, so zoom transitions never swing it behind the HUD
+    const gl = (a, b, e) => a * Math.pow(b / a, e);
+    const scrY = (wy, fy, s) => visH()/2 + (wy - fy) * s;
+    const camPin = (wy, y0, y1, s, e) => ({ fx: LANE, fy: wy - (lerp(y0, y1, e) - visH()/2) / s, s });
+    const t0 = performance.now();
+    const step = (now) => {
+      const el = now - t0;
+      let x, y, ang, plume;
+      if (el < D1) {                                                   // beat 1 — pull back, see all stages
+        const e = ease(el / D1);
+        const s0 = seat(PLANETS[from]);
+        const s = gl(C0.s, F, e);
+        S.cam = camPin(s0.y, scrY(s0.y, C0.fy, C0.s), scrY(s0.y, CW.y, F), s, e);
+        x = s0.x; y = s0.y - 30 * Math.max(0, e - .6) / .4; ang = 0; plume = Math.min(1, e * 2);
+      } else if (el < D1 + D2) {                                       // beat 2 — cruise the leg
+        const e = ease((el - D1) / D2), t = e * 0.86;
+        const p = qPos(L, t); x = p.x; y = p.y; ang = qAng(L, t); plume = 1;
+        S.cam = { fx: CW.x, fy: CW.y, s: F };                        // hold the full-route frame so every stage stays visible
+      } else if (el < D1 + D2 + D3) {                                  // beat 3 — approach + land
+        const e = ease((el - D1 - D2) / D3), t = 0.86 + 0.14 * easeOut(e);
+        const p = qPos(L, t); x = p.x; y = p.y;
+        ang = lerp(qAng(L, t), 0, easeOut(e)); plume = 1 - easeOut(e);
+        const sB = seat(PLANETS[to]);
+        const s = gl(F, PB.s, e);
+        S.cam = camPin(sB.y, scrY(sB.y, CW.y, F), scrY(sB.y, PB.fy, PB.s), s, e);
+      } else { finishLeg(); return; }
+      applyCam(); applyRocket(x, y, ang, plume);
+      S.warpT = lerp(IDLE_WARP(from), FLY_WARP(from) * S.speed, plume);
+      S.raf = requestAnimationFrame(step);
+    };
+    S.raf = requestAnimationFrame(step);
+  }, [finishLeg]);
+
+  const jumpTo = (i) => { if (S.anim) return; S.auto = false; setHull(null); settle(i); setCurrent(i); };
+  const launch = () => { if (S.anim || current >= PLANETS.length-1) return; setHull({ dir:'close' }); };   // seal the hull, then fly
+  // one continuous run: arrive → zoom in → hull opens → dwell on the dashboard → hull seals → fly
+  const fullTour = () => { if (S.anim) return; S.auto = true; setHull(null); settle(0); setCurrent(0); setTimeout(() => setHull({ dir:'open' }), 500 / S.speed); };
+  const DWELL = 1800;
+  const hullDone = () => {
+    const d = hull && hull.dir;
+    if (d === 'close') { setHull(null); flyLeg(S.cur); return; }
+    if (S.auto) setTimeout(() => { if (S.auto && S.cur < PLANETS.length - 1) setHull({ dir:'close' }); else S.auto = false; }, DWELL / S.speed);
+  };
+  // Arrival → how many armor frames the reveal traverses (deeper the further out you go).
+  // Every arrival still ends on the cockpit dashboard — that's the payoff at every stop.
+  const hullStop = (i) => Math.max(1, Math.min(HULL_FRAMES.length, i + 1));
+
+  // free pan / zoom when idle; click-to-skip while flying
+  const onWheel = (e) => { if (S.anim) return; e.preventDefault(); const c = S.cam; const ns = Math.min(2.5, Math.max(fit()*0.7, c.s * Math.exp(-e.deltaY*0.0012)));
+    const rect = stageRef.current.getBoundingClientRect(); const mx = e.clientX-rect.left-S.vp.w/2, my = e.clientY-rect.top-visH()/2;
+    c.fx += mx/c.s - mx/ns; c.fy += my/c.s - my/ns; c.s = ns; applyCam(); };
+  const onDown = (e) => { if (S.anim) { S.auto = false; finishLeg(); return; } S.drag = { x:e.clientX, y:e.clientY }; };
+  const onMove = (e) => { if (!S.drag || S.anim) return; const c = S.cam; c.fx -= (e.clientX-S.drag.x)/c.s; c.fy -= (e.clientY-S.drag.y)/c.s; S.drag = { x:e.clientX, y:e.clientY }; applyCam(); };
+  const onUp = () => { S.drag = null; };
+
+  const atEnd = current >= PLANETS.length - 1;
+  return (
+    <div ref={stageRef} className={`rj-stage${mode==='flying'?' flying':''}`} onWheel={onWheel} onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerLeave={onUp}>
+      <div className="rj-neb"></div>
+      <div className="rj-orbits">
+        <i style={{ width:'150vmax', height:'62vmax' }}></i>
+        <i style={{ width:'108vmax', height:'44vmax' }}></i>
+        <i style={{ width:'72vmax', height:'29vmax' }}></i>
+        <i style={{ width:'44vmax', height:'18vmax' }}></i>
+      </div>
+      <canvas ref={skyRef} className="rj-starfield"></canvas>
+      <div ref={worldRef} className="rj-world" style={{ width: WORLD.w, height: WORLD.h }}>
+        <svg width={WORLD.w} height={WORLD.h} style={{ position:'absolute', inset:0, overflow:'visible' }}>
+          {PLANETS.slice(0,-1).map((p,i) => { const L = legOf(p, PLANETS[i+1]); const done = i < current;
+            return <path key={p.id} d={`M ${L.A.x} ${L.A.y - ROCKET_H} L ${L.B.x} ${L.B.y + 40}`} fill="none" stroke={done ? 'rgba(0,169,143,.7)' : 'rgba(241,241,241,.22)'} strokeWidth="3" strokeDasharray="4 18" strokeLinecap="round"></path>; })}
+        </svg>
+        {PLANETS.map(p => <Planet key={p.id} p={p} />)}
+        {puff && <div key={puff.k} className="rj-puff" style={{ left:puff.x, top:puff.y+8 }}></div>}
+        <div ref={rocketRef} style={{ position:'absolute', left:0, top:0, width:ROCKET_W, height:ROCKET_H, zIndex:5, willChange:'transform', transformOrigin:'50% 88%' }}>
+          <div ref={plumeRef} style={{ position:'absolute', left:'50%', bottom:'-24%', transform:'translateX(-50%)', width:'26%', height:'34%', background:'radial-gradient(ellipse at 50% 15%, #fff5b3 0%, #ffce3a 30%, #ff6a1a 65%, transparent 90%)', filter:'blur(2px)', animation:'mm-plume .5s ease-in-out infinite', transformOrigin:'top', opacity:0 }}></div>
+          <img src="assets/rocket-journey.png" alt="Rocket" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'contain', filter:'drop-shadow(0 8px 18px rgba(0,0,0,.5))' }} />
+        </div>
+      </div>
+
+      <div className="rj-top">
+        <h1>Rocket Journey</h1>
+        <p>{mode === 'flying' ? `In flight → ${PLANETS[Math.min(current+1, PLANETS.length-1)].name}…` : `Docked at ${PLANETS[current].name}`}</p>
+      </div>
+
+      <div className="rj-hud">
+        <div className="rj-chips">
+          {PLANETS.map((p,i) => <button key={p.id} className={`rj-chip${i===current?' cur':i<current?' done':''}`} onClick={() => jumpTo(i)}>{p.name}</button>)}
+        </div>
+        <div className="rj-row">
+          <button className="rj-btn ghost" onClick={fullTour}>Full journey</button>
+          <button className="rj-btn ghost" onClick={() => setHull({ dir:'open' })} disabled={mode==='flying'}>Open hull</button>
+          <button className="rj-btn" onClick={launch} disabled={atEnd || mode==='flying'}>{atEnd ? 'Journey complete' : `Launch → ${PLANETS[current+1] ? PLANETS[current+1].name : ''}`}</button>
+          <div className="rj-speed">{[0.5,1,2].map(v => <button key={v} className={speed===v?'on':''} onClick={() => setSpeed(v)}>{v}×</button>)}</div>
+        </div>
+        <div className="rj-hint">scroll to zoom · drag to pan · click anywhere mid-flight to skip</div>
+      </div>
+
+      {hull && (
+        <div className="rj-cockpit">
+          <div style={{ textAlign:'center' }}>
+            <h2>{hull.dir === 'open' ? 'Hull unsealing' : 'Sealing hull'}</h2>
+            <p className="sub">{PLANETS[current].name}</p>
+          </div>
+          <HullSequence height={Math.min(520, innerHeight * 0.56)} dir={hull.dir} stop={hullStop(current)} activeCores={ACTIVE_CORES} streak={12 + current*9} onDone={hullDone} />
+          {hull.dir === 'open' && (
+            <div className="rj-row">
+              <button className="rj-btn ghost" onClick={() => { S.auto = false; setHull(null); }}>Back to map</button>
+              <button className="rj-btn" onClick={launch} disabled={atEnd}>{atEnd ? 'Journey complete' : `Seal & launch → ${PLANETS[current+1].name}`}</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
