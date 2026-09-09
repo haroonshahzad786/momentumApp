@@ -1,7 +1,16 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import '../../theme/momentum_tokens.dart';
+
+/// Thruster flame, as a Lottie vector loop. Picked over the source GIFs: those
+/// are 1-bit-transparency frames, which speckle badly around the soft edge of a
+/// flame on a dark background, and they weigh ~20x more for a fixed resolution.
+/// Three intensities ship — the streak decides how hard the engine is burning.
+String flameAsset(int streak) {
+  if (streak >= 21) return 'assets/momentum/rocket/flames/fire_hi.json';
+  if (streak >= 7) return 'assets/momentum/rocket/flames/fire_mi.json';
+  return 'assets/momentum/rocket/flames/fire_lo.json';
+}
 
 /// Layered hero rocket: base PNG + per-core panels + nose instruments.
 /// `activeCores` controls which panels show color vs gray.
@@ -39,19 +48,6 @@ class RocketWidget extends StatefulWidget {
 
 class _RocketWidgetState extends State<RocketWidget>
     with TickerProviderStateMixin {
-  late final AnimationController _plume = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1800),
-  )..repeat(reverse: true);
-
-  // Curved version of `_plume` so the pulse eases in/out instead of
-  // ticking linearly, matching the `ease-in-out` curve in
-  // HANDOFF_EFFECTS_STARS_PLUME_COPILOT.md §3 (`mm-plume` keyframe).
-  late final CurvedAnimation _plumeCurve = CurvedAnimation(
-    parent: _plume,
-    curve: Curves.easeInOut,
-  );
-
   late final AnimationController _lockPulse = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1800),
@@ -87,8 +83,6 @@ class _RocketWidgetState extends State<RocketWidget>
 
   @override
   void dispose() {
-    _plumeCurve.dispose();
-    _plume.dispose();
     _lockPulse.dispose();
     super.dispose();
   }
@@ -130,66 +124,35 @@ class _RocketWidgetState extends State<RocketWidget>
     // images naturally appear in front of the flame. We push the plume's
     // top edge well inside the rocket bounding box so the wings actually
     // overlap it.
-    final plumeExtra = (widget.streak.clamp(0, 60)) * 0.18 / 100;
-    final plumeHeight = h * (0.40 + plumeExtra);
-    // Shift factor pushes the flame up by ~10% of plume height vs. before.
-    final plumeShift = plumeHeight * 0.36;
+    final plumeExtra = (widget.streak.clamp(0, 60)) * 0.28 / 100;
+    // The Lottie artboard carries transparent padding around the flame, so the
+    // burn renders a good deal smaller than its box — these are sized for the
+    // visible flame, not the box.
+    final plumeHeight = h * (0.66 + plumeExtra);
+    // How far the plume's top edge is tucked up inside the hull. Smaller means
+    // the flame sits lower and hangs further clear of the nozzle.
+    final plumeShift = plumeHeight * 0.28;
     // Horizontal center nudged 4% rightward so it lines up under the nozzle.
     const plumeCx = 0.50;
-    // Wider container gives the radial gradient room to fade smoothly on
-    // the left/right edges so the flame doesn't look clipped at the sides.
-    const plumeW = 0.31;
+    const plumeW = 0.54;
     return SizedBox(
       width: w,
       height: h,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Engine plume
+          // Engine plume. The Lottie loop carries its own flicker, so the old
+          // breathe-and-blur wrapper is gone — stacking our pulse on top of the
+          // animation's just fought it.
           Positioned(
             left: w * plumeCx - w * plumeW / 2,
             bottom: -plumeHeight + plumeShift,
             width: w * plumeW,
-            child: AnimatedBuilder(
-              animation: _plumeCurve,
-              builder: (_, __) {
-                // Very subtle breath — amplitude reduced so the flame no
-                // longer reads as bouncing.
-                final scaleY = 1 + _plumeCurve.value * 0.025;
-                final opacity = 0.9 + _plumeCurve.value * 0.08;
-                return Opacity(
-                  opacity: opacity,
-                  child: Transform.scale(
-                    scaleY: scaleY,
-                    alignment: Alignment.topCenter,
-                    // ClipOval gives the flame an oval silhouette (curvy
-                    // on the left/right, rounded at the bottom).
-                    // ImageFiltered adds a soft Gaussian blur so the
-                    // oval's edge doesn't look like a hard cut.
-                    child: ImageFiltered(
-                      imageFilter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                      child: ClipOval(
-                        child: Container(
-                          height: plumeHeight,
-                          decoration: const BoxDecoration(
-                            gradient: RadialGradient(
-                              center: Alignment(0, -0.4),
-                              radius: 0.9,
-                              colors: [
-                                Color(0xFFFFF5B3),
-                                Color(0xFFFFCE3A),
-                                Color(0xFFFF6A1A),
-                                Color(0x00FF6A1A),
-                              ],
-                              stops: [0.0, 0.3, 0.65, 1.0],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
+            height: plumeHeight,
+            child: Lottie.asset(
+              flameAsset(widget.streak),
+              fit: BoxFit.fill,
+              repeat: true,
             ),
           ),
 

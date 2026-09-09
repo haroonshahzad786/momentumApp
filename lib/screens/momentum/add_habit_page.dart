@@ -131,6 +131,7 @@ class _AddHabitPageState extends State<AddHabitPage> {
     return Scaffold(
       backgroundColor: MM.pageBg,
       body: Stack(
+        fit: StackFit.expand,
         children: [
           const Positioned.fill(child: StarfieldBackground()),
           SafeArea(

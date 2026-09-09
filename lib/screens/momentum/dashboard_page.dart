@@ -1,16 +1,23 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../../models/phase1_state.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/glass_panel.dart';
-import '../../widgets/momentum/journey_arc.dart';
+import '../../widgets/momentum/journey_stage.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 import '../../widgets/momentum/offline_banner.dart';
-import '../../widgets/momentum/rocket_widget.dart';
 import '../../widgets/momentum/starfield.dart';
 import '../../widgets/momentum/streak_flame.dart';
 
 /// Default Rocket Dashboard (Screen 3.1) — the cockpit / home screen.
-class DashboardPage extends StatelessWidget {
+///
+/// The hero is the [JourneyStage], exactly as on desktop: zoomed in it IS the
+/// cockpit rocket (tappable Cores); the rail down its left edge shows the whole
+/// route (visited · current · locked) and replays an arrival on tap, and the
+/// zoom bar flies out to the route without leaving the screen. Reaching a new
+/// planet plays the arrival cinematic here.
+class DashboardPage extends StatefulWidget {
   const DashboardPage({
     super.key,
     this.streak = 47,
@@ -57,17 +64,50 @@ class DashboardPage extends StatelessWidget {
   final VoidCallback? onRefreshOffline;
 
   @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  /// Star speed the journey stage publishes — idle drift when parked, warp
+  /// while a leg is flying.
+  late final ValueNotifier<double> _warp =
+      ValueNotifier<double>(journeyIdleWarp(_planetIdx));
+
+  int get _planetIdx =>
+      MM.planets.indexWhere((p) => p['id'] == widget.planet).clamp(0, 5);
+
+  @override
+  void dispose() {
+    _warp.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final planetIdx =
-        MM.planets.indexWhere((p) => p['id'] == planet).clamp(0, 5);
+    final streak = widget.streak;
+    final streakState = widget.streakState;
+    final activeCores = widget.activeCores;
+    final level = widget.level;
+    final momentumScore = widget.momentumScore;
+    final spaceCredits = widget.spaceCredits;
+    final balance = widget.balance;
+    final phase1State = widget.phase1State;
+    final offline = widget.offline;
+    final onNav = widget.onNav;
+
+    final planetIdx = _planetIdx;
     final planetData = MM.planets[planetIdx];
     final planetColor = planetData['color'] as Color;
 
     return Scaffold(
       backgroundColor: MM.pageBg,
       body: Stack(
+        fit: StackFit.expand,
         children: [
           Positioned.fill(child: StarfieldBackground(accent: planetColor)),
+          // Drifting field on top of the static one so the stars streak when
+          // the rocket is under way.
+          Positioned.fill(child: MovingStarfield(speed: _warp)),
 
           // Distant target planet
           Positioned(
@@ -104,7 +144,7 @@ class DashboardPage extends StatelessWidget {
                     children: [
                       _IconBtn(
                         icon: Icons.menu,
-                        onTap: onMenu,
+                        onTap: widget.onMenu,
                       ),
                       const SizedBox(width: 10),
                       _IconBtn(
@@ -156,9 +196,11 @@ class DashboardPage extends StatelessWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              _Stat('PLANET',
+                              _Stat(
+                                  'PLANET',
                                   (planetData['name'] as String).toUpperCase(),
-                                  planetColor),
+                                  planetColor,
+                                  onTap: () => onNav('journey')),
                               const SizedBox(height: 3),
                               _Stat(
                                   'SCORE', _fmt(momentumScore), Colors.white),
@@ -180,13 +222,13 @@ class DashboardPage extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
                     child: OfflineBanner(
-                        onRefresh: onRefreshOffline ?? () {}),
+                        onRefresh: widget.onRefreshOffline ?? () {}),
                   ),
 
                 // ─── PHASE INDICATOR PILL ─────────────────
                 if (phase1State != null)
                   _PhasePill(
-                    state: phase1State!,
+                    state: phase1State,
                     onTap: () => onNav('phase1'),
                   ),
 
@@ -226,49 +268,54 @@ class DashboardPage extends StatelessWidget {
                   ),
                 ),
 
-                // ─── HERO ROCKET ──────────────────────────
+                // ─── HERO — JOURNEY STAGE ─────────────────
+                // Zoomed in this is the cockpit rocket; the rail on its left
+                // is the whole route (tap a planet to replay that arrival) and
+                // the slider flies out to it without leaving the dashboard.
                 Expanded(
-                  child: Stack(
-                    alignment: Alignment.center,
-                    clipBehavior: Clip.none,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 24),
-                        child: RocketWidget(
-                          activeCores: activeCores,
-                          atRiskCores: atRiskCores,
-                          streak: streak,
-                          onNav: onNav,
-                          onCoreAlert: onCoreAlert,
-                        ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
+                    child: LayoutBuilder(
+                      builder: (context, c) => JourneyStage(
+                        planetIdx: planetIdx,
+                        activeCores: activeCores,
+                        atRiskCores: widget.atRiskCores,
+                        streak: streak,
+                        height: c.maxHeight,
+                        rocketWidth:
+                            math.min(c.maxWidth * 0.72, 250).toDouble(),
+                        warpSpeed: _warp,
+                        compact: true,
+                        controlsOnLeft: true,
+                        onNav: onNav,
+                        onCoreAlert: widget.onCoreAlert,
                       ),
-                      // Back near its original spot hanging off the right edge,
-                      // but only far enough that the FAB's CENTRE stays on-screen
-                      // — push it fully off and the taps stop registering.
-                      Positioned(
-                        right: -21,
-                        bottom: -6,
-                        child: _CopilotFAB(onTap: onChat),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
 
-                // ─── JOURNEY ARC ──────────────────────────
+                // ─── PRIMARY CTA + CO-PILOT ───────────────
+                // One line: the check-in pill shares the row with the Co-Pilot
+                // so neither floats over the journey stage.
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: JourneyArc(planetIdx: planetIdx),
-                ),
-
-                // ─── PRIMARY CTA ──────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                  padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
                   child: Column(
                     children: [
-                      MMPrimaryButton(
-                        label: 'Daily Check-in →',
-                        pulse: true,
-                        onPressed: onCheckIn,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: MMPrimaryButton(
+                              label: 'Daily Check-in →',
+                              pulse: true,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 11),
+                              onPressed: widget.onCheckIn,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          _CopilotFAB(size: 52, onTap: widget.onChat),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -299,13 +346,24 @@ class DashboardPage extends StatelessWidget {
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat(this.label, this.value, this.color);
+  const _Stat(this.label, this.value, this.color, {this.onTap});
   final String label;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final row = _row();
+    if (onTap == null) return row;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: row,
+    );
+  }
+
+  Widget _row() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -496,8 +554,9 @@ class _PhasePill extends StatelessWidget {
 }
 
 class _CopilotFAB extends StatefulWidget {
-  const _CopilotFAB({required this.onTap});
+  const _CopilotFAB({required this.onTap, this.size = 68});
   final VoidCallback onTap;
+  final double size;
 
   @override
   State<_CopilotFAB> createState() => _CopilotFABState();
@@ -525,10 +584,11 @@ class _CopilotFABState extends State<_CopilotFAB>
         return GestureDetector(
           onTap: widget.onTap,
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 68,
-                height: 68,
+                width: widget.size,
+                height: widget.size,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: const RadialGradient(
@@ -545,8 +605,8 @@ class _CopilotFABState extends State<_CopilotFAB>
                     ),
                   ],
                 ),
-                child: const Icon(Icons.star_border,
-                    color: Colors.white, size: 48),
+                child: Icon(Icons.star_border,
+                    color: Colors.white, size: widget.size * 0.7),
               ),
               const SizedBox(height: 4),
               Text(

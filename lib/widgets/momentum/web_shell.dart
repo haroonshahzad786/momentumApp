@@ -13,28 +13,79 @@ const double kWebBreakpoint = 900;
 /// readable on ultra-wide / maximized screens instead of stretching edge-to-edge.
 const double kWebContentMaxWidth = 1680;
 
+/// Marks a subtree as living inside [WebCenteredFlow]. Immersive screens use it
+/// to drop their own opaque background + starfield: the flow already paints one
+/// across the whole viewport, and a second one inside the narrow column reads as
+/// a visible brighter stripe. [accent] lets the screen tint that shared
+/// starfield (e.g. the intro carousel's per-page colour).
+class WebFlowScope extends InheritedWidget {
+  const WebFlowScope({super.key, required this.accent, required super.child});
+
+  final ValueNotifier<Color?> accent;
+
+  static WebFlowScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<WebFlowScope>();
+
+  /// Safe to call from build(): the write is deferred to after the frame.
+  void setAccent(Color? color) {
+    if (accent.value == color) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) => accent.value = color);
+  }
+
+  @override
+  bool updateShouldNotify(WebFlowScope old) => accent != old.accent;
+}
+
 /// Centers an intro / immersive screen (boot splash, auth, check-in flow) into
 /// a phone-width column on desktop so it doesn't stretch across the viewport;
 /// passes the child through unchanged below [kWebBreakpoint].
-class WebCenteredFlow extends StatelessWidget {
+///
+/// The starfield is painted once, full-bleed, behind the column — screens that
+/// find a [WebFlowScope] must render transparently on top of it.
+class WebCenteredFlow extends StatefulWidget {
   const WebCenteredFlow({super.key, required this.child, this.maxWidth = 480});
   final Widget child;
   final double maxWidth;
 
   @override
+  State<WebCenteredFlow> createState() => _WebCenteredFlowState();
+}
+
+class _WebCenteredFlowState extends State<WebCenteredFlow> {
+  final ValueNotifier<Color?> _accent = ValueNotifier<Color?>(null);
+
+  @override
+  void dispose() {
+    _accent.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDesktop = MediaQuery.of(context).size.width >= kWebBreakpoint;
-    if (!isDesktop) return child;
+    if (!isDesktop) return widget.child;
     return Scaffold(
       backgroundColor: MM.pageBg,
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          const Positioned.fill(child: StarfieldBackground()),
+          Positioned.fill(
+            child: ValueListenableBuilder<Color?>(
+              valueListenable: _accent,
+              builder: (_, accent, __) => AnimatedSwitcher(
+                duration: const Duration(milliseconds: 600),
+                child: StarfieldBackground(
+                  key: ValueKey(accent),
+                  accent: accent,
+                ),
+              ),
+            ),
+          ),
           Align(
             alignment: Alignment.topCenter,
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: maxWidth),
-              child: child,
+              constraints: BoxConstraints(maxWidth: widget.maxWidth),
+              child: WebFlowScope(accent: _accent, child: widget.child),
             ),
           ),
         ],
@@ -106,6 +157,7 @@ class WebShell extends StatelessWidget {
     return Scaffold(
       backgroundColor: MM.pageBg,
       body: Stack(
+        fit: StackFit.expand,
         children: [
           const Positioned.fill(child: StarfieldBackground()),
           Positioned.fill(
@@ -547,7 +599,6 @@ class _WebTopbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(40, 26, 40, 20),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
@@ -555,67 +606,92 @@ class _WebTopbar extends StatelessWidget {
           colors: [Color(0xD906070D), Color(0x0006070D)],
         ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+      child: LayoutBuilder(
+        builder: (context, c) {
+          // The trailing items (search + two actions) are fixed-width, so on a
+          // narrow window they starve the title column and the heading wraps
+          // one letter per line. Drop them progressively instead.
+          final w = c.maxWidth;
+          final hPad = w < 760 ? 20.0 : 40.0;
+          final showSearch = w >= 900;
+          final compactCta = w < 780;
+          return Padding(
+            padding: EdgeInsets.fromLTRB(hPad, 26, hPad, 20),
+            child: Row(
               children: [
-                Text(subtitle.toUpperCase(),
-                    style: GoogleFonts.orbitron(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 2.4,
-                        color: accent)),
-                const SizedBox(height: 4),
-                Text(title,
-                    style: MM.display(
-                        size: 30,
-                        color: Colors.white,
-                        weight: FontWeight.w700)),
-              ],
-            ),
-          ),
-          // decorative search
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 260),
-            child: Container(
-              height: 44,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: MM.navy.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.white.withOpacity(0.12)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.search,
-                      size: 16, color: Colors.white.withOpacity(0.5)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text('Search missions, habits, crew…',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: MM.body(
-                            size: 13, color: Colors.white.withOpacity(0.4))),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(subtitle.toUpperCase(),
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.orbitron(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 2.4,
+                              color: accent)),
+                      const SizedBox(height: 4),
+                      Text(title,
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                          style: MM.display(
+                              size: compactCta ? 24 : 30,
+                              color: Colors.white,
+                              weight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+                // decorative search
+                if (showSearch) ...[
+                  const SizedBox(width: 16),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 260),
+                    child: Container(
+                      height: 44,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: MM.navy.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(10),
+                        border:
+                            Border.all(color: Colors.white.withOpacity(0.12)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.search,
+                              size: 16, color: Colors.white.withOpacity(0.5)),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text('Search missions, habits, crew…',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: MM.body(
+                                    size: 13,
+                                    color: Colors.white.withOpacity(0.4))),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
-              ),
+                const SizedBox(width: 12),
+                // AI co-pilot
+                _CopilotButton(onTap: onChat),
+                const SizedBox(width: 12),
+                MMPrimaryButton(
+                  label: compactCta ? 'Check-in →' : 'Daily Check-in →',
+                  onPressed: onCheckIn,
+                  expand: false,
+                  padding: EdgeInsets.symmetric(
+                      horizontal: compactCta ? 16 : 22, vertical: 13),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 12),
-          // AI co-pilot
-          _CopilotButton(onTap: onChat),
-          const SizedBox(width: 12),
-          MMPrimaryButton(
-            label: 'Daily Check-in →',
-            onPressed: onCheckIn,
-            expand: false,
-            padding:
-                const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -651,7 +727,7 @@ class _CopilotButton extends StatelessWidget {
                   spreadRadius: -2),
             ],
           ),
-          child: const Icon(Icons.auto_awesome, size: 22, color: Colors.white),
+          child: const Icon(Icons.star_border, size: 26, color: Colors.white),
         ),
       ),
     );

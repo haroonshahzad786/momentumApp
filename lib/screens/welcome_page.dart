@@ -2,7 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../widgets/app_drawer.dart';
-import 'ai_chat_page.dart';
+import 'copilot_console_page.dart';
 
 class WelcomePage extends StatelessWidget {
   const WelcomePage({super.key});
@@ -59,7 +59,7 @@ class WelcomePage extends StatelessWidget {
               ),
               onPressed: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AiChatPage()),
+                  MaterialPageRoute(builder: (_) => const CopilotConsolePage()),
                 );
               },
             ),

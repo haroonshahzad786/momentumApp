@@ -4,6 +4,8 @@ import '../../models/chat_message.dart';
 import '../../services/chat_service.dart';
 import '../../services/onboarding_service.dart';
 import '../../theme/momentum_tokens.dart';
+import '../../widgets/momentum/celebration_host.dart';
+import '../../widgets/momentum/confetti_overlay.dart';
 import '../../widgets/momentum/glass_panel.dart';
 import '../../widgets/momentum/hhs_pyramid.dart';
 import '../../widgets/momentum/mm_buttons.dart';
@@ -52,6 +54,15 @@ class _SectionReward {
   final Color color;
 }
 
+/// A reward waiting to be shown. [confetti] is false when a Voiceflow
+/// `CELEBRATION` burst already fired for the same award (see [CelebrationBus])
+/// — the card still shows, it just doesn't double up on the particles.
+class _QueuedReward {
+  const _QueuedReward(this.reward, this.confetti);
+  final _SectionReward reward;
+  final bool confetti;
+}
+
 const _sectionRewards = <_SectionReward>[
   _SectionReward('Truth Seeker', 10, '🔍', Color(0xFFEA0029)),
   _SectionReward('Core Confirmed', 15, '🧠', MM.blue),
@@ -72,7 +83,7 @@ class _HhsChatViewState extends State<HhsChatView> {
   String? _error;
 
   OnboardingSync _sync = OnboardingSync.empty;
-  final List<_SectionReward> _rewardQueue = [];
+  final List<_QueuedReward> _rewardQueue = [];
   int _prevCompleted = 0;
   bool _firstSync = true;
   bool _showForge = false;
@@ -185,7 +196,8 @@ class _HhsChatViewState extends State<HhsChatView> {
         for (var i = _prevCompleted;
             i < result.completedCount && i < _sectionRewards.length;
             i++) {
-          _rewardQueue.add(_sectionRewards[i]);
+          _rewardQueue.add(
+              _QueuedReward(_sectionRewards[i], CelebrationBus.claim()));
         }
         _prevCompleted = result.completedCount;
       }
@@ -227,6 +239,7 @@ class _HhsChatViewState extends State<HhsChatView> {
     return Scaffold(
       backgroundColor: MM.pageBg,
       body: Stack(
+        fit: StackFit.expand,
         children: [
           const Positioned.fill(child: StarfieldBackground()),
           SafeArea(
@@ -239,7 +252,10 @@ class _HhsChatViewState extends State<HhsChatView> {
             ),
           ),
           if (_rewardQueue.isNotEmpty)
-            _RewardOverlay(reward: _rewardQueue.first, onDismiss: _dismissReward),
+            _RewardOverlay(
+              queued: _rewardQueue.first,
+              onDismiss: _dismissReward,
+            ),
           if (_showForge)
             _ForgeConfirmOverlay(
               fields: _sync.fields,
@@ -507,41 +523,60 @@ class _TypingBubble extends StatelessWidget {
 
 // ─── Reward overlay ──────────────────────────────────────────────────────
 class _RewardOverlay extends StatelessWidget {
-  const _RewardOverlay({required this.reward, required this.onDismiss});
-  final _SectionReward reward;
+  const _RewardOverlay({required this.queued, required this.onDismiss});
+  final _QueuedReward queued;
   final VoidCallback onDismiss;
 
   @override
   Widget build(BuildContext context) {
+    final reward = queued.reward;
     return Positioned.fill(
       child: GestureDetector(
         onTap: onDismiss,
-        child: Container(
-          color: Colors.black.withOpacity(0.78),
-          alignment: Alignment.center,
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(reward.emoji, style: const TextStyle(fontSize: 56)),
-                const SizedBox(height: 10),
-                Text('ACHIEVEMENT UNLOCKED',
-                    style: MM.displayX(size: 10, color: reward.color)),
-                const SizedBox(height: 6),
-                Text(reward.label,
-                    textAlign: TextAlign.center,
-                    style: MM.display(size: 22, color: Colors.white)),
-                const SizedBox(height: 10),
-                Text('+${reward.mp} MP',
-                    style: MM.display(size: 26, color: MM.yellow, height: 1)),
-                const SizedBox(height: 18),
-                Text('Tap to continue',
-                    style: MM.body(
-                        color: Colors.white.withOpacity(0.5), size: 11)),
-              ],
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.78),
+                alignment: Alignment.center,
+                child: Padding(
+                  padding: const EdgeInsets.all(28),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(reward.emoji, style: const TextStyle(fontSize: 56)),
+                      const SizedBox(height: 10),
+                      Text('ACHIEVEMENT UNLOCKED',
+                          style: MM.displayX(size: 10, color: reward.color)),
+                      const SizedBox(height: 6),
+                      Text(reward.label,
+                          textAlign: TextAlign.center,
+                          style: MM.display(size: 22, color: Colors.white)),
+                      const SizedBox(height: 10),
+                      // The MP figure is the payoff — pop it in.
+                      PointsPopBadge(
+                        label: '+${reward.mp} MP',
+                        fontSize: 26,
+                        delay: const Duration(milliseconds: 120),
+                      ),
+                      const SizedBox(height: 18),
+                      Text('Tap to continue',
+                          style: MM.body(
+                              color: Colors.white.withOpacity(0.5), size: 11)),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
+            if (queued.confetti)
+              Positioned.fill(
+                child: ConfettiOverlay(
+                  trigger: reward.mp,
+                  count: 100,
+                  origin: const Alignment(0, -0.3),
+                ),
+              ),
+          ],
         ),
       ),
     );

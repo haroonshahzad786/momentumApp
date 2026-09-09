@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../services/checkin_service.dart';
 import '../../theme/momentum_tokens.dart';
+import '../../widgets/momentum/celebration_host.dart';
+import '../../widgets/momentum/confetti_overlay.dart';
 import '../../widgets/momentum/glass_panel.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 import '../../widgets/momentum/starfield.dart';
@@ -64,9 +66,15 @@ class _SummaryPageState extends State<SummaryPage> {
   int _balanceDays = 0;
   bool _balanceLoading = true;
 
+  /// Celebrate the day's award — confetti + a "+N MP" pop. Decided once on
+  /// entry (not in build) so it can't re-fire on a rebuild, and claimed through
+  /// [CelebrationBus] so it never stacks with a Voiceflow celebration.
+  bool _celebrate = false;
+
   @override
   void initState() {
     super.initState();
+    _celebrate = (widget.earnedToday ?? 0) > 0 && CelebrationBus.claim();
     _loadBalance();
   }
 
@@ -123,6 +131,7 @@ class _SummaryPageState extends State<SummaryPage> {
     return Scaffold(
       backgroundColor: MM.pageBg,
       body: Stack(
+        fit: StackFit.expand,
         children: [
           const Positioned.fill(child: StarfieldBackground()),
           SafeArea(
@@ -240,6 +249,29 @@ class _SummaryPageState extends State<SummaryPage> {
               ],
             ),
           ),
+          // Points landed for today's check-in — celebrate the number. A streak
+          // milestone gets a bigger burst.
+          if (_celebrate)
+            Positioned.fill(
+              child: ConfettiOverlay(
+                count: widget.streakMilestone != null ? 140 : 90,
+                origin: const Alignment(0, -0.55),
+                startDelay: const Duration(milliseconds: 320),
+              ),
+            ),
+          if (_celebrate)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Align(
+                  alignment: const Alignment(0, -0.52),
+                  child: PointsPopBadge(
+                    label: '+${widget.earnedToday} MP',
+                    color: MM.teal,
+                    delay: const Duration(milliseconds: 320),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:lottie/lottie.dart';
 
 import '../../services/asset_preloader.dart';
 import '../../services/offline.dart';
@@ -940,29 +941,7 @@ class _FlightRocket extends StatefulWidget {
   State<_FlightRocket> createState() => _FlightRocketState();
 }
 
-class _FlightRocketState extends State<_FlightRocket>
-    with SingleTickerProviderStateMixin {
-  // Created eagerly, NOT `late`: the plume only builds while it is burning, so
-  // a rocket disposed without ever showing one would have `dispose()` be the
-  // first touch — constructing a ticker against a deactivated element throws
-  // "Looking up a deactivated widget's ancestor is unsafe".
-  late final AnimationController _pulse;
-
-  @override
-  void initState() {
-    super.initState();
-    _pulse = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _pulse.dispose();
-    super.dispose();
-  }
-
+class _FlightRocketState extends State<_FlightRocket> {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -973,22 +952,15 @@ class _FlightRocketState extends State<_FlightRocket>
           children: [
             if (widget.plume > 0.01)
               Positioned(
-                left: w * 0.37,
-                width: w * 0.26,
-                top: h * 0.9,
-                height: h * 0.34,
+                // Same reasoning as the cockpit rocket: the Lottie artboard is
+                // padded, so the box runs wider and longer than the flame.
+                left: w * 0.28,
+                width: w * 0.44,
+                top: h * 0.93,
+                height: h * 0.52,
                 child: Opacity(
                   opacity: widget.plume.clamp(0.0, 1.0),
-                  child: AnimatedBuilder(
-                    animation: _pulse,
-                    builder: (context, child) => Transform.scale(
-                      scaleY:
-                          1 + 0.18 * Curves.easeInOut.transform(_pulse.value),
-                      alignment: Alignment.topCenter,
-                      child: child,
-                    ),
-                    child: const _Plume(),
-                  ),
+                  child: _Plume(thrust: widget.plume),
                 ),
               ),
             Positioned.fill(
@@ -1002,24 +974,19 @@ class _FlightRocketState extends State<_FlightRocket>
   }
 }
 
+/// Engine flame, as a Lottie vector loop. [thrust] runs 0→1 as the engine
+/// spools up, and picks the low / mid / high burn.
 class _Plume extends StatelessWidget {
-  const _Plume();
+  const _Plume({required this.thrust});
+  final double thrust;
 
   @override
   Widget build(BuildContext context) {
-    return const DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment(0, -0.7),
-          colors: [
-            Color(0xFFFFF5B3),
-            Color(0xFFFFCE3A),
-            Color(0xFFFF6A1A),
-            Colors.transparent,
-          ],
-          stops: [0.0, 0.30, 0.65, 0.90],
-        ),
-      ),
+    return Lottie.asset(
+      // flameAsset() takes a streak; map thrust onto the same three tiers.
+      flameAsset(thrust >= 0.7 ? 21 : (thrust >= 0.34 ? 7 : 0)),
+      fit: BoxFit.fill,
+      repeat: true,
     );
   }
 }
@@ -1376,9 +1343,9 @@ class _Star {
 
 /// Idle drift speed for a player docked at stop [i] — the stars are never
 /// completely still.
-double journeyIdleWarp(int i) => 8 + i * 5.0;
+double journeyIdleWarp(int i) => 40 + i * 8.0;
 
-/// The speed cue: stars stream downward continuously, and past ~2.5px of
+/// The speed cue: stars stream downward continuously, and past ~8px of
 /// per-frame travel they stretch into streaks. [speed] is in px/s at depth 1 —
 /// [JourneyStage] drives it up during a leg (each one 42% faster than the last)
 /// and back down to the idle drift when parked.
@@ -1477,7 +1444,10 @@ class _WarpPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     for (final s in stars) {
-      if (s.trail > 2.5) {
+      // Streak only under real thrust. The idle drift is fast enough now that
+      // the old 2.5px cutoff would leave the deepest stars permanently
+      // stretched while parked.
+      if (s.trail > 8) {
         final paint = Paint()
           ..strokeWidth = s.radius * 1.1
           ..strokeCap = StrokeCap.round

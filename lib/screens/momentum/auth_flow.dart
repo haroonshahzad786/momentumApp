@@ -4,6 +4,8 @@ import '../../services/auth_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 import '../../widgets/momentum/starfield.dart';
+import '../../widgets/momentum/web_shell.dart';
+import 'intro_flow.dart';
 
 /// Entry-point for unauthenticated users.
 /// Flow: intro carousel → sign-up → sign-in (toggle), all wired to Firebase.
@@ -21,7 +23,9 @@ class _AuthFlowState extends State<AuthFlow> {
   Widget build(BuildContext context) {
     switch (_stage) {
       case _Stage.intro:
-        return IntroScreen(
+        // New 5-page intro carousel (client "pagewise" redesign). The old
+        // [IntroScreen] below is kept but no longer linked into the flow.
+        return IntroCarousel(
           onFinish: () => setState(() => _stage = _Stage.signup),
         );
       case _Stage.signup:
@@ -98,19 +102,23 @@ class _IntroScreenState extends State<IntroScreen> {
   Widget build(BuildContext context) {
     final slide = _slides[_idx];
     final last = _idx == _slides.length - 1;
+    final flow = WebFlowScope.maybeOf(context);
+    flow?.setAccent(slide.accent);
     return Scaffold(
-      backgroundColor: MM.pageBg,
+      backgroundColor: flow == null ? MM.pageBg : Colors.transparent,
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          Positioned.fill(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 600),
-              child: StarfieldBackground(
-                key: ValueKey(_idx),
-                accent: slide.accent,
+          if (flow == null)
+            Positioned.fill(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 600),
+                child: StarfieldBackground(
+                  key: ValueKey(_idx),
+                  accent: slide.accent,
+                ),
               ),
             ),
-          ),
           SafeArea(
             child: Column(
               children: [
@@ -719,12 +727,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // On desktop the enclosing [WebCenteredFlow] paints the starfield across
+    // the whole viewport; render transparently over it.
+    final flow = WebFlowScope.maybeOf(context);
     return Scaffold(
-      backgroundColor: MM.pageBg,
+      backgroundColor: flow == null ? MM.pageBg : Colors.transparent,
       resizeToAvoidBottomInset: true,
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          const Positioned.fill(child: StarfieldBackground()),
+          if (flow == null)
+            const Positioned.fill(child: StarfieldBackground()),
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(18, 14, 18, 40),
@@ -879,12 +892,17 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // On desktop the enclosing [WebCenteredFlow] paints the starfield across
+    // the whole viewport; render transparently over it.
+    final flow = WebFlowScope.maybeOf(context);
     return Scaffold(
-      backgroundColor: MM.pageBg,
+      backgroundColor: flow == null ? MM.pageBg : Colors.transparent,
       resizeToAvoidBottomInset: true,
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          const Positioned.fill(child: StarfieldBackground()),
+          if (flow == null)
+            const Positioned.fill(child: StarfieldBackground()),
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(18, 14, 18, 40),

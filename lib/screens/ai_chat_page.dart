@@ -11,6 +11,11 @@ import '../widgets/chat_input_bar.dart';
 import '../widgets/compact_chat_panel.dart';
 import '../widgets/momentum/starfield.dart';
 
+/// Co-Pilot v1 — image stage on top, transcript below.
+///
+/// UNLINKED as of the console rewrite: nothing routes here any more, the
+/// Co-Pilot entry points open [CopilotConsolePage] instead. Kept on disk so the
+/// two layouts can be compared before one is deleted.
 class AiChatPage extends StatefulWidget {
   const AiChatPage({super.key});
 
@@ -165,7 +170,15 @@ class _AiChatPageState extends State<AiChatPage> {
                     padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
                     child: OfflineBanner(onRefresh: _bootstrap),
                   ),
-                // Transcript ≈ 60% of the area between header and input bar.
+                // Image section on top (rocket / assistant animation) ≈ 40%.
+                Expanded(
+                  flex: 4,
+                  child: AnimationStage(
+                    imageUrls: _animationUrls,
+                    isThinking: _waitingForReply,
+                  ),
+                ),
+                // Transcript below the image ≈ 60% of the area to the input bar.
                 Expanded(
                   flex: 6,
                   child: _loadingInitial
@@ -174,14 +187,6 @@ class _AiChatPageState extends State<AiChatPage> {
                               CircularProgressIndicator(color: MM.violet),
                         )
                       : CompactChatPanel(messages: _messages),
-                ),
-                // Lower visual area (rocket / assistant image) ≈ 40%.
-                Expanded(
-                  flex: 4,
-                  child: AnimationStage(
-                    imageUrls: _animationUrls,
-                    isThinking: _waitingForReply,
-                  ),
                 ),
                 ChatInputBar(
                   enabled: !_waitingForReply && !_loadingInitial,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -19,6 +21,11 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-  await NotificationService.instance.init();
+  // Fire-and-forget: notification setup requests OS permission, which on a fresh
+  // browser shows a native prompt. Awaiting it here would block the first paint
+  // (white screen) until the user answers. Nothing in runApp depends on init()
+  // having finished, so let the UI render and wire notifications in the
+  // background.
+  unawaited(NotificationService.instance.init());
   runApp(const MomentumApp());
 }

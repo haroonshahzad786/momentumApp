@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../services/asset_preloader.dart';
 import '../theme/momentum_tokens.dart';
 import '../widgets/momentum/starfield.dart';
+import '../widgets/momentum/web_shell.dart';
 
 /// Brand colours from the Moore Momentum logo (boot.jsx).
 const Color _brandRed = Color(0xFFE8112D); // Ignition Red
@@ -28,6 +32,18 @@ class _BootSplashState extends State<BootSplash>
   );
 
   bool _done = false;
+  bool _handedOver = false;
+
+  /// Intro art, warmed up while the ignition animation plays.
+  Future<void>? _preload;
+
+  /// Leaves the splash. Idempotent, and reached by three independent paths so
+  /// that a failed / stalled asset load can never strand the user here.
+  void _handOver() {
+    if (_handedOver) return;
+    _handedOver = true;
+    if (mounted) widget.onDone();
+  }
 
   @override
   void initState() {
@@ -35,12 +51,28 @@ class _BootSplashState extends State<BootSplash>
     _c.addStatusListener((s) {
       if (s == AnimationStatus.completed && !_done) {
         _done = true;
-        Future.delayed(const Duration(milliseconds: 600), () {
-          if (mounted) widget.onDone();
+        Timer(const Duration(milliseconds: 600), () {
+          final preload = _preload;
+          if (preload == null) {
+            _handOver();
+            return;
+          }
+          // Leave as soon as the art is cached...
+          preload.then((_) => _handOver(), onError: (_) => _handOver());
+          // ...but never wait on it: this fires regardless, and any images
+          // still in flight simply finish loading in the background.
+          Timer(const Duration(milliseconds: 1800), _handOver);
         });
       }
     });
     _c.forward();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Failures are swallowed: pre-caching is an optimisation, never a gate.
+    _preload ??= precacheIntroImages(context).catchError((Object _) {});
   }
 
   @override
@@ -56,8 +88,12 @@ class _BootSplashState extends State<BootSplash>
 
   @override
   Widget build(BuildContext context) {
+    // Inside the desktop [WebCenteredFlow] the starfield is painted full-bleed
+    // behind this column already — render on top of it, don't repaint it.
+    final flow = WebFlowScope.maybeOf(context);
+    flow?.setAccent(_brandBlue);
     return Scaffold(
-      backgroundColor: MM.pageBg,
+      backgroundColor: flow == null ? MM.pageBg : Colors.transparent,
       body: AnimatedBuilder(
         animation: _c,
         builder: (context, _) {
@@ -71,7 +107,9 @@ class _BootSplashState extends State<BootSplash>
           return Stack(
             fit: StackFit.expand,
             children: [
-              const Positioned.fill(child: StarfieldBackground(accent: _brandBlue)),
+              if (flow == null)
+                const Positioned.fill(
+                    child: StarfieldBackground(accent: _brandBlue)),
               // Centre cluster: glow + wiping logo + wordmark + tagline.
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,

@@ -32,8 +32,60 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
 >   round-tripped). Needed a Firestore rule for shared `space_cantina_posts` (deployed via Rules REST API;
 >   snapshot at `/firestore.rules`). **Pillar 2 Tribes DONE + Pixel-verified 2026-07-20** (Discover/Join/
 >   Leave/Create + tribe discussion feed, all cold-restart round-tripped; `tribes` collection + rule deployed).
->   **▶ NEXT: Pillar 2b Accountability Partners (small), then Pillar 3 anti-shame Leaderboard.** Pillar 4
->   (Arena) = V2/deferred.
+>   **Pillar 2b Accountability Partners DONE + BROWSER-VERIFIED 2026-07-21** (mobile + web; one active
+>   partner, daily/weekly cadence; state at owner-scoped `users/{uid}/accountability/active` → NO new
+>   Firestore rule; logic unit-tested 9/9). Full pair→check-in→cold-reload round-trip→end verified live in
+>   the browser via claude-in-chrome. **Session also shipped 4 web fixes:** (1) web Co-Pilot button icon
+>   `auto_awesome`→`star_border` (match mobile/menu/auth); (2) Co-Pilot page (`AiChatPage`) reordered —
+>   image/animation on top, chat transcript below; (3) `main.dart` notification init made non-blocking
+>   (`unawaited`) so a fresh browser no longer white-screens waiting on the OS notification prompt before
+>   first paint; (4) `web/index.html` body background set to #06070D (MM.pageBg) so no white shows through
+>   on a maximize/resize repaint gap.
+>   **▶ NEXT: Pillar 3 anti-shame Leaderboard.** Pillar 4 (Arena) = V2/deferred.
+> - **CELEBRATION on points earned — DONE + BROWSER-VERIFIED 2026-08-10.** Confetti + a "+N MP" pop wherever
+>   points land. New `lib/widgets/momentum/confetti_overlay.dart` (`ConfettiOverlay` hand-rolled
+>   CustomPainter particles + `PointsPopBadge`), `lib/widgets/momentum/celebration_host.dart`
+>   (`CelebrationHost` root-overlay burst + `CelebrationBus` double-fire guard) and
+>   `lib/services/celebration_service.dart`. **Voiceflow-driven:** Nova already calls the FlutterFlow-side
+>   `updateUserPoints({type, points})` then `handleVoiceflowEvent({eventName:"CELEBRATION"})`; that endpoint
+>   merges `vf_events/{uid}` = `{eventName, status, payload, eventCount}`. The client snapshot-listens to that
+>   doc, keys replay off `eventCount`, and reads the newest `users/{uid}/points/summary/history` entry for the
+>   real amount/label (never fabricated — burst plays numberless if the ledger read comes back stale). "Already
+>   celebrated" is tracked in `LocalCache` because the `vf_events` rule is read-only to clients → **NO Firestore
+>   rule deployment needed.** Mounted in `momentum_home` (root overlay ⇒ fires over pushed routes too, e.g.
+>   Co-Pilot). Also wired to the non-VF award moments: Summary check-in points (`earnedToday`), the Stage-2
+>   Cantina unlock (+50 MP) and the Stage-1 Command Center unlock. Analyzer-clean.
+>   **✅ BROWSER-VERIFIED (web cockpit, logged-in account):** POSTed `updateUserPoints {type:"Pain Points",
+>   points:10}` + `handleVoiceflowEvent {eventName:"CELEBRATION"}` from the page → confetti rained over the
+>   Cockpit with a "+10 MP" pop badge and a "PAIN POINTS" chip, read from the real ledger entry.
+>   **BUG FOUND + FIXED during verification:** the first attempt painted NOTHING — an `OverlayEntry` is laid
+>   out by the Overlay's theatre with LOOSE constraints, so the burst's unpositioned `Stack` of
+>   `Positioned.fill` children collapsed to 0×0. Fixed by returning `Positioned.fill` as the entry's root
+>   (`showCelebrationBurst`). The inline hosts (Summary / phase1 / HHS) were never affected — their Stacks
+>   already get tight constraints from a Scaffold body.
+>   **⚠️ OPEN QUESTION for the user:** `handleVoiceflowEvent` 401s without `secret` (curl-verified) — the agent
+>   snippet shows only `userId/eventName/status`, so confirm the Voiceflow API block actually sends the secret
+>   or no event doc is ever written. (`status` in the call is ignored — the function always writes "New".)
+> - **Co-Pilot Nova markdown — DONE 2026-08-10.** Nova replies in light markdown (`**bold**`, `*italic*`);
+>   the console printed the asterisks literally. New `lib/widgets/momentum/chat_markdown.dart`
+>   (`ChatMarkdownText` + `chatMarkdownSpans`) renders `**` as bold and single `*` as italic, strips the
+>   markers, and leaves anything unmatched verbatim; emphasis can't span a line break (a stray `*` can't
+>   bold the rest of a reply) and `_underscores_` are untouched (ids/urls/the agent's `>___` dividers).
+>   Wired into `_ScreenBubble` (copilot_console_page) → covers BOTH the transcript on the glass and the
+>   chat panel over an image sequence. Unit-tested: `test/chat_markdown_test.dart` **9/9**. No documented
+>   text-display rule existed in design/ref — searched the specs + traceability doc first, none found.
+>   **NOT applied to** `hhs_chat_view` (Stage-1 Nova) or the legacy `ai_chat_page` — one-line change each
+>   if wanted.
+> - **Co-Pilot Nova transcript scroll — FIXED + BROWSER-VERIFIED 2026-08-10.** After the image/animation
+>   sequence played and handed the screen back, the transcript reappeared scrolled to the OLDEST message and
+>   the player had to scroll down to find their place. Cause: the page's `AnimatedSwitcher` swaps the whole
+>   console out (`copilot_console_page.dart`), so `_ScreenContentState` is rebuilt from scratch — and it only
+>   scrolled from `didUpdateWidget` (new-message deltas), never on mount, leaving the fresh `ListView` at
+>   offset 0. Added an `initState` post-frame **pin-to-bottom** (jump, not animate — animating a first paint
+>   reads as the screen scrolling itself), a second post-frame settle for late text reflow, and a
+>   settle-after-animate in `_scrollToBottom` so a reply still growing mid-animation lands at the true end.
+>   Verified in the browser: a cold open of Co-Pilot lands on the newest message with the scrollbar at the
+>   bottom.
 > **Verify on the PHYSICAL Pixel 6** (serial 19301FDF600F0S, `--target-platform android-arm64`); emulators
 > keep freezing their display. Pixel sleeps fast → `adb shell svc power stayon true`. Test uid
 > `aGFJOhlFG3Oz8wdRICmKabiNdU33` (credits balance now 65💎). Backend edits live in vf-bridge/functions-flutter
@@ -487,11 +539,94 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
       **cold restart round-tripped BOTH membership and the message**; created "Night Owls" → appears in My
       Tribes at 1/20. **Accountability Partners** (1 active, daily/weekly cadence, `accountability_partners`)
       is the remaining Pillar-2 sub-feature — deferred to a follow-up slice.
-    - [ ] **Pillar 2b — Accountability Partners** (1 active partner, daily/weekly cadence). Not yet built.
+    - [x] **Pillar 2b — Accountability Partners — DONE + BROWSER-VERIFIED 2026-07-21 (mobile + web).**
+      One active partner, daily/weekly cadence, per spec.
+      **✅ BROWSER-VERIFIED end-to-end (web, primary surface, via claude-in-chrome on the logged-in
+      naginashaheen account):** empty state → Find a Partner dialog (cadence toggle + 6 pilots) → paired
+      Weekly + Leo M. → active card (Leo M · WEEKLY · 0 check-ins) → checked in → "✅ Checked in · Next
+      check-in in 7 days" (weekly cadence gating) → **cold reload + re-login round-tripped the whole card
+      from Firestore** (Leo M · WEEKLY · 1 check-in · checked-in state) → End partnership → confirm → back
+      to empty state (slot freed). Also logic unit-tested 9/9 (`test/accountability_pairing_test.dart`).
+      New `lib/services/accountability_service.dart` (`AccountabilityService` + `AccountabilityCandidate`
+      + `AccountabilityPairing`). Because the spec allows exactly **one active partner**, state is a single
+      doc at `users/{uid}/accountability/active` — that lives UNDER the user's own document, so the existing
+      `users/{uid}/{document=**}` owner rule already permits it: **NO new Firestore rule to deploy** (unlike
+      the top-level `tribes` collection). V1 pairs with an NPC accountability buddy from a curated `candidates`
+      crew (same NPC-vs-real honesty as Tribes `memberCount` / the leaderboard crew); real 2-way matching is
+      the V2 `matchAccountabilityPartner` cloud function. Actions: pick a pilot + cadence → active partnership;
+      **check in** (once per cadence period — daily = once/calendar-day, weekly = once/7-days, gated by
+      `AccountabilityPairing.checkInDue`; increments `nudgeCount`); **end partnership** (frees the slot).
+      **Mobile:** `_AccountabilityPanel` + `_FindPartnerSheet` at the top of the Tribes tab (Pillar 2 groups
+      Tribes + partners). **Web (primary surface):** `_partnerSection()` + `_WebFindPartnerDialog` as a new
+      "ACCOUNTABILITY PARTNER" `WebSection` above the tribes column in `WebCantina` (also relabeled the stale
+      "ACCOUNTABILITY CREW" tribe meta → "SPACE TRIBES"). Both analyzer-clean. **VERIFIED:** the cadence
+      due-date logic (`checkInDue`/`nextDueLabel`, the highest-risk part) is covered by
+      `test/accountability_pairing_test.dart` — **9/9 passing**. The Firestore round-trip reuses the exact
+      transaction/merge pattern as the device-verified Tribes join/leave. **STILL TO DO:** live browser/Pixel
+      verification of the pair→check-in→cold-restart round-trip (blocked this session: no device attached +
+      no test-account credentials to log into the web app).
     - [ ] **Pillar 3 — Leaderboard** — `_LeaderboardList` already merges real `users` + demo crew by score;
       make it the multi-factor anti-shame board (60% momentum/planet/level + 25% ship + 15% achievements),
       recomputed 6h. NOTE: ship-upgrade weighting depends on 13d (blocked on [PLACEHOLDER] numbers).
     - [ ] **Pillar 4 — Weekly Competitions (Arena)** — explicitly V2/deferred; `_ArenaTab` stays coming-soon.
+
+---
+
+## MM Build Guide cross-reference (80-feature MVP spec) — gaps not previously tracked
+
+_Added 2026-07-22 after reading `design/ref/MM Build Guide.docx` (Doc 1 of 2, Will's master WHAT/WHY
+spec of all 80 MVP features). **Its own ✅/🔄/❌ statuses are STALE** — they describe the old FlutterFlow
+MVP (~Nov 2025), NOT this plain-Flutter rebuild, which is far ahead. Most of its 80 features map to
+#1–#14 already. Listed below are only the features it names that **this backlog never captured** — so
+nothing is lost. Statuses here are honest to the rebuild; 🔒 = blocked on the user's spec/assets, and
+several Stage-1 items are OWNED by the Voiceflow "Nova" agent (Claude can't edit it — see
+[[reference_vf_onboarding_agent]]), so they're "in Nova's scope" not separately buildable on the Flutter side._
+
+- [ ] **BG-F5 Auto-Tagging System** — AI extracts user statements into the 17 Momentum Lists during the
+  onboarding chat (strengths/fears/obstacles/etc.). **In Nova's scope** (the VF agent captures list data);
+  not verified to actually persist per-list tags on the Flutter side. Verify what Nova writes, or descope.
+- [ ] **BG-F6 / BG-F9 Master Habits Database (500+ vetted habits) + recommendation algorithm** 🔒 —
+  match pain-point→habit, filter by strengths/passions/time/obstacles, rank by success rate. Today Nova
+  recommends conversationally with no structured DB. NEEDS the actual habits database from Will (was "60%
+  complete" in the guide). Big future feature; not started.
+- [ ] **BG-F7 WANT / CAN / EFFECTIVE ("Triple-Check") scoring** — after a habit is recommended, player
+  rates each of the 3 criteria 1–5; any <3 → AI suggests modifications. Not built (Nova doesn't expose
+  this as a discrete step). Consider for Stage-1 polish.
+- [ ] **BG-F8 Habit Refinement Options (Stage 1)** — Tweak / Alternative / Custom / Regenerate the Golden
+  Habit before locking it. Distinct from the #7 *post-check-in* flag/refine flow (which is Phase 2). Not built.
+- [ ] **BG-F10 Quality Feedback Collection** — end-of-Stage-1 "How helpful was this Golden Habit?" (1–5 +
+  free text + drop-off tracking) feeding Data-Learning-Effects. Not built. Small, valuable for the moat.
+- [ ] **BG-F21 Hybrid Scoring (Active vs Maintaining cores)** — the guide's "CRITICAL INNOVATION": active
+  cores get per-habit scoring, maintaining cores get one quick 1–5. The check-in has per-habit rows for
+  active cores already; **verify the maintaining-core quick-score path matches this spec** (may be a
+  partial gap, not a full miss).
+- [ ] **BG-F22 Interactive Animated Sliders + score-specific messages** — liquid-fill sliders w/ haptics
+  and per-score encouragement copy. The guide lists per-score XP 10/25/50/75/100 (score 1→5) which
+  **conflicts with the shipped flat +10/weekday check-in (#9)** — treat those XP numbers as 🔒 needs-spec
+  reconciliation, don't wire. UI polish (animated slider + messages) is unbuilt; current sliders are plain.
+- [ ] **BG-F28 Quick Reflection / Captain's Log** — optional post-scoring journaling prompt. The Product
+  Design Rationale references "Captain's Log entries" (the #7 auto-flag reads them), but no journaling
+  capture UI exists. Not built.
+- [ ] **BG-F42 Weekly Missions (17 Lists as quests)** 🔒 — the guide's key engagement loop: each Momentum
+  List doubles as a weekly quest, player earns XP for adding/updating entries. #14 Lists-editing left this
+  as an explicit hook ("XP-for-updates is undesigned Phase-2 economy"). NEEDS the XP amounts/cadence. Not wired.
+- [ ] **BG-F43 Obstacles (asteroids/aliens when progress stalls)** — visual regression events on the rocket
+  journey. Overlaps 13c planet journey; post-MVP-ish. Not tracked before. 🔒 needs design.
+- [ ] **BG-F53 Google Calendar Integration** 🔒 — two-way sync + AI-created habit reminders + OAuth. The
+  Profile screen marks "Connected calendars" as SOON; **no task tracked this.** Sizable (OAuth + sync);
+  the guide itself flags it as an open time-estimate question. Not started.
+- [ ] **BG-F56 Data export (GDPR)** — user data export. Not built, not previously tracked. Compliance item.
+- [ ] **BG-F57 Analytics / tracking infrastructure** — the guide's "Data Learning Effects from Day 1"
+  (timestamped events for the recommendation moat). Firebase Analytics is configured but no event
+  instrumentation is tracked as a task. Not started.
+
+> **Note:** BG-F1–F4 (multi-agent AI, core selection, pain-point ID, list collection) = #3; F11–F20
+> (3 MBMs, IF-THEN, Momentified, Cantina unlock, progress-save/resume, celebration) = #4; F23 balance
+> meter = #6/#8; F24 streak+freeze = #10 + 13h; F25/F26 routines/non-routines = existing Routines screen;
+> F27 reminders = notifications; F29 daily summary = #6; F36 XP/credits = #9/#13; F37 levels = 13b;
+> F38 rocket/planets = 13c; F39 badges = 13f; F40 rocket customization = 13d; F41 planet landings = 13c;
+> F44 power-ups = 13h/13d; F45/F46 leaderboards/tribes = #14; F51/F52/F54/F55/F60 infra = done. All the
+> above are already represented in this plan — only the un-listed BG-F* items above are net-new gaps.
 
 ---
 

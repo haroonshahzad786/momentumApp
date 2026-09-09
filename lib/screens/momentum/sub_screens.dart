@@ -14,6 +14,7 @@ import '../../services/onboarding_service.dart';
 import '../../services/task_service.dart';
 import '../../services/cantina_ideas_service.dart';
 import '../../services/tribes_service.dart';
+import '../../services/accountability_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/glass_panel.dart';
 import '../../widgets/momentum/mm_buttons.dart';
@@ -3295,6 +3296,11 @@ class _TribesTabState extends State<_TribesTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const _AccountabilityPanel(),
+        const SizedBox(height: 16),
+        Text('SPACE TRIBES',
+            style: MM.displayX(size: 10, color: Colors.white.withOpacity(0.5))),
+        const SizedBox(height: 10),
         _SegTabs(
           tabs: [
             ['mine', 'My Tribes · ${_mine.length}'],
@@ -3412,6 +3418,437 @@ class _TribesTabState extends State<_TribesTab> {
                 style: MM.displayX(
                     size: 10,
                     color: filled ? Colors.white : Colors.white.withOpacity(0.7))),
+      ),
+    );
+  }
+}
+
+/// Accountability Partner card (Pillar 2 sub-feature). One active partner at a
+/// time; daily or weekly check-in cadence; real Firestore state at
+/// `users/{uid}/accountability/active`.
+class _AccountabilityPanel extends StatefulWidget {
+  const _AccountabilityPanel();
+
+  @override
+  State<_AccountabilityPanel> createState() => _AccountabilityPanelState();
+}
+
+class _AccountabilityPanelState extends State<_AccountabilityPanel> {
+  final _service = AccountabilityService();
+  String? _uid;
+  AccountabilityPairing? _pairing;
+  bool _loading = true;
+  bool _busy = false;
+
+  static Color _hex(String core) => MM.coreColor[core] ?? MM.teal;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+    _uid = uid;
+    try {
+      final p = await _service.getActive(uid);
+      if (!mounted) return;
+      setState(() {
+        _pairing = p;
+        _loading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _snack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  Future<void> _findPartner() async {
+    final uid = _uid;
+    if (uid == null) return;
+    final result = await showModalBottomSheet<_PartnerDraft>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => const _FindPartnerSheet(),
+    );
+    if (result == null) return;
+    setState(() => _busy = true);
+    try {
+      await _service.setPartner(
+        uid: uid,
+        candidate: result.candidate,
+        cadence: result.cadence,
+        createdAt: DateTime.now().millisecondsSinceEpoch,
+      );
+      await _load();
+      if (mounted) _snack('Paired with ${result.candidate.name} 🚀');
+    } catch (_) {
+      if (mounted) _snack("Couldn't pair up — try again.");
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _checkIn() async {
+    final uid = _uid;
+    final p = _pairing;
+    if (uid == null || p == null || _busy) return;
+    setState(() => _busy = true);
+    try {
+      await _service.logCheckIn(
+          uid: uid, at: DateTime.now().millisecondsSinceEpoch);
+      await _load();
+      if (mounted) _snack('Checked in with ${p.partnerName} ✅');
+    } catch (_) {
+      if (mounted) _snack("Couldn't log the check-in — try again.");
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _end() async {
+    final uid = _uid;
+    final p = _pairing;
+    if (uid == null || p == null) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: MM.navy,
+        title: Text('End partnership?',
+            style: MM.body(color: Colors.white, size: 15)),
+        content: Text(
+          'You can pair with a new partner right after. ${p.partnerName} keeps things friendly — no hard feelings.',
+          style: MM.body(color: Colors.white.withOpacity(0.7), size: 12),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Keep',
+                style: MM.body(color: Colors.white.withOpacity(0.6))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('End', style: MM.body(color: MM.teal)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    setState(() => _busy = true);
+    try {
+      await _service.end(uid);
+      await _load();
+    } catch (_) {
+      if (mounted) _snack("Couldn't end it — try again.");
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const GlassPanel(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+            child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2, color: MM.teal))),
+      );
+    }
+    final p = _pairing;
+    if (p == null) return _empty();
+    return _active(p);
+  }
+
+  Widget _empty() {
+    return GlassPanel(
+      leftAccentColor: MM.teal,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.handshake_outlined, size: 16, color: MM.teal),
+            const SizedBox(width: 8),
+            Text('ACCOUNTABILITY PARTNER',
+                style: MM.displayX(size: 11, color: Colors.white)),
+          ]),
+          const SizedBox(height: 8),
+          Text(
+            'One partner. Daily or weekly check-ins. Someone in your corner keeping the momentum honest.',
+            style: MM.body(color: Colors.white.withOpacity(0.6), size: 12),
+          ),
+          const SizedBox(height: 12),
+          MMGhostButton(
+            label: _busy ? 'Pairing…' : '+ Find a partner',
+            expand: true,
+            padding: const EdgeInsets.symmetric(vertical: 11),
+            onPressed: _busy ? null : _findPartner,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _active(AccountabilityPairing p) {
+    final hex = _hex(p.partnerCore);
+    final now = DateTime.now();
+    final due = p.checkInDue(now);
+    final cadenceLabel = p.isWeekly ? 'WEEKLY' : 'DAILY';
+    return GlassPanel(
+      leftAccentColor: hex,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            const Icon(Icons.handshake_outlined, size: 14, color: MM.teal),
+            const SizedBox(width: 6),
+            Text('ACCOUNTABILITY PARTNER',
+                style: MM.displayX(size: 10, color: Colors.white.withOpacity(0.5))),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: hex),
+              child: Center(
+                child: Text(p.partnerAvatar,
+                    style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(p.partnerName,
+                      style: MM.body(
+                          color: Colors.white,
+                          size: 15,
+                          weight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Row(children: [
+                    MMChip(label: cadenceLabel, color: hex),
+                    const SizedBox(width: 8),
+                    Text('${p.nudgeCount} check-in${p.nudgeCount == 1 ? '' : 's'}',
+                        style: MM.mono(
+                            size: 10, color: Colors.white.withOpacity(0.5))),
+                  ]),
+                ],
+              ),
+            ),
+          ]),
+          const SizedBox(height: 14),
+          if (due)
+            MMGhostButton(
+              label: _busy ? 'Logging…' : '✓ Check in with ${p.partnerName.split(' ').first}',
+              expand: true,
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              onPressed: _busy ? null : _checkIn,
+            )
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withOpacity(0.12)),
+              ),
+              child: Text('✅ Checked in · ${p.nextDueLabel(now)}',
+                  style: MM.body(color: Colors.white.withOpacity(0.55), size: 12)),
+            ),
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _busy ? null : _end,
+              style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              child: Text('End partnership',
+                  style: MM.body(color: Colors.white.withOpacity(0.4), size: 11)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Result of the find-partner sheet: a chosen candidate + cadence.
+class _PartnerDraft {
+  const _PartnerDraft(this.candidate, this.cadence);
+  final AccountabilityCandidate candidate;
+  final String cadence;
+}
+
+/// Bottom sheet to pick an accountability partner + a daily/weekly cadence.
+class _FindPartnerSheet extends StatefulWidget {
+  const _FindPartnerSheet();
+
+  @override
+  State<_FindPartnerSheet> createState() => _FindPartnerSheetState();
+}
+
+class _FindPartnerSheetState extends State<_FindPartnerSheet> {
+  String _cadence = 'daily';
+  String? _selectedId;
+
+  static Color _hex(String core) => MM.coreColor[core] ?? MM.teal;
+
+  @override
+  Widget build(BuildContext context) {
+    final candidates = AccountabilityService.candidates;
+    return Container(
+      padding: EdgeInsets.only(
+        left: 18,
+        right: 18,
+        top: 18,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 22,
+      ),
+      decoration: const BoxDecoration(
+        color: MM.navy,
+        border: Border(top: BorderSide(color: MM.teal, width: 2)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('FIND A PARTNER',
+                style: MM.displayX(size: 13, color: Colors.white)),
+            const SizedBox(height: 4),
+            Text('One active partner keeps you honest.',
+                style: MM.body(color: Colors.white.withOpacity(0.55), size: 12)),
+            const SizedBox(height: 16),
+            Text('CADENCE',
+                style: MM.displayX(size: 10, color: Colors.white.withOpacity(0.5))),
+            const SizedBox(height: 8),
+            _SegTabs(
+              tabs: const [
+                ['daily', 'Daily'],
+                ['weekly', 'Weekly'],
+              ],
+              active: _cadence,
+              onTap: (c) => setState(() => _cadence = c),
+              fontSize: 11,
+              radius: 8,
+            ),
+            const SizedBox(height: 18),
+            Text('CHOOSE A PILOT',
+                style: MM.displayX(size: 10, color: Colors.white.withOpacity(0.5))),
+            const SizedBox(height: 10),
+            ...candidates.map((c) {
+              final hex = _hex(c.core);
+              final selected = _selectedId == c.id;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: InkWell(
+                  onTap: () => setState(() => _selectedId = c.id),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? hex.withOpacity(0.12)
+                          : Colors.white.withOpacity(0.03),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: selected
+                              ? hex.withOpacity(0.6)
+                              : Colors.white.withOpacity(0.08)),
+                    ),
+                    child: Row(children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration:
+                            BoxDecoration(shape: BoxShape.circle, color: hex),
+                        child: Center(
+                          child: Text(c.avatar,
+                              style: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(children: [
+                              Text(c.name,
+                                  style: MM.body(
+                                      color: Colors.white,
+                                      size: 14,
+                                      weight: FontWeight.w600)),
+                              const SizedBox(width: 8),
+                              MMChip(
+                                  label:
+                                      _TribesTabState.coreLabel(c.core),
+                                  color: hex),
+                            ]),
+                            const SizedBox(height: 4),
+                            Text(c.blurb,
+                                style: MM.body(
+                                    color: Colors.white.withOpacity(0.55),
+                                    size: 11)),
+                          ],
+                        ),
+                      ),
+                      if (selected)
+                        Icon(Icons.check_circle, size: 18, color: hex),
+                    ]),
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 10),
+            MMPrimaryButton(
+              label: 'Pair up →',
+              onPressed: _selectedId == null
+                  ? null
+                  : () {
+                      final c = candidates
+                          .firstWhere((e) => e.id == _selectedId);
+                      Navigator.pop(context, _PartnerDraft(c, _cadence));
+                    },
+            ),
+          ],
+        ),
       ),
     );
   }

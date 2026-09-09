@@ -18,21 +18,210 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Moore Momentum">
 
   <!-- iOS meta tags & icons -->
+
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="untitled2">
+  <meta name="apple-mobile-web-app-title" content="Moore Momentum">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>untitled2</title>
+  <title>Moore Momentum</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Start fetching the intro art while the engine is still booting, so it is
+       already in the browser cache when Dart pre-caches it during the boot
+       splash. "prefetch" is deliberately low priority — it must not compete
+       with flutter_bootstrap.js / canvaskit for bandwidth. -->
+  <link rel="prefetch" as="image" href="assets/assets/momentum/intro/rocket.png">
+  <link rel="prefetch" as="image" href="assets/assets/momentum/intro/screen.png">
+  <link rel="prefetch" as="image" href="assets/assets/momentum/intro/earth.png">
+  <link rel="prefetch" as="image" href="assets/assets/momentum/intro/rocket_cores.gif">
+  <link rel="prefetch" as="image" href="assets/assets/momentum/intro/rocket_glow.gif">
+  <link rel="prefetch" as="image" href="assets/assets/momentum/intro/pyramid.gif">
+
+  <!--
+    Pre-engine boot screen.
+
+    Everything here is inline — no webfont, no image request, no script file —
+    because it has to paint on the very first frame the browser composites.
+    Anything needing a round trip would leave the black screen it exists to
+    replace. The logo is a 2 KB data URI for the same reason.
+
+    It covers the gap the Dart-side BootSplash cannot: the browser downloading
+    main.dart.js and CanvasKit, before any Flutter code exists to draw. Flutter
+    fires `flutter-first-frame` on window once the engine paints, which is where
+    we hand over.
+
+    #06070D == MM.pageBg. The body background is also set so no white shows
+    through the host page during a maximize/resize repaint.
+  -->
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background-color: #06070D;
+    }
+
+    #mm-boot {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: #06070D;
+      /* Mirrors StarfieldBackground's nebula stack so the handover to the
+         Dart splash is not a visible jump. */
+      background-image:
+        radial-gradient(circle at 50% -10%, rgba(31,154,214,0.18), transparent 60%),
+        radial-gradient(circle at 50% 110%, rgba(155,92,255,0.15), transparent 60%);
+      font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      opacity: 1;
+      transition: opacity 450ms ease;
+    }
+
+    #mm-boot.mm-hide { opacity: 0; pointer-events: none; }
+
+    .mm-mark-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 168px;
+      height: 132px;
+    }
+
+    /* Glow pulse behind the mark. */
+    .mm-mark-wrap::before {
+      content: "";
+      position: absolute;
+      width: 190px;
+      height: 190px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(31,154,214,0.34), transparent 68%);
+      animation: mm-pulse 2.4s ease-in-out infinite;
+    }
+
+    .mm-mark {
+      position: relative;
+      width: 104px;
+      height: auto;
+      image-rendering: auto;
+      animation: mm-rise 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    .mm-word {
+      margin-top: 6px;
+      font-size: 21px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      animation: mm-rise 900ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both;
+    }
+    .mm-word .r { color: #E8112D; }  /* Ignition Red */
+    .mm-word .b { color: #1F9AD6; }  /* Momentum Blue */
+
+    .mm-tag {
+      margin-top: 10px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 5px;
+      color: rgba(255,255,255,0.42);
+      animation: mm-rise 900ms cubic-bezier(0.16, 1, 0.3, 1) 260ms both;
+    }
+
+    /* Indeterminate bar — we cannot know real download progress here, so it
+       reads as activity rather than faking a percentage. */
+    .mm-bar {
+      position: relative;
+      margin-top: 30px;
+      width: 190px;
+      height: 3px;
+      border-radius: 2px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.10);
+    }
+    .mm-bar::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 42%;
+      height: 100%;
+      border-radius: 2px;
+      background: linear-gradient(90deg, transparent, #1F9AD6, #6FD0FF, transparent);
+      animation: mm-sweep 1.35s ease-in-out infinite;
+    }
+
+    .mm-status {
+      margin-top: 16px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 3px;
+      color: rgba(255,255,255,0.34);
+    }
+
+    @keyframes mm-pulse {
+      0%, 100% { opacity: 0.45; transform: scale(0.86); }
+      50%      { opacity: 1;    transform: scale(1.06); }
+    }
+    @keyframes mm-rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes mm-sweep {
+      0%   { left: -45%; }
+      100% { left: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .mm-mark-wrap::before, .mm-mark, .mm-word, .mm-tag, .mm-bar::after {
+        animation: none;
+      }
+      .mm-bar::after { left: 0; width: 100%; }
+    }
+  </style>
 </head>
 <body>
+  <div id="mm-boot">
+    <div class="mm-mark-wrap">
+      <img class="mm-mark" alt="Moore Momentum" src="data:image/png;base64,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">
+    </div>
+    <div class="mm-word"><span class="r">MOORE</span><span class="b">MOMENTUM</span></div>
+    <div class="mm-tag">MOMENTUM OS</div>
+    <div class="mm-bar"></div>
+    <div class="mm-status">INITIALIZING FLIGHT SYSTEMS</div>
+  </div>
+
+  <script>
+    (function () {
+      var gone = false;
+      function dismiss() {
+        if (gone) return;
+        gone = true;
+        var el = document.getElementById('mm-boot');
+        if (!el) return;
+        el.classList.add('mm-hide');
+        // Drop it from the DOM after the fade so it can never eat pointer
+        // events or hold a compositor layer for the rest of the session.
+        setTimeout(function () {
+          if (el.parentNode) el.parentNode.removeChild(el);
+        }, 500);
+      }
+      // The engine's own signal: fired once Flutter has painted its first
+      // frame, which is exactly when the Dart BootSplash becomes visible.
+      window.addEventListener('flutter-first-frame', dismiss);
+      // Belt and braces. If the engine fails to boot at all, the user gets the
+      // app's black background rather than a loader spinning forever.
+      setTimeout(dismiss, 30000);
+    })();
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

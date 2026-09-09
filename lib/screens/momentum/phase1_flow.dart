@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/phase1_state.dart';
 import '../../services/onboarding_service.dart';
 import '../../theme/momentum_tokens.dart';
+import '../../widgets/momentum/confetti_overlay.dart';
 import '../../widgets/momentum/glass_panel.dart';
 import '../../widgets/momentum/hhs_pyramid.dart';
 import '../../widgets/momentum/mm_buttons.dart';
@@ -163,19 +164,31 @@ class _Phase1FlowState extends State<Phase1Flow> {
 
 // ─── Reusable: starfield-backed scaffold ─────────────────────────────────
 class _PhaseScaffold extends StatelessWidget {
-  const _PhaseScaffold({required this.child});
+  const _PhaseScaffold({required this.child, this.celebrate = false});
   final Widget child;
+
+  /// Fire a confetti burst over the page (unlock/award screens).
+  final bool celebrate;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: MM.pageBg,
       body: Stack(
+        fit: StackFit.expand,
         children: [
           const Positioned.fill(child: StarfieldBackground()),
           SafeArea(
             child: SingleChildScrollView(child: child),
           ),
+          if (celebrate)
+            const Positioned.fill(
+              child: ConfettiOverlay(
+                count: 120,
+                origin: Alignment(0, -0.55),
+                duration: Duration(milliseconds: 3000),
+              ),
+            ),
         ],
       ),
     );
@@ -579,6 +592,8 @@ class _CommandCenterUnlockView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _PhaseScaffold(
+      // Stage 1 complete — the Golden Habit is forged and the Lists are live.
+      celebrate: true,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
         child: Column(
@@ -900,6 +915,7 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
       return const Scaffold(
         backgroundColor: MM.pageBg,
         body: Stack(
+          fit: StackFit.expand,
           children: [
             Positioned.fill(child: StarfieldBackground()),
             Center(child: CircularProgressIndicator(color: MM.blue)),
@@ -917,6 +933,7 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
     return Scaffold(
       backgroundColor: MM.pageBg,
       body: Stack(
+        fit: StackFit.expand,
         children: [
           const Positioned.fill(child: StarfieldBackground()),
           SafeArea(
@@ -1024,6 +1041,17 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
               ),
             ),
           ),
+          // Stage 2 banked +50 MP (Friction Hunter / Method Master /
+          // Implementation Wizard) and opened the Cantina — the biggest award
+          // in Phase 1, so it gets the biggest burst.
+          const Positioned.fill(
+            child: ConfettiOverlay(
+              count: 150,
+              origin: Alignment(0, -0.6),
+              duration: Duration(milliseconds: 3200),
+              startDelay: Duration(milliseconds: 250),
+            ),
+          ),
         ],
       ),
     );
@@ -1035,6 +1063,7 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
     return Scaffold(
       backgroundColor: MM.pageBg,
       body: Stack(
+        fit: StackFit.expand,
         children: [
           const Positioned.fill(child: StarfieldBackground()),
           SafeArea(
@@ -1106,6 +1135,7 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
     return Scaffold(
       backgroundColor: MM.pageBg,
       body: Stack(
+        fit: StackFit.expand,
         children: [
           const Positioned.fill(child: StarfieldBackground()),
           SafeArea(

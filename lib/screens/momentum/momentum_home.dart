@@ -11,16 +11,20 @@ import '../../services/onboarding_service.dart';
 import '../../services/points_service.dart';
 import '../../services/profile_service.dart';
 import '../../theme/momentum_tokens.dart';
+import '../../widgets/momentum/celebration_host.dart';
 import '../../widgets/momentum/core_alert_sheet.dart';
 import '../../widgets/momentum/menu_drawer.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 import '../../widgets/momentum/offline_banner.dart';
 import '../../widgets/momentum/starfield.dart';
 import '../../widgets/momentum/web_shell.dart';
-import '../ai_chat_page.dart';
+// Co-Pilot v2 (console layout). The original `ai_chat_page.dart` is still on
+// disk but no longer linked — swap this import back to compare the two.
+import '../copilot_console_page.dart';
 import 'checkin_page.dart';
 import 'daily_ritual_step0.dart';
 import 'dashboard_page.dart';
+import 'journey_page.dart';
 import 'phase1_flow.dart';
 import 'sub_screens.dart';
 import 'summary_page.dart';
@@ -177,6 +181,11 @@ class _MomentumHomeState extends State<MomentumHome> {
   }
 
   void _go(String key) => setState(() {
+        // The desktop Cockpit already IS the journey stage — no separate map.
+        if (key == 'journey' &&
+            MediaQuery.of(context).size.width >= kWebBreakpoint) {
+          key = 'dashboard';
+        }
         _screen = key;
         _menuOpen = false;
         // Normal navigation always lands Phase 1 on its hub.
@@ -296,7 +305,7 @@ class _MomentumHomeState extends State<MomentumHome> {
 
   void _openChat() {
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => const AiChatPage(),
+      builder: (_) => const CopilotConsolePage(),
     ));
   }
 
@@ -438,6 +447,20 @@ class _MomentumHomeState extends State<MomentumHome> {
         onCoreAlert: _showCoreAlert,
         offline: _offline,
         onRefreshOffline: _fetchProfile,
+      );
+    }
+    if (_screen == 'journey') {
+      // Planet states on a phone: the whole route, the rail and the arrival
+      // cinematic — what the desktop Cockpit's centre stage gives for free.
+      return JourneyPage(
+        planet: p?.planet ?? 'earth',
+        activeCores: activeCores,
+        atRiskCores: _atRiskCores,
+        streak: _streakOverride ?? (p?.streak ?? 0),
+        momentumScore: _momentumOverride ?? (p?.momentumScore ?? 0),
+        onBack: () => _go('dashboard'),
+        onNav: _go,
+        onCoreAlert: _showCoreAlert,
       );
     }
     if (_screen == 'phase1') {
@@ -609,10 +632,17 @@ class _MomentumHomeState extends State<MomentumHome> {
     }
     // At desktop widths render the web shell (sidebar + topbar + Cockpit);
     // below the breakpoint the existing full-bleed mobile screens are kept.
-    if (MediaQuery.of(context).size.width >= kWebBreakpoint) {
-      return _buildDesktop();
-    }
+    // Either way the whole shell sits under the celebration host, so a points
+    // award raised by the Voiceflow agent bursts confetti on any screen.
+    return CelebrationHost(
+      userId: FirebaseAuth.instance.currentUser?.uid ?? '',
+      child: MediaQuery.of(context).size.width >= kWebBreakpoint
+          ? _buildDesktop()
+          : _buildMobile(),
+    );
+  }
 
+  Widget _buildMobile() {
     return Stack(
       children: [
         Positioned.fill(child: _buildBody()),
@@ -848,6 +878,7 @@ class _CantinaLockedView extends StatelessWidget {
     return Scaffold(
       backgroundColor: MM.pageBg,
       body: Stack(
+        fit: StackFit.expand,
         children: [
           const Positioned.fill(child: StarfieldBackground()),
           SafeArea(

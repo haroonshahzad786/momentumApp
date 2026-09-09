@@ -68,3 +68,8 @@ serviceAccount*.json
 # Office lock/temp files
 ~$*
 *.tmp
+
+# Local tool caches (regenerable, not project content)
+.firebase/
+.playwright-mcp/
+.tmp_screen1.png

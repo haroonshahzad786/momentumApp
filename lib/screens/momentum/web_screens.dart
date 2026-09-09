@@ -25,6 +25,7 @@ import '../../services/momentum_lists_service.dart';
 import '../../services/onboarding_service.dart';
 import '../../services/profile_service.dart';
 import '../../services/tribes_service.dart';
+import '../../services/accountability_service.dart';
 import '../../theme/momentum_tokens.dart';
 
 const Map<String, String> kCoreIcon = {
@@ -1458,10 +1459,117 @@ class _WebCantinaState extends State<WebCantina> {
   bool _showDiscover = false;
   final Set<String> _tribeBusy = {};
 
+  // Accountability Partner (Pillar 2 sub-feature) — one active partner, daily/
+  // weekly cadence. Same service + Firestore state as the mobile panel.
+  final _apSvc = AccountabilityService();
+  AccountabilityPairing? _pairing;
+  bool _apLoading = true;
+  bool _apBusy = false;
+
   @override
   void initState() {
     super.initState();
     _loadTribes();
+    _loadPartner();
+  }
+
+  Future<void> _loadPartner() async {
+    final uid = _myUid;
+    if (uid.isEmpty) {
+      if (mounted) setState(() => _apLoading = false);
+      return;
+    }
+    try {
+      final p = await _apSvc.getActive(uid);
+      if (!mounted) return;
+      setState(() {
+        _pairing = p;
+        _apLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _apLoading = false);
+    }
+  }
+
+  Future<void> _findPartner() async {
+    final uid = _myUid;
+    if (uid.isEmpty) return;
+    final draft = await showDialog<_WebPartnerDraft>(
+      context: context,
+      builder: (_) => const _WebFindPartnerDialog(),
+    );
+    if (draft == null) return;
+    setState(() => _apBusy = true);
+    try {
+      await _apSvc.setPartner(
+        uid: uid,
+        candidate: draft.candidate,
+        cadence: draft.cadence,
+        createdAt: DateTime.now().millisecondsSinceEpoch,
+      );
+      await _loadPartner();
+      if (mounted) _toast('Paired with ${draft.candidate.name} 🚀');
+    } catch (_) {
+      if (mounted) _toast("Couldn't pair up — try again.");
+    } finally {
+      if (mounted) setState(() => _apBusy = false);
+    }
+  }
+
+  Future<void> _partnerCheckIn() async {
+    final uid = _myUid;
+    final p = _pairing;
+    if (uid.isEmpty || p == null || _apBusy) return;
+    setState(() => _apBusy = true);
+    try {
+      await _apSvc.logCheckIn(
+          uid: uid, at: DateTime.now().millisecondsSinceEpoch);
+      await _loadPartner();
+      if (mounted) _toast('Checked in with ${p.partnerName} ✅');
+    } catch (_) {
+      if (mounted) _toast("Couldn't log the check-in — try again.");
+    } finally {
+      if (mounted) setState(() => _apBusy = false);
+    }
+  }
+
+  Future<void> _endPartner() async {
+    final uid = _myUid;
+    final p = _pairing;
+    if (uid.isEmpty || p == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: MM.navy,
+        title: Text('End partnership?',
+            style: MM.body(color: Colors.white, size: 15)),
+        content: Text(
+          'You can pair with a new partner right after.',
+          style: MM.body(color: Colors.white.withOpacity(0.7), size: 12),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Keep',
+                style: MM.body(color: Colors.white.withOpacity(0.6))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('End', style: MM.body(color: MM.teal)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    setState(() => _apBusy = true);
+    try {
+      await _apSvc.end(uid);
+      await _loadPartner();
+    } catch (_) {
+      if (mounted) _toast("Couldn't end it — try again.");
+    } finally {
+      if (mounted) setState(() => _apBusy = false);
+    }
   }
 
   Future<void> _loadTribes() async {
@@ -1563,11 +1671,11 @@ class _WebCantinaState extends State<WebCantina> {
           ],
         );
         final tribesList = _showDiscover ? _discoverTribes : _myTribes;
-        final right = WebSection(
+        final tribesSection = WebSection(
           title: _showDiscover ? 'DISCOVER TRIBES' : 'YOUR TRIBES',
           meta: _showDiscover
               ? 'JOIN A CREW'
-              : 'ACCOUNTABILITY CREW · ${_myTribes.length}',
+              : 'SPACE TRIBES · ${_myTribes.length}',
           accent: MM.magenta,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1591,6 +1699,19 @@ class _WebCantinaState extends State<WebCantina> {
                   () => setState(() => _showDiscover = !_showDiscover)),
             ],
           ),
+        );
+        final right = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            WebSection(
+              title: 'ACCOUNTABILITY PARTNER',
+              meta: 'ONE ACTIVE · DAILY OR WEEKLY',
+              accent: MM.teal,
+              child: _partnerSection(),
+            ),
+            const SizedBox(height: 30),
+            tribesSection,
+          ],
         );
         return wide
             ? Row(
@@ -1792,6 +1913,120 @@ class _WebCantinaState extends State<WebCantina> {
     );
   }
 
+  Widget _partnerSection() {
+    if (_apLoading) {
+      return const WebPanel(
+        padding: EdgeInsets.symmetric(vertical: 32),
+        child: Center(child: CircularProgressIndicator(color: MM.teal)),
+      );
+    }
+    final p = _pairing;
+    if (p == null) {
+      return WebPanel(
+        leftAccent: MM.teal,
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'One partner keeps the momentum honest. Pick a pilot and a daily or weekly check-in cadence.',
+              style: MM.body(
+                  size: 12, color: Colors.white.withOpacity(0.6), height: 1.5),
+            ),
+            const SizedBox(height: 14),
+            _ghost(_apBusy ? 'Pairing…' : '+ Find a partner',
+                _apBusy ? () {} : _findPartner),
+          ],
+        ),
+      );
+    }
+    final hex = coreHex(p.partnerCore);
+    final now = DateTime.now();
+    final due = p.checkInDue(now);
+    return WebPanel(
+      leftAccent: hex,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: hex),
+              child: Center(
+                child: Text(p.partnerAvatar,
+                    style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(p.partnerName,
+                      style: MM.body(
+                          size: 15,
+                          color: Colors.white,
+                          weight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Row(children: [
+                    _chip(p.isWeekly ? 'WEEKLY' : 'DAILY', hex),
+                    const SizedBox(width: 8),
+                    Text(
+                        '${p.nudgeCount} check-in${p.nudgeCount == 1 ? '' : 's'}',
+                        style: MM.mono(
+                            size: 11, color: Colors.white.withOpacity(0.5))),
+                  ]),
+                ],
+              ),
+            ),
+          ]),
+          const SizedBox(height: 16),
+          if (due)
+            _ghost(
+                _apBusy
+                    ? 'Logging…'
+                    : '✓ Check in with ${p.partnerName.split(' ').first}',
+                _apBusy ? () {} : _partnerCheckIn)
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withOpacity(0.12)),
+              ),
+              child: Text('✅ Checked in · ${p.nextDueLabel(now)}',
+                  style:
+                      MM.body(size: 12, color: Colors.white.withOpacity(0.55))),
+            ),
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _apBusy ? null : _endPartner,
+              style: TextButton.styleFrom(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              child: Text('End partnership',
+                  style: MM.body(size: 11, color: Colors.white.withOpacity(0.4))),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _tribeCard(Tribe t) {
     final hex = coreHex(t.core);
     final joined = t.isMember(_myUid);
@@ -1888,6 +2123,181 @@ class _WebCantinaState extends State<WebCantina> {
       buf.write(s[i]);
     }
     return buf.toString();
+  }
+}
+
+/// Result of the web find-partner dialog.
+class _WebPartnerDraft {
+  const _WebPartnerDraft(this.candidate, this.cadence);
+  final AccountabilityCandidate candidate;
+  final String cadence;
+}
+
+/// Desktop dialog to pick an accountability partner + a daily/weekly cadence.
+class _WebFindPartnerDialog extends StatefulWidget {
+  const _WebFindPartnerDialog();
+  @override
+  State<_WebFindPartnerDialog> createState() => _WebFindPartnerDialogState();
+}
+
+class _WebFindPartnerDialogState extends State<_WebFindPartnerDialog> {
+  String _cadence = 'daily';
+  String? _selectedId;
+
+  @override
+  Widget build(BuildContext context) {
+    final candidates = AccountabilityService.candidates;
+    return Dialog(
+      backgroundColor: MM.navy,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: MM.teal, width: 1.5),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('FIND A PARTNER',
+                    style: GoogleFonts.orbitron(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.4,
+                        color: Colors.white)),
+                const SizedBox(height: 4),
+                Text('One active partner keeps you honest.',
+                    style:
+                        MM.body(size: 12, color: Colors.white.withOpacity(0.55))),
+                const SizedBox(height: 16),
+                Text('CADENCE',
+                    style: GoogleFonts.orbitron(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                        color: Colors.white.withOpacity(0.5))),
+                const SizedBox(height: 8),
+                Row(children: [
+                  _cadencePill('daily', 'Daily'),
+                  const SizedBox(width: 8),
+                  _cadencePill('weekly', 'Weekly'),
+                ]),
+                const SizedBox(height: 18),
+                Text('CHOOSE A PILOT',
+                    style: GoogleFonts.orbitron(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                        color: Colors.white.withOpacity(0.5))),
+                const SizedBox(height: 10),
+                ...candidates.map(_candidateRow),
+                const SizedBox(height: 14),
+                Row(children: [
+                  Expanded(
+                    child: _ghost('Cancel', () => Navigator.pop(context)),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Opacity(
+                      opacity: _selectedId == null ? 0.4 : 1,
+                      child: _ghost('Pair up →', () {
+                        if (_selectedId == null) return;
+                        final c = candidates
+                            .firstWhere((e) => e.id == _selectedId);
+                        Navigator.pop(context, _WebPartnerDraft(c, _cadence));
+                      }),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _cadencePill(String value, String label) {
+    final on = _cadence == value;
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => setState(() => _cadence = value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: on ? MM.teal.withOpacity(0.16) : Colors.transparent,
+            border: Border.all(
+                color: on ? MM.teal.withOpacity(0.6) : Colors.white.withOpacity(0.12)),
+          ),
+          child: Text(label,
+              style: MM.body(
+                  size: 12,
+                  color: on ? Colors.white : Colors.white.withOpacity(0.6),
+                  weight: on ? FontWeight.w600 : FontWeight.w400)),
+        ),
+      ),
+    );
+  }
+
+  Widget _candidateRow(AccountabilityCandidate c) {
+    final hex = coreHex(c.core);
+    final selected = _selectedId == c.id;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () => setState(() => _selectedId = c.id),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            color: selected ? hex.withOpacity(0.12) : Colors.white.withOpacity(0.03),
+            border: Border.all(
+                color: selected ? hex.withOpacity(0.6) : Colors.white.withOpacity(0.08)),
+          ),
+          child: Row(children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: hex),
+              child: Center(
+                child: Text(c.avatar,
+                    style: const TextStyle(
+                        color: Colors.black,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(c.name,
+                      style: MM.body(
+                          size: 14,
+                          color: Colors.white,
+                          weight: FontWeight.w600)),
+                  const SizedBox(height: 3),
+                  Text(c.blurb,
+                      style: MM.body(
+                          size: 11, color: Colors.white.withOpacity(0.55))),
+                ],
+              ),
+            ),
+            if (selected)
+              Icon(Icons.check_circle, size: 18, color: hex),
+          ]),
+        ),
+      ),
+    );
   }
 }
 

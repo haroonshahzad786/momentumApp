@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/momentum_tokens.dart';
-import '../../widgets/momentum/journey_arc.dart';
+import '../../widgets/momentum/journey_stage.dart';
 import '../../widgets/momentum/mm_buttons.dart';
-import '../../widgets/momentum/rocket_widget.dart';
 import '../../widgets/momentum/starfield.dart';
 
 /// Desktop flagship: the 3-column Cockpit (5 Cores · rocket stage · flight
@@ -276,7 +275,7 @@ class _CoreCard extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════
 // CENTER — rocket stage
 // ═══════════════════════════════════════════════════════════════
-class _RocketStage extends StatelessWidget {
+class _RocketStage extends StatefulWidget {
   const _RocketStage({
     required this.planetIdx,
     required this.activeCores,
@@ -295,7 +294,24 @@ class _RocketStage extends StatelessWidget {
   final void Function(String coreId) onCoreAlert;
 
   @override
+  State<_RocketStage> createState() => _RocketStageState();
+}
+
+class _RocketStageState extends State<_RocketStage> {
+  /// Shared between the journey stage (which drives it) and the panel-wide
+  /// starfield (which reads it), so the stars stream faster mid-flight.
+  late final ValueNotifier<double> _warp =
+      ValueNotifier<double>(journeyIdleWarp(widget.planetIdx));
+
+  @override
+  void dispose() {
+    _warp.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final planetIdx = widget.planetIdx;
     final planetColor = MM.planets[planetIdx]['color'] as Color;
     return Container(
       constraints: const BoxConstraints(minHeight: 620),
@@ -308,8 +324,13 @@ class _RocketStage extends StatelessWidget {
       child: Stack(
         alignment: Alignment.topCenter,
         children: [
+          // Nebula base + a starfield that is always drifting behind the whole
+          // panel, and streaks when the rocket is under way.
           const Positioned.fill(
-              child: StarfieldBackground(showScanlines: false)),
+            child: StarfieldBackground(
+                showScanlines: false, showStars: false),
+          ),
+          Positioned.fill(child: MovingStarfield(speed: _warp)),
           // target planet halo
           Positioned(
             top: 26,
@@ -343,19 +364,19 @@ class _RocketStage extends StatelessWidget {
                         letterSpacing: 2.2,
                         color: const Color(0xFFD8C0FF).withOpacity(0.85))),
                 const SizedBox(height: 14),
-                RocketWidget(
-                  width: 260,
-                  maxWidth: 280,
-                  activeCores: activeCores,
-                  atRiskCores: atRiskCores,
-                  streak: streak,
-                  onNav: onNav,
-                  onCoreAlert: onCoreAlert,
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  height: 96,
-                  child: JourneyArc(planetIdx: planetIdx, progress: 0.38),
+                // Cockpit dashboard by default; plays the arrival cinematic in
+                // place when the player reaches a new planet, and the vertical
+                // rail on its right replays any leg on tap.
+                JourneyStage(
+                  planetIdx: planetIdx,
+                  activeCores: widget.activeCores,
+                  atRiskCores: widget.atRiskCores,
+                  streak: widget.streak,
+                  height: 500,
+                  rocketWidth: 260,
+                  warpSpeed: _warp,
+                  onNav: widget.onNav,
+                  onCoreAlert: widget.onCoreAlert,
                 ),
                 const SizedBox(height: 20),
                 FractionallySizedBox(
@@ -364,7 +385,7 @@ class _RocketStage extends StatelessWidget {
                     label: 'Daily Check-in →',
                     pulse: true,
                     expand: true,
-                    onPressed: onCheckIn,
+                    onPressed: widget.onCheckIn,
                   ),
                 ),
               ],

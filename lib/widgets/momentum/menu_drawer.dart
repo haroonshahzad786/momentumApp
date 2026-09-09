@@ -31,6 +31,7 @@ class MenuDrawer extends StatelessWidget {
       'COCKPIT',
       [
         ['dashboard', 'Dashboard', MM.blue],
+        ['journey', 'Journey Map', MM.violet],
         ['checkin', 'Daily Check-in', MM.yellow],
         ['summary', "Today's Recap", MM.violet],
       ]

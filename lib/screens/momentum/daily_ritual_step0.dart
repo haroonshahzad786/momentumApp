@@ -111,6 +111,7 @@ class _DailyRitualStep0State extends State<DailyRitualStep0> {
     return Scaffold(
       backgroundColor: MM.pageBg,
       body: Stack(
+        fit: StackFit.expand,
         children: [
           const Positioned.fill(child: StarfieldBackground()),
           SafeArea(
