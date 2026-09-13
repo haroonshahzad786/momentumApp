@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../models/phase1_state.dart';
 import '../../models/user_profile.dart';
+import '../../services/admin_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/checkin_service.dart';
 import '../../services/notification_service.dart';
@@ -20,6 +21,8 @@ import '../../widgets/momentum/starfield.dart';
 import '../../widgets/momentum/web_shell.dart';
 // Co-Pilot v2 (console layout). The original `ai_chat_page.dart` is still on
 // disk but no longer linked — swap this import back to compare the two.
+import '../admin/admin_gate.dart';
+import '../admin/admin_shell.dart';
 import '../copilot_console_page.dart';
 import 'checkin_page.dart';
 import 'daily_ritual_step0.dart';
@@ -44,6 +47,8 @@ class _MomentumHomeState extends State<MomentumHome> {
   String _screen = 'dashboard';
   bool _menuOpen = false;
   final _auth = AuthService();
+  final _adminService = AdminService();
+  bool _isAdmin = false;
   final _profileService = ProfileService();
   final _checkin = CheckinService();
   final _onboarding = OnboardingService();
@@ -119,6 +124,11 @@ class _MomentumHomeState extends State<MomentumHome> {
     if (uid != null && uid.isNotEmpty) {
       NotificationService.instance.saveTokenForUser(uid);
     }
+    // Nav-visibility check only — AdminGate re-verifies (force-refreshed) on
+    // actual entry to the admin screen. See ADMIN_PANEL_BACKEND_PLAN.md §0.
+    _adminService.isAdmin(forceRefresh: true).then((ok) {
+      if (mounted) setState(() => _isAdmin = ok);
+    });
     NotificationService.instance.pendingThread.addListener(_onPendingThread);
     // Handle a notification that launched the app from a cold start.
     WidgetsBinding.instance.addPostFrameCallback((_) => _onPendingThread());
@@ -591,6 +601,15 @@ class _MomentumHomeState extends State<MomentumHome> {
 
   @override
   Widget build(BuildContext context) {
+    // Admin is a full-screen takeover, not another screen inside the app's
+    // WebShell/mobile chrome — a different persona (admin vs player), same
+    // way the signed-out AuthFlow replaces the whole app instead of nesting.
+    // Bypasses loading/error/CelebrationHost/WebShell entirely; matches
+    // design/ref/admin-panel-export/Admin Panel.dc.html's own single-sidebar
+    // layout exactly, full window, no extra app chrome around it.
+    if (_screen == 'admin') {
+      return AdminGate(child: AdminShell(onExitAdmin: () => _go('dashboard')));
+    }
     if (_loading) {
       return const Scaffold(
         backgroundColor: MM.pageBg,
@@ -654,6 +673,7 @@ class _MomentumHomeState extends State<MomentumHome> {
               onNav: _go,
               onChat: _openChat,
               onSignOut: () => _auth.signOut(),
+              isAdmin: _isAdmin,
             ),
           ),
         // iCore Alert (#8) — opened by tapping a Core's red ⚠️ badge.
@@ -813,6 +833,7 @@ class _MomentumHomeState extends State<MomentumHome> {
             onCheckIn: _startCheckin,
             onChat: _openChat,
             onSignOut: () => _auth.signOut(),
+            isAdmin: _isAdmin,
             content: content,
             showTopbar: showTopbar,
             title: title,
@@ -828,6 +849,7 @@ class _MomentumHomeState extends State<MomentumHome> {
               onNav: _go,
               onChat: _openChat,
               onSignOut: () => _auth.signOut(),
+              isAdmin: _isAdmin,
             ),
           ),
         if (_coreAlertCore != null) Positioned.fill(child: _buildCoreAlert()),

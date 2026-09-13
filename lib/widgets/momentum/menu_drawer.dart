@@ -12,6 +12,7 @@ class MenuDrawer extends StatelessWidget {
     required this.onNav,
     required this.onChat,
     required this.onSignOut,
+    this.isAdmin = false,
   });
 
   final User? user;
@@ -19,6 +20,9 @@ class MenuDrawer extends StatelessWidget {
   final void Function(String key) onNav;
   final VoidCallback onChat;
   final VoidCallback onSignOut;
+  // Shows the "Admin" nav group when true. Visibility only — AdminGate
+  // enforces access on the destination screen. See ADMIN_PANEL_BACKEND_PLAN.md §0.
+  final bool isAdmin;
 
   static const _groups = [
     [
@@ -223,6 +227,51 @@ class MenuDrawer extends StatelessWidget {
                           ),
                         );
                       }),
+                      if (isAdmin)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(20, 0, 20, 6),
+                                child: Text('ADMIN',
+                                    style: MM.displayX(
+                                        size: 10,
+                                        color: Colors.white.withOpacity(0.45))),
+                              ),
+                              InkWell(
+                                onTap: () {
+                                  onClose();
+                                  onNav('admin');
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 20, vertical: 10),
+                                  child: Row(children: [
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: MM.red,
+                                        boxShadow: const [
+                                          BoxShadow(
+                                              color: MM.red, blurRadius: 6),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text('Admin panel',
+                                        style: MM.body(
+                                            color: Colors.white, size: 13)),
+                                  ]),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       // Account footer
                       Container(
                         margin: const EdgeInsets.fromLTRB(20, 10, 20, 20),

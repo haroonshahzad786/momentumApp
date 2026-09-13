@@ -115,6 +115,11 @@ const List<WebNavItem> kWebNav = [
   WebNavItem('trophy', 'Trophy', 'Room', Icons.emoji_events_outlined, MM.yellow),
 ];
 
+// Shown only when [WebShell.isAdmin] is true — see ADMIN_PANEL_BACKEND_PLAN.md
+// §0. Kept out of [kWebNav] so non-admins never see it rendered at all.
+const WebNavItem kAdminNavItem =
+    WebNavItem('admin', 'Admin', 'Backend', Icons.admin_panel_settings_outlined, MM.red);
+
 /// Desktop web shell: a fixed 264px sidebar (brand · nav · player card) beside
 /// a content column with an optional topbar. Renders only at >= [kWebBreakpoint].
 /// Mirrors web.jsx's WebSidebar/WebTopbar.
@@ -135,6 +140,7 @@ class WebShell extends StatelessWidget {
     this.title = 'Cockpit',
     this.subtitle = 'Mission Control',
     this.accent = MM.blue,
+    this.isAdmin = false,
   });
 
   final String current;
@@ -151,6 +157,10 @@ class WebShell extends StatelessWidget {
   final String title;
   final String subtitle;
   final Color accent;
+  // Shows the "Admin" sidebar entry when true. This is a visibility
+  // convenience only — AdminGate (not this flag) is what actually enforces
+  // access on the destination screen. See ADMIN_PANEL_BACKEND_PLAN.md §0.
+  final bool isAdmin;
 
   @override
   Widget build(BuildContext context) {
@@ -172,6 +182,7 @@ class WebShell extends StatelessWidget {
                   planetName: planetName,
                   level: level,
                   onSignOut: onSignOut,
+                  isAdmin: isAdmin,
                 ),
                 Expanded(
                   child: LayoutBuilder(
@@ -226,6 +237,7 @@ class _WebSidebar extends StatelessWidget {
     required this.planetName,
     required this.level,
     required this.onSignOut,
+    this.isAdmin = false,
   });
 
   final String current;
@@ -235,6 +247,7 @@ class _WebSidebar extends StatelessWidget {
   final String planetName;
   final String level;
   final VoidCallback onSignOut;
+  final bool isAdmin;
 
   @override
   Widget build(BuildContext context) {
@@ -312,6 +325,12 @@ class _WebSidebar extends StatelessWidget {
                 ),
                 for (final it in kWebNav)
                   _NavButton(item: it, on: current == it.appKey, onNav: onNav),
+                if (isAdmin)
+                  _NavButton(
+                    item: kAdminNavItem,
+                    on: current == kAdminNavItem.appKey,
+                    onNav: onNav,
+                  ),
               ],
             ),
           ),
