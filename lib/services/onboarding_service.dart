@@ -1,3 +1,4 @@
+import '../config/ai_backend_config.dart';
 import '../config/api_config.dart';
 import 'dart:convert';
 
@@ -191,12 +192,18 @@ class OnboardingService {
       'https://us-central1-momentum-bce49.cloudfunctions.net';
   static const String _secret = ApiConfig.secret;
 
+  bool get _useClaude => AiBackendConfig.provider == AiBackend.claude;
+
   /// Safe to call after every turn — returns [OnboardingSync.empty] on any
-  /// failure so a transient error never blocks the conversation.
+  /// failure so a transient error never blocks the conversation. Reads
+  /// `claudeSyncOnboarding` or `flutterSyncOnboarding` depending on
+  /// [AiBackendConfig.provider] (NOVA_CLAUDE_MIGRATION plan) — both stay
+  /// deployed, so flipping the flag is the whole rollback.
   Future<OnboardingSync> sync(String userId) async {
+    final endpoint = _useClaude ? 'claudeSyncOnboarding' : 'flutterSyncOnboarding';
     try {
       final response = await _client.post(
-        Uri.parse('$_baseUrl/flutterSyncOnboarding'),
+        Uri.parse('$_baseUrl/$endpoint'),
         headers: const {'Content-Type': 'application/json'},
         body: jsonEncode({'secret': _secret, 'userId': userId}),
       );

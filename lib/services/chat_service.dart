@@ -1,3 +1,4 @@
+import '../config/ai_backend_config.dart';
 import '../config/api_config.dart';
 import 'dart:convert';
 
@@ -6,7 +7,10 @@ import 'package:http/http.dart' as http;
 import '../models/chat_message.dart';
 import 'offline.dart';
 
-/// Wraps the three Voiceflow-backed Firebase Cloud Functions.
+/// Wraps the HHS Stage 1 onboarding chat's Firebase Cloud Functions — either
+/// the original Voiceflow-backed trio or the new Claude-backed trio, chosen
+/// by [AiBackendConfig.provider] (NOVA_CLAUDE_MIGRATION plan). Both code
+/// paths stay intact below; switching the flag is the entire rollback.
 /// All endpoints are HTTP `onRequest` (not callable). They expect a shared
 /// secret + the Firebase user uid.
 class ChatService {
@@ -21,6 +25,8 @@ class ChatService {
   // Matches API_SECRET in index.js.
   static const String _secret = ApiConfig.secret;
 
+  bool get _useClaude => AiBackendConfig.provider == AiBackend.claude;
+
   Uri _uri(String name) => Uri.parse('$_baseUrl/$name');
 
   /// Returns the seeded first assistant messages, or empty if a conversation
@@ -29,19 +35,21 @@ class ChatService {
   /// part becomes one ChatMessage and the image part following it attaches
   /// its imageUrls to that bubble.
   Future<List<ChatMessage>> launchConversation(String userId) async {
+    final endpoint = _useClaude ? 'claudeLaunchConversation' : 'vfLaunchConversation';
     final response = await _client.post(
-      _uri('vfLaunchConversation'),
+      _uri(endpoint),
       headers: const {'Content-Type': 'application/json'},
       body: jsonEncode({'secret': _secret, 'userId': userId}),
     );
-    final data = _decode(response, 'vfLaunchConversation');
+    final data = _decode(response, endpoint);
     if (data['skipped'] == true) return const [];
     return _parseAssistantParts(data);
   }
 
   Future<List<ChatMessage>> sendMessage(String userId, String text) async {
+    final endpoint = _useClaude ? 'claudeSendMessage' : 'vfSendMessage';
     final response = await _client.post(
-      _uri('vfSendMessage'),
+      _uri(endpoint),
       headers: const {'Content-Type': 'application/json'},
       body: jsonEncode({
         'secret': _secret,
@@ -49,7 +57,7 @@ class ChatService {
         'text': text,
       }),
     );
-    final data = _decode(response, 'vfSendMessage');
+    final data = _decode(response, endpoint);
     return _parseAssistantParts(data);
   }
 
@@ -120,10 +128,13 @@ class ChatService {
     String userId, {
     int limit = 50,
   }) async {
-    final cacheKey = 'cache:vf_messages:$userId';
+    final endpoint = _useClaude ? 'claudeGetLatestMessages' : 'vfGetLatestMessages';
+    final cacheKey = _useClaude
+        ? 'cache:claude_messages:$userId'
+        : 'cache:vf_messages:$userId';
     try {
       final response = await _client.post(
-        _uri('vfGetLatestMessages'),
+        _uri(endpoint),
         headers: const {'Content-Type': 'application/json'},
         body: jsonEncode({
           'secret': _secret,
@@ -131,7 +142,7 @@ class ChatService {
           'limit': limit,
         }),
       );
-      final data = _decode(response, 'vfGetLatestMessages');
+      final data = _decode(response, endpoint);
       final raw = data['messages'] as List? ?? const [];
       await LocalCache.putJson(cacheKey, raw);
       return Fetched(_parseMessages(raw), fromCache: false);
