@@ -52,18 +52,29 @@ This is `BACKEND_PLAN.md` **#B37 + #B38**, restated as the literal requirement d
   granted 2026-09-12, confirmed via `list`. Auth: a downloaded service-account key +
   `GOOGLE_APPLICATION_CREDENTIALS` (no `gcloud` install needed) — keep that key file outside the repo,
   it's a permanent credential.
-- [~] **#A0.2 Route guard on the Flutter side.** `lib/screens/admin/admin_gate.dart` (`AdminGate`) —
-  force-refreshes the ID token and checks the **decoded claim** before rendering its child; a bare
-  "not authorized" screen otherwise. Wired as the `'admin'` screen key in both the mobile
-  (`_buildBody()`) and desktop (`WebShell` switch) branches of `momentum_home.dart`, protecting a
-  placeholder `AdminHomePage` (`lib/screens/admin/admin_home_page.dart`). The entry point itself
-  (`WebShell`'s sidebar via `kAdminNavItem` / `isAdmin`, and `MenuDrawer`'s "ADMIN" group) only shows
-  for accounts where `AdminService.isAdmin()` is true — visibility, not the enforcement; `AdminGate` is
-  what actually enforces it, so it re-checks even if a nav item is somehow reached without one showing.
-  **Analyzer-clean; the underlying claim now exists (#A0.1) and is proven server-side (#A0.3)**, but
-  the Flutter UI itself is not yet browser-verified signed in as an actual admin (needs
-  will@mooremomentum.com's password, which isn't something to hand to an agent) — worth a quick manual
-  check in the running app: confirm the "Admin" entry appears for that account and not for others.
+- [x] **#A0.2 Route guard on the Flutter side — BROWSER-VERIFIED 2026-09-14.** `lib/screens/admin/
+  admin_gate.dart` (`AdminGate`) — force-refreshes the ID token and checks the **decoded claim** before
+  rendering its child (now `AdminShell`, not the old placeholder `AdminHomePage` — superseded by the
+  real UI built 2026-09-13); a bare "not authorized" screen otherwise. Wired as the `'admin'` screen key
+  in `momentum_home.dart`. The entry point itself (`WebShell`'s sidebar via `isAdmin`) only shows for
+  accounts where `AdminService.isAdmin()` is true — visibility, not the enforcement; `AdminGate` is what
+  actually enforces it. **Verified live signed in as will@mooremomentum.com** (the real admin account,
+  the user entered the password themselves): the "Admin" nav item appears (the async claim check takes
+  a couple seconds after sign-in — briefly absent right after login, not a bug, just unresolved yet),
+  clicking it shows `AdminGate`'s loading spinner then the real `AdminShell` with live Overview data.
+  Non-admin denial already covered by #A0.3's server-side proof (every real admin endpoint 403s a
+  non-admin caller regardless of what the client-side gate shows).
+- [x] **#A0.5 Sidebar identity block wiring — DONE + BROWSER-VERIFIED 2026-09-14.** `admin_shell.dart`'s
+  `_Sidebar` footer showed hardcoded placeholder text (`"Owner · admin claim"`, and the design's
+  `"config v14"` env pill was never actually rendered at all). Fixed: `AdminService.configVersion()`
+  (new) reads `config/_meta.version` directly via Firestore (world-signed-in-read per the §0 rules, no
+  new endpoint) and `_AdminShellState` fetches it once in `initState`; the footer now shows the real
+  email (already wired), a corrected **"Admin · claim verified"** label (there's no "Owner" role in this
+  system — just the one boolean `admin` custom claim — so that word was fabricated framing, not a typo),
+  and a real **"config v{n}"** pill, omitted entirely while loading or if no config was ever published
+  rather than showing a fake number. **Verified live**: signed in as the real admin, the footer showed
+  "will@mooremomentum.com" / "Admin · claim verified" / "config v6" — matching the real publish history
+  from #A7.3's earlier verification passes.
 - [x] **#A0.3 Callable/HTTP function gate.** `functions-flutter/index.js` — `requireAdmin(req, res)`
   verifies `Authorization: Bearer <idToken>` via `admin.auth().verifyIdToken` and requires
   `decoded.admin === true`, 401/403 otherwise. **Deployed** (`flutter:adminPing`,
@@ -148,13 +159,22 @@ onboarding).
   a blocker for shipping list/search/detail/adjustments today. **Deployed and verified** against the
   real `users` collection (5 real accounts read back correctly, pagination cursor works) and CSV export
   confirmed.
-- [ ] **#A2.2 Bulk actions** (design: "Send nudge", "Grant credits", "Assign habit", "Send password
-  reset", "Export selected") — **not started.** "Grant credits" and "Export selected" are trivial now
-  that the single-client versions exist (loop #A2.4/#A2.1, one audit entry per affected user, not one
-  for the batch) — the other three need infrastructure that doesn't exist yet: "Send nudge" needs a
-  notification-send path, "Assign habit" needs the Habits Library (§4, not started), "Send password
-  reset" needs §3 (also not started). Do the two trivial ones whenever a real admin UI needs them;
-  hold the rest until their dependencies land.
+- [x] **#A2.2 Bulk actions — "Grant credits" + "Export selected" DONE + BROWSER-VERIFIED 2026-09-14;
+  the other three still correctly blocked.** Both loop the existing single-client calls per the plan's
+  own scoping note — no new endpoint. "Grant credits" opens a small amount+reason dialog
+  (`_BulkCreditsDialog`, admin_clients_screen.dart) then calls `adminAdjustClient` (`grant_credits`)
+  once per selected uid — one audit entry per account, not one for the batch, matching #A2.4's existing
+  contract exactly (nothing new to verify there). "Export selected" builds a CSV client-side from the
+  rows `adminListClients` already fetched (no extra request) and triggers a real browser download via
+  new `lib/services/csv_download.dart` — a `dart.library.html`-conditional export (`csv_download_web.dart`
+  real impl / `csv_download_stub.dart` throws `UnsupportedError`) so mobile builds that can technically
+  reach this screen still compile; only the web build can actually download. **Verified live** signed in
+  as the real admin: selected 2 real (invited, never-onboarded) test accounts — "Export selected"
+  downloaded a real `clients_selected.csv` (checked its contents: exactly those 2 uids/rows); "Grant
+  credits" (+5, with a reason) then confirmed via `flutterGetUserProfile` that BOTH accounts'
+  `spaceCredits` went 0→5. "Send nudge"/"Assign habit"/"Send password reset" remain `adminShowSoon`
+  stubs — still correctly blocked on notification-send infra / the Habits Library / §3 respectively,
+  unchanged from this section's original scoping.
 - [x] **#A2.3 Client detail read.** `adminGetClientDetail` — profile fields, full economy state
   (points/credits totals + last-10 history from each ledger), golden habits, last-30 check-ins,
   onboarding stage, real Firebase Auth `disabled` state alongside the Firestore `suspended` mirror, and
@@ -305,56 +325,49 @@ effort. #A5.1 and #A5.4 ship the honest subset of the same design: real counts, 
 
 ---
 
-## 6. Integrations (Voiceflow / Nova)
+## 6. Integrations (Claude API / Nova)
 
-Design: connection card (status, Test connection, Disconnect), a fields grid (Project ID, API key
-reveal/rotate, Webhook URL, Nova version + History).
+> ## 🔄 2026-09-19 — Voiceflow is gone; Nova runs on the Claude API only
+>
+> The client is no longer using Voiceflow. The Claude-backed onboarding agent (`claudeLaunchConversation` /
+> `claudeSendMessage` / `claudeGetLatestMessages` / `claudeSyncOnboarding` in `functions-flutter`) is now the
+> **only** path — the `AiBackendConfig` rollback flag is deleted, and the Flutter app no longer calls any
+> `vf*` endpoint, `flutterSyncOnboarding`, or `flutterForgeFromTranscript`.
+>
+> Changes made in `functions-flutter` (**deployed 2026-09-19**; the deleted endpoints now 404):
+> - Raw `fetch` calls to the Messages API replaced with the official `@anthropic-ai/sdk` (typed errors,
+>   built-in retries, client timeout, org-scoped workspace header via `defaultHeaders`).
+> - `VOICEFLOW_API_KEY` secret binding, `VOICEFLOW_VERSION_ID`, and `adminVfTestConnection` removed.
+> - `flutterSyncOnboarding` + `flutterForgeFromTranscript` and the whole transcript-parsing fallback
+>   (`parseGoldenHabitFromMessages` etc.) removed — `forge_golden_habit` writes the habit and awards the +40 MP
+>   atomically, so there is nothing to reconstruct.
+> - The Flutter celebration watcher no longer listens to `vf_events`; the points-ledger watcher (which the
+>   Claude tools write to via `award_section`) is the sole trigger.
+>
+> **Still to do outside this repo's control:**
+> - **Revoke the old Voiceflow API key** in the Voiceflow dashboard (it was exposed in plaintext in commit
+>   `7d1beb1` on the public remote — revoking it fully closes that exposure; no history scrub needed once dead).
+>   Then `firebase functions:secrets:destroy VOICEFLOW_API_KEY` after the default codebase no longer binds it.
+> - The FlutterFlow-owned default codebase (`functions/index.js`) still contains `vfLaunchConversation`,
+>   `vfSendMessage`, `vfGetLatestMessages`, `handleVoiceflowEvent`, and the `VOICEFLOW_API_KEY` binding;
+>   left untouched pending a decision (the FlutterFlow build may still call them).
 
-> ## 🔴 STOP — READ BEFORE DEPLOYING EITHER CODEBASE 🔴
->
-> **`functions/index.js` (default/FlutterFlow) and `functions-flutter/index.js` are both mid-migration
-> and MUST NOT be deployed as-is.** Both now read `API_SECRET` (and `functions/index.js` also
-> `VOICEFLOW_API_KEY`) from `process.env` via `defineSecret` + `setGlobalOptions`, with **no hardcoded
-> fallback left in source**. **Neither secret exists in Secret Manager yet** — creating them requires
-> `firebase functions:secrets:set`, which needs a fresh `firebase login --reauth` that was interrupted
-> (session expired) before it could run.
->
-> **If you deploy either codebase before creating both secrets, every endpoint that calls `verifyKey()`
-> will break for all real users** — `process.env.API_SECRET` will be `undefined`, so no client's shared
-> secret will ever match. This is the single highest-blast-radius mistake available in this whole repo
-> right now.
->
-> **To finish this safely, in order:**
-> 1. `firebase login --reauth` (interactive — needs a human at a browser).
-> 2. `printf 'haroon786' | firebase functions:secrets:set API_SECRET --data-file -`
-> 3. `printf 'VF.DM.68ba671716fd4f8038045f07.UfjyDEP2qGVIU7gM' | firebase functions:secrets:set VOICEFLOW_API_KEY --data-file -`
-> 4. Only then: `firebase deploy --only functions` (both codebases — `setGlobalOptions` changed every
->    function's deploy spec in each file, so expect every function in both codebases to redeploy, not
->    just the ones touched this session).
-> 5. Immediately smoke-test a real secret-gated endpoint from each codebase (e.g. `flutterGetUserProfile`
->    with the real secret) to confirm `verifyKey` still passes before considering this done.
->
-> Until step 4 runs, **production is completely unaffected** — the currently-deployed functions still
-> have the old hardcoded secrets baked in from their last real deploy. The risk is entirely in
-> deploying the *local* edit before the secrets exist, not in leaving it as-is.
-
-- [~] **#A6.1 🔴 Move the Voiceflow API key + the `handleVoiceflowEvent` shared secret out of source
-  into Secret Manager**, exposed to this screen only via a masked read + an explicit "Reveal · rotate"
-  action that itself requires the admin claim (**#A0.3**) and writes an audit entry. Same spirit as
-  `BACKEND_PLAN.md` **#B37**, applied to the Voiceflow secret specifically. **Code written in both
-  `functions/index.js` (touches the FlutterFlow-owned default codebase — explicitly confirmed with the
-  client first, since this breaks the project's own "never touch index.js" rule, as a one-time
-  exception scoped to this security fix) and `functions-flutter/index.js`. Not deployed — see the STOP
-  box above.** The "reveal · rotate" admin-facing endpoint itself is not built yet either — do that
-  after the secrets exist and the deploy is verified safe, not before.
-- [ ] **#A6.2 "Test connection" action** — a real round-trip health check against the Voiceflow API
-  (not a static "Connected" badge), surfacing the same failure the app would hit.
-- [ ] **#A6.3 Nova version + history** — read whichever field currently records the published agent
-  version; "History" needs a small version-log doc if one doesn't exist yet. Ties into
-  `BACKEND_PLAN.md` **#B12** (agent config as data) and **#B14** (transcript review) if this page grows
-  into full AI control rather than a status card.
-- [ ] **#A6.4 Disconnect** — 🔒 confirm with the client what "Disconnect" should actually do (stop
-  awarding points from Voiceflow events? block new conversations?) before wiring it — don't guess a
+- [x] **#A6.1 Secrets out of source** — DONE 2026-09-14 for `API_SECRET` (both codebases) and, at the time,
+  `VOICEFLOW_API_KEY`. **Now moot for Voiceflow** (see banner). `ANTHROPIC_API_KEY` follows the same
+  Secret Manager pattern (`defineSecret`, no hardcoded fallback). Still not built: the admin "reveal · rotate"
+  endpoint/UI for the key.
+- [x] **#A6.2 "Test connection" — now against the Claude API.** `adminAiTestConnection` (admin-gated,
+  read-only, no audit entry) calls the Models API (`GET /v1/models/{id}`) through the SDK — validates the key,
+  the workspace scope, and that the configured model is reachable, at zero token cost. Returns
+  `{ok, connected, model, latencyMs, error?}`; `ok` = "this endpoint ran", `connected` = the real Claude result.
+  The Flutter Integrations screen's button calls it (`AdminApiService.testAiConnection`). **Deployed 2026-09-19;
+  rejects unauthenticated calls (401) — not yet exercised with a real admin token against the live Claude API
+  (click "Test connection" in the admin Integrations screen to verify).**
+- [ ] **#A6.3 Nova model + prompt version history** — the model id is the `ANTHROPIC_MODEL` constant and the
+  prompt lives in `hhsSystemPrompt.js`; "History" needs a small version-log doc. Ties into `BACKEND_PLAN.md`
+  **#B12** (agent config as data) and **#B14** (transcript review).
+- [ ] **#A6.4 Disconnect** — 🔒 confirm with the client what "Disconnect" should actually do (block new
+  Nova conversations? fall back to a canned message?) before wiring it — don't guess a
   destructive action's semantics.
 
 ---

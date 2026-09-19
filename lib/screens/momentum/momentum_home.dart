@@ -652,7 +652,7 @@ class _MomentumHomeState extends State<MomentumHome> {
     // At desktop widths render the web shell (sidebar + topbar + Cockpit);
     // below the breakpoint the existing full-bleed mobile screens are kept.
     // Either way the whole shell sits under the celebration host, so a points
-    // award raised by the Voiceflow agent bursts confetti on any screen.
+    // award raised by the Claude agent bursts confetti on any screen.
     return CelebrationHost(
       userId: FirebaseAuth.instance.currentUser?.uid ?? '',
       child: MediaQuery.of(context).size.width >= kWebBreakpoint

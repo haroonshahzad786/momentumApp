@@ -6,7 +6,7 @@ import '../../theme/momentum_tokens.dart';
 
 /// Celebration confetti — a one-shot particle burst painted over whatever it's
 /// stacked on. Used wherever the player is actually awarded points: the
-/// Voiceflow `CELEBRATION` events in Phase 1, the Stage 2 "Momentified" unlock,
+/// points-ledger celebrations in Phase 1, the Stage 2 "Momentified" unlock,
 /// and the Daily Check-In recap.
 ///
 /// Hand-rolled rather than a package: it's a single CustomPainter, keeps the

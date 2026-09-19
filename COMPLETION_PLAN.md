@@ -1,3 +1,8 @@
+> **⚠️ 2026-09-19 — Voiceflow has been retired.** Nova now runs on the Claude API only (see
+> `ADMIN_PANEL_BACKEND_PLAN.md` §6). Every Voiceflow-specific note below (`vf*` endpoints, `handleVoiceflowEvent`,
+> `vf_events`, `flutterForgeFromTranscript`, "Claude can't edit the VF agent") is **historical** and no longer
+> describes the running system.
+
   # Moore Momentum — Completion Plan
 
 >   **Resume instructions (for Claude):** This file is the source of truth for finishing the app
@@ -41,7 +46,11 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
 >   (`unawaited`) so a fresh browser no longer white-screens waiting on the OS notification prompt before
 >   first paint; (4) `web/index.html` body background set to #06070D (MM.pageBg) so no white shows through
 >   on a maximize/resize repaint gap.
->   **▶ NEXT: Pillar 3 anti-shame Leaderboard.** Pillar 4 (Arena) = V2/deferred.
+>   **Pillar 3 anti-shame Leaderboard — DONE + BROWSER-VERIFIED 2026-09-14** (both mobile AND web
+>   leaderboards; found + fixed a real bug along the way — `activeCores` was never persisted on the user
+>   doc, silently breaking the new Core filter for every real user; see the #14/Cantina Pillar 3 block below
+>   for full detail). **▶ NEXT: Pillar 4 (Arena) is explicit V2/deferred — #13 economy (13b/13c/13d/13e/13f/
+>   13h) is the remaining work, all blocked on the user's [PLACEHOLDER] numbers.**
 > - **CELEBRATION on points earned — DONE + BROWSER-VERIFIED 2026-08-10.** Confetti + a "+N MP" pop wherever
 >   points land. New `lib/widgets/momentum/confetti_overlay.dart` (`ConfettiOverlay` hand-rolled
 >   CustomPainter particles + `PointsPopBadge`), `lib/widgets/momentum/celebration_host.dart`
@@ -565,9 +574,44 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user sp
       transaction/merge pattern as the device-verified Tribes join/leave. **STILL TO DO:** live browser/Pixel
       verification of the pair→check-in→cold-restart round-trip (blocked this session: no device attached +
       no test-account credentials to log into the web app).
-    - [ ] **Pillar 3 — Leaderboard** — `_LeaderboardList` already merges real `users` + demo crew by score;
-      make it the multi-factor anti-shame board (60% momentum/planet/level + 25% ship + 15% achievements),
-      recomputed 6h. NOTE: ship-upgrade weighting depends on 13d (blocked on [PLACEHOLDER] numbers).
+    - [x] **Pillar 3 — Leaderboard — DONE + BROWSER-VERIFIED 2026-09-14 (web, the primary surface).**
+      Multi-factor anti-shame composite: **60% momentum score + 25% ship upgrades (stubbed 0 — 13d is
+      undesigned, and a constant 0 added to every member can't change the ordering, so this is correct
+      today and picks up real weight the moment 13d ships) + 15% achievements** (formed-habit count +
+      current streak + longest streak, min-max normalized against the visible crew). Anti-shame UI:
+      🥇🥈🥉 for top 3, a "RISING" tag (teal, trending-up icon, no numbers/comparisons) for the bottom
+      fifth of the visible list instead of a plain low rank, per the spec's "no worst performer / bottom
+      ranks labelled Rising Explorer" rules. Added a **Global / per-Core filter row**; **Tribe/Friends
+      left as an honest "SOON" chip** (Tribe needs cross-referencing tribe membership, Friends has no
+      concept in this app yet — real follow-up work, not fabricated).
+      **IMPORTANT — there are TWO separate leaderboard implementations** (mobile `_LeaderboardList` in
+      sub_screens.dart, desktop `_WebCantinaState._leaderboard()` in web_screens.dart — same split as
+      the rest of this file's web/mobile screens). Both got the full treatment: `_compositeScores`/
+      `_CrewMember` (mobile) and `_webCompositeScores`/`_WebCrew` (web, duplicated rather than shared
+      since the two crew types are already separate). Analyzer-clean on both + full-project `flutter
+      analyze` (zero new errors/warnings).
+      **Backend (vf-bridge/functions-flutter/index.js) — DEPLOYED:** `flutterSetHabitFormed` mirrors
+      `users/{uid}.formedHabitsCount` (increments/decrements only on the formed/not-formed edge, idempotent);
+      `flutterGetUserProfile` returns `formedHabitsCount` too (computed live from `golden_habits`, no
+      mirror dependency for your own profile).
+      **BUG FOUND + FIXED during browser verification:** the Core filter chip silently excluded every
+      REAL user (only demo crew showed up) — `CantinaService.watchUsers()`/`CantinaUser.fromDoc` reads
+      `activeCores` directly off the raw `users/{uid}` Firestore doc, but that field was **never written
+      anywhere** — `activeCores` only ever existed as a value computed live inside `flutterGetUserProfile`'s
+      response, never persisted back. Fixed by mirroring `activeCores` (+ `formedHabitsCount`) onto the
+      user doc inside `flutterGetUserProfile` itself (skips the write when unchanged); since it's
+      recomputed from `golden_habits` on every profile fetch, this is also a self-healing backfill for the
+      one pre-existing formed habit that predated the `formedHabitsCount` increment fix. Curl-verified
+      (`activeCores:["relationships","physical"], formedHabitsCount:1` for uid
+      `aGFJOhlFG3Oz8wdRICmKabiNdU33`) then **browser-verified end-to-end**: signed into the web Cockpit as
+      that account (via the Cantina nav), the PHYS. and REL. filter chips correctly include "You" at the
+      right rank with the RISING tag recomputed per filtered subset size.
+      **Deploy note this session:** the vf-bridge project hit a **Cloud Run CPU-per-region quota** deploying
+      many functions at once — several `admin*` functions failed to update (old revisions kept serving, no
+      outage) while both functions this task touched deployed successfully both times. Unrelated to this
+      task; flag to the user if it recurs (retry in smaller batches, or request a quota increase).
+      NOTE: ship-upgrade real weighting still depends on 13d (blocked on [PLACEHOLDER] numbers) — tracked
+      above, unchanged.
     - [ ] **Pillar 4 — Weekly Competitions (Arena)** — explicitly V2/deferred; `_ArenaTab` stays coming-soon.
 
 ---

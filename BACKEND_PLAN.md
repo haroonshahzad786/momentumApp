@@ -26,8 +26,9 @@ What exists:
   habits (flag/form/list), phase-1 state, momentum methods, check-in awards, onboarding sync,
   transcript forge, plus a Cantina DM trigger.
 - Working server-side: points ledger, credits ledger, streak state machine, check-in awards.
-- Voiceflow bridge: Nova awards MP itself via `updateUserPoints`; `vf_events/{uid}` drives the
-  in-app celebration.
+- Claude agent (Nova): its `award_section` / `forge_golden_habit` tools write the points ledger and Golden
+  Habit directly (server-validated, idempotent); the points-ledger watcher drives the in-app celebration.
+  Voiceflow is retired (2026-09-19) — see `ADMIN_PANEL_BACKEND_PLAN.md` §6.
 
 What does **not** exist: any remote config, any admin surface, any scheduler, any moderation tooling,
 any feature flags, any analytics store, any `timezone` on the profile.
@@ -107,8 +108,8 @@ Every row above means "ship an app update to change a number".
 
 **Status:** not started.
 
-- [ ] **#B12 Voiceflow agent config as data** — which agent version, per-stage prompts, model choice,
-  held in `config/ai` rather than in the Voiceflow project alone.
+- [ ] **#B12 Claude agent config as data** — which agent version, per-stage prompts, model choice,
+  held in `config/ai` rather than hardcoded in `functions-flutter/index.js` / `hhsSystemPrompt.js`.
 - [ ] **#B13 Guardrails** — max messages per session, cost cap per user per period, hard stop +
   graceful message when hit.
 - [ ] **#B14 Transcript review** — store and browse conversations in the admin console; flag bad
@@ -199,26 +200,27 @@ Every row above means "ship an app update to change a number".
 - [ ] 🔒 **Rocket / ship-upgrade art** — variants + skins for the ship-upgrade UI. Asset production.
 - [ ] 🔒 **Vetted habits database** (the 500+ set) — blocks the full #B6 library.
 - [ ] 🔒 **Badge library** — names, criteria, rarity per category.
-- [ ] 🔒 **`handleVoiceflowEvent` secret confirmation.** 401s without `secret`; the Voiceflow API block
-  may not be sending it. Carried over from `COMPLETION_PLAN.md`.
+- [x] ~~`handleVoiceflowEvent` secret confirmation~~ — moot: Voiceflow retired 2026-09-19; the app no longer
+  reads `vf_events`.
 
 ---
 
 ## Security — non-negotiable before any of this ships
 
-- [ ] **#B37 🔴 Replace the hardcoded shared secret with Firebase ID-token auth.**
-  `functions-flutter/index.js:16` is `const API_SECRET = "haroon786"`. Every Flutter client ships it,
-  and **the web build puts it in a public JS bundle**. Verify a Firebase Auth ID token
-  (`admin.auth().verifyIdToken`) and derive `uid` from the token instead of trusting the request body.
-  Keep a shared secret only for the Voiceflow server-to-server endpoints, moved to Secret Manager /
-  `defineSecret`. *Acceptance:* valid token succeeds, old-secret-only request is rejected, no secret
-  string left in the repo or the web bundle.
+- [x] **#B37 🔴 Replace the hardcoded shared secret with Firebase ID-token auth — DONE, tracked in
+  `ADMIN_PANEL_BACKEND_PLAN.md` §0/§6.** Superseded for admin-facing endpoints by the `admin` custom
+  claim + `requireAdmin()` (#A0.1/#A0.3, ID-token-based, deployed and verified). The player-facing
+  `flutter*`/default-codebase endpoints keep the shared-secret pattern (`API_SECRET`) by design — they
+  authenticate a *client build*, not an admin — but that secret is now in Secret Manager via
+  `defineSecret`, not hardcoded in source (#A6.1, deployed + smoke-tested 2026-09-14: correct secret →
+  200, wrong/missing → 401). Not a full token-per-player rework — that would be a separate, larger task
+  if ever needed; this closes the specific "secret string in the public web bundle" hole.
 
-- [ ] **#B38 Admin custom claim + rules path.** Today's Firestore rules are almost entirely per-user.
-  Anything that moves server-side needs an `admin: true` custom claim **plus a new rules path** —
-  a UI-side admin check is not access control. Includes a script to grant/revoke the claim, and a
-  server-side gate on the `/admin` route, not just a hidden nav item.
-  *This gates every write in §1–§7.* Config docs: world-readable, admin-writable.
+- [x] **#B38 Admin custom claim + rules path — DONE, tracked in `ADMIN_PANEL_BACKEND_PLAN.md`
+  §0 (#A0.1–#A0.4).** `admin: true` custom claim (`scripts/setAdminClaim.js`), `requireAdmin()` server
+  gate on every admin endpoint, Firestore rules for `config/*`/`feature_flags/*`/`admin_audit_log/*`,
+  and a client-side route guard (`AdminGate`) — all deployed and verified, including the non-admin
+  denial path (403 via rules-checked REST, not just the Admin SDK).
 
 ---
 

@@ -68,7 +68,7 @@ class _SummaryPageState extends State<SummaryPage> {
 
   /// Celebrate the day's award — confetti + a "+N MP" pop. Decided once on
   /// entry (not in build) so it can't re-fire on a rebuild, and claimed through
-  /// [CelebrationBus] so it never stacks with a Voiceflow celebration.
+  /// [CelebrationBus] so it never stacks with an agent-triggered celebration.
   bool _celebrate = false;
 
   @override

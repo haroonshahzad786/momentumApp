@@ -1,11 +1,10 @@
-import '../config/ai_backend_config.dart';
 import '../config/api_config.dart';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
 /// The forged Golden Habit, for the Stage 1 confirm card. Populated once the
-/// Voiceflow agent has persisted the habit (`forged == true`).
+/// Claude agent has persisted the habit (`forged == true`).
 class OnboardingFields {
   const OnboardingFields({
     required this.core,
@@ -41,9 +40,9 @@ class OnboardingFields {
 
 /// Read-only snapshot of HHS Stage 1 progress.
 ///
-/// The Voiceflow agent owns the conversation, awards the per-section MP, and
-/// persists the Golden Habit on a clean finish. This just reports what the
-/// agent has done so the cockpit can advance the pyramid + celebrate.
+/// The Claude agent ("Nova") owns the conversation; its server-side tools
+/// award the per-section MP and persist the Golden Habit. This just reports
+/// what the agent has done so the cockpit can advance the pyramid + celebrate.
 class OnboardingSync {
   const OnboardingSync({
     required this.available,
@@ -55,11 +54,10 @@ class OnboardingSync {
   });
 
   final bool available; // false until the agent has awarded anything
-  final int completedCount; // 0–5 sections done (from cumulative MP)
+  final int completedCount; // 0–5 sections done (hhs_state.completedCount)
   final bool forged; // a Golden Habit doc now exists
-  // True once the agent has narrated forge/Level-1-complete in the transcript,
-  // even if no habit doc was written and the +25 Keystone award was skipped
-  // (so MP-derived completedCount caps at 4). Drives Stage-1 completion.
+  // True once the agent has reached the forge stage (`hhs_state.reachedForge`).
+  // Drives Stage-1 completion.
   final bool reachedForge;
   final int totalPoints;
   final OnboardingFields? fields;
@@ -182,7 +180,7 @@ class GoldenHabitRef {
       );
 }
 
-/// Reads HHS Stage 1 progress (`flutterSyncOnboarding`, "flutter" codebase).
+/// Reads HHS Stage 1 progress (`claudeSyncOnboarding`, "flutter" codebase).
 class OnboardingService {
   OnboardingService({http.Client? client}) : _client = client ?? http.Client();
 
@@ -192,18 +190,12 @@ class OnboardingService {
       'https://us-central1-momentum-bce49.cloudfunctions.net';
   static const String _secret = ApiConfig.secret;
 
-  bool get _useClaude => AiBackendConfig.provider == AiBackend.claude;
-
   /// Safe to call after every turn — returns [OnboardingSync.empty] on any
-  /// failure so a transient error never blocks the conversation. Reads
-  /// `claudeSyncOnboarding` or `flutterSyncOnboarding` depending on
-  /// [AiBackendConfig.provider] (NOVA_CLAUDE_MIGRATION plan) — both stay
-  /// deployed, so flipping the flag is the whole rollback.
+  /// failure so a transient error never blocks the conversation.
   Future<OnboardingSync> sync(String userId) async {
-    final endpoint = _useClaude ? 'claudeSyncOnboarding' : 'flutterSyncOnboarding';
     try {
       final response = await _client.post(
-        Uri.parse('$_baseUrl/$endpoint'),
+        Uri.parse('$_baseUrl/claudeSyncOnboarding'),
         headers: const {'Content-Type': 'application/json'},
         body: jsonEncode({'secret': _secret, 'userId': userId}),
       );
@@ -215,26 +207,6 @@ class OnboardingService {
       return OnboardingSync.fromJson(decoded);
     } catch (_) {
       return OnboardingSync.empty;
-    }
-  }
-
-  /// Asks the backend to reconstruct the Golden Habit from the chat transcript
-  /// and persist it (`flutterForgeFromTranscript`) when the agent reached the
-  /// forge stage but never wrote the `golden_habits` doc itself. Idempotent and
-  /// best-effort — returns true only if a habit doc now exists. Safe to call
-  /// once per session; the caller re-[sync]s afterwards to pick up the fields.
-  Future<bool> forgeFromTranscript(String userId) async {
-    try {
-      final response = await _client.post(
-        Uri.parse('$_baseUrl/flutterForgeFromTranscript'),
-        headers: const {'Content-Type': 'application/json'},
-        body: jsonEncode({'secret': _secret, 'userId': userId}),
-      );
-      if (response.statusCode != 200) return false;
-      final decoded = jsonDecode(response.body);
-      return decoded is Map && decoded['forged'] == true;
-    } catch (_) {
-      return false;
     }
   }
 

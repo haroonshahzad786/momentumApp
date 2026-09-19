@@ -99,6 +99,11 @@ class AdminApiService {
     });
   }
 
+  /// §6 Integrations — #A6.2 "Test connection": a real round-trip health
+  /// check against the Claude API (Models API — costs no tokens). `ok` (from the base `_decode`
+  /// check) just means this endpoint ran; the real result is `connected`.
+  Future<Map<String, dynamic>> testAiConnection() => _get('adminAiTestConnection');
+
   /// §3 Access & Passwords (#A3.1–#A3.4). `reason` required.
   Future<Map<String, dynamic>> clientAccess({
     required String uid,

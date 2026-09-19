@@ -1,3 +1,9 @@
+> **⚠️ 2026-09-19 — Voiceflow has been retired.** Nova (HHS Stage 1) runs on the Claude API only via
+> `claudeLaunchConversation` / `claudeSendMessage` / `claudeGetLatestMessages` / `claudeSyncOnboarding`
+> ("flutter" codebase, official Anthropic SDK). The app no longer calls `vf*`, `flutterSyncOnboarding`, or
+> `flutterForgeFromTranscript`, and celebrations trigger from the points ledger only (no `vf_events`).
+> Voiceflow references below are **historical**.
+
 # Moore Momentum — Build Progress & Documentation Traceability
 
 **Prepared for:** Will Moore (client)

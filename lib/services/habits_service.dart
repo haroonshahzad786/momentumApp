@@ -19,8 +19,8 @@ class HabitsService {
   static const String _secret = ApiConfig.secret;
 
   /// Creates a (minimal) structured Golden Habit so the new habit appears in
-  /// the Habits screen — not just the Routines list. This mirrors the Voiceflow
-  /// HHS, which dual-writes every Golden Habit to BOTH `golden_habits` (rich
+  /// the Habits screen — not just the Routines list. This mirrors the Claude
+  /// HHS agent, which dual-writes every Golden Habit to BOTH `golden_habits` (rich
   /// object, read here) and the per-core "Routines List"/"Non-Routine" list
   /// (read by the Routines screen). The quick-add page only captures the
   /// essentials; cue / MBM / IF-THEN are filled later by the Golden Habit Forge.

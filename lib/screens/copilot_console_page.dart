@@ -22,10 +22,8 @@ import '../widgets/momentum/starfield.dart';
 ///     console is hidden, the frames play full-bleed as an animation, and the
 ///     screen returns to the console when the sequence ends.
 ///
-/// The backend contract is unchanged — same [ChatService]. As of the
-/// NOVA_CLAUDE_MIGRATION plan, [ChatService] itself now routes through
-/// [AiBackendConfig] to Claude-backed endpoints by default (the original
-/// Voiceflow-backed trio stays deployed as the rollback path).
+/// The backend contract is unchanged — same [ChatService], which talks to
+/// the Claude-backed endpoints.
 class CopilotConsolePage extends StatefulWidget {
   const CopilotConsolePage({
     super.key,

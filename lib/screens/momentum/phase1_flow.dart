@@ -98,7 +98,7 @@ class _Phase1FlowState extends State<Phase1Flow> {
 
   void _startStage1() => _go('section');
 
-  /// Live HHS progress from the Voiceflow agent (0–5 sections complete).
+  /// Live HHS progress from the Claude agent (0–5 sections complete).
   /// Never regress — a returning player keeps the higher progress they banked.
   void _onHhsProgress(int completed) {
     if (completed > widget.state.stage1Progress) {

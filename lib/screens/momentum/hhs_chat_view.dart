@@ -11,7 +11,7 @@ import '../../widgets/momentum/hhs_pyramid.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 import '../../widgets/momentum/starfield.dart';
 
-/// HHS Stage 1, driven by the live Voiceflow onboarding agent ("Nova").
+/// HHS Stage 1, driven by the live Claude onboarding agent ("Nova").
 ///
 /// Nova walks the player through the 5-step Habits Hierarchy in natural
 /// language; after every turn we sync the agent's captured state
@@ -44,7 +44,7 @@ class HhsChatView extends StatefulWidget {
 }
 
 // Per-section reward shown when the agent awards that section's MP. The MP
-// amounts mirror what the Voiceflow agent grants (+10/+15/+20/+25/+40); the
+// amounts mirror what the Claude agent grants (+10/+15/+20/+25/+40); the
 // overlay is purely celebratory — the points are already banked server-side.
 class _SectionReward {
   const _SectionReward(this.label, this.mp, this.emoji, this.color);
@@ -54,7 +54,7 @@ class _SectionReward {
   final Color color;
 }
 
-/// A reward waiting to be shown. [confetti] is false when a Voiceflow
+/// A reward waiting to be shown. [confetti] is false when a ledger
 /// `CELEBRATION` burst already fired for the same award (see [CelebrationBus])
 /// — the card still shows, it just doesn't double up on the particles.
 class _QueuedReward {
@@ -87,7 +87,6 @@ class _HhsChatViewState extends State<HhsChatView> {
   int _prevCompleted = 0;
   bool _firstSync = true;
   bool _showForge = false;
-  bool _forgeAttempted = false;
 
   @override
   void initState() {
@@ -165,25 +164,8 @@ class _HhsChatViewState extends State<HhsChatView> {
   /// (the MP was already awarded by the agent). The first sync just seeds the
   /// baseline so resuming a conversation doesn't replay old overlays.
   Future<void> _syncOnboarding() async {
-    var result = await _onboarding.sync(widget.userId);
+    final result = await _onboarding.sync(widget.userId);
     if (!mounted || !result.available) return;
-
-    // The Voiceflow agent narrates the forged Golden Habit but doesn't always
-    // persist it (and sometimes skips the +25 award, capping the MP-derived
-    // count at 4). If it reached the forge stage with no habit doc yet, ask the
-    // backend to reconstruct one from the transcript, then re-read so the
-    // confirm card shows the real fields. Best-effort, attempted once.
-    if (result.reachedForge && !result.forged && !_forgeAttempted) {
-      _forgeAttempted = true;
-      final wrote = await _onboarding.forgeFromTranscript(widget.userId);
-      if (!mounted) return;
-      if (wrote) {
-        final after = await _onboarding.sync(widget.userId);
-        if (!mounted) return;
-        if (after.available) result = after;
-      }
-    }
-
     _applySync(result);
   }
 

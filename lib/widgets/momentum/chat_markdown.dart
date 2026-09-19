@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Nova (the Voiceflow agent) writes its replies in light markdown — headings
+/// Nova (the Claude agent) writes its replies in light markdown — headings
 /// and emphasis come back as `**The Law of Environment Design:**` and
 /// `*"Connect before you correct."*`. Rendered as plain text those asterisks
 /// show up literally, so this turns them into real bold / italic runs.

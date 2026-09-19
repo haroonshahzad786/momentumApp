@@ -104,7 +104,7 @@ class CoreListsService {
   /// Appends a single habit line to the user's per-core list and persists it,
   /// so the new routine is trackable in future sessions (and by the Routines
   /// screen's stage pipeline). Writes via the existing `saveCoreListItems`
-  /// endpoint — the same per-core path the Voiceflow HHS flow uses:
+  /// endpoint — the same per-core path the Claude HHS agent writes to:
   ///   /users/{uid}/core/{coreId}/golden_habit/{listName}
   ///
   ///   • isRoutine == true  → list "Routines List"

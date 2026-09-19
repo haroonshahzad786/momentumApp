@@ -8,9 +8,9 @@ import 'confetti_overlay.dart';
 
 /// Guards against two celebrations for the same award.
 ///
-/// The Voiceflow agent's `CELEBRATION` event and the HHS chat's own
-/// section-reward card are raised by different signals (a `vf_events` write vs
-/// the polled onboarding sync) that describe the same moment. Whichever wins
+/// A ledger-triggered celebration and the HHS chat's own section-reward card
+/// are raised by different signals (a points-ledger write vs the polled
+/// onboarding sync) that describe the same moment. Whichever wins
 /// the race claims the window; the other stays quiet.
 class CelebrationBus {
   CelebrationBus._();
@@ -133,13 +133,12 @@ class _FadeInState extends State<_FadeIn>
       FadeTransition(opacity: _ctrl, child: widget.child);
 }
 
-/// Listens for Voiceflow points celebrations for the signed-in player and
-/// bursts confetti wherever they happen to be.
+/// Listens for points celebrations for the signed-in player and bursts
+/// confetti wherever they happen to be.
 ///
 /// Mount once, high in the tree. The award amount/label come from the
-/// `updateUserPoints` ledger entry the agent wrote just before raising the
-/// event — when it can't be read the burst still plays, without a number
-/// (nothing fabricated).
+/// points-ledger entry that triggered it — when it can't be read the burst
+/// still plays, without a number (nothing fabricated).
 class CelebrationHost extends StatefulWidget {
   const CelebrationHost({
     super.key,
