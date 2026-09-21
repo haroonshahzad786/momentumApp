@@ -1,10 +1,17 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../services/admin_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/starfield.dart';
+import 'admin_audit_screen.dart';
 import 'admin_client_detail_screen.dart';
 import 'admin_clients_screen.dart';
+import 'admin_economy_screen.dart';
+import 'admin_flags_screen.dart';
+import 'admin_habits_screen.dart';
+import 'admin_integrations_screen.dart';
+import 'admin_lists_screen.dart';
 import 'admin_overview_screen.dart';
 import 'admin_stub_screen.dart';
 
@@ -46,7 +53,7 @@ const List<(String, List<AdminNavItem>)> kAdminNavGroups = [
 /// Sections with a real, working screen behind them today. Everything else
 /// in [kAdminNavGroups] renders [AdminStubScreen] — reachable, not hidden,
 /// but honestly not built rather than faked.
-const Set<String> kAdminBuiltScreens = {'overview', 'clients'};
+const Set<String> kAdminBuiltScreens = {'overview', 'clients', 'audit', 'flags', 'economy', 'habits', 'lists'};
 
 /// The admin panel — a full-screen takeover matching
 /// design/ref/admin-panel-export/Admin Panel.dc.html exactly: one sidebar
@@ -72,6 +79,16 @@ class AdminShell extends StatefulWidget {
 class _AdminShellState extends State<AdminShell> {
   String _screen = 'overview';
   String? _clientUid;
+  final _adminSvc = AdminService();
+  int? _configVersion;
+
+  @override
+  void initState() {
+    super.initState();
+    _adminSvc.configVersion().then((v) {
+      if (mounted) setState(() => _configVersion = v);
+    });
+  }
 
   void _go(String key) => setState(() {
         _screen = key;
@@ -90,6 +107,24 @@ class _AdminShellState extends State<AdminShell> {
     }
     if (_screen == 'overview') {
       return const AdminOverviewScreen();
+    }
+    if (_screen == 'integrations') {
+      return const AdminIntegrationsScreen();
+    }
+    if (_screen == 'lists') {
+      return AdminListsScreen(onOpenClient: _openClient);
+    }
+    if (_screen == 'habits') {
+      return AdminHabitsScreen(onOpenEconomy: () => _go('economy'));
+    }
+    if (_screen == 'economy') {
+      return const AdminEconomyScreen();
+    }
+    if (_screen == 'flags') {
+      return const AdminFlagsScreen();
+    }
+    if (_screen == 'audit') {
+      return const AdminAuditScreen();
     }
     final label = kAdminNavGroups
         .expand((g) => g.$2)
@@ -111,7 +146,13 @@ class _AdminShellState extends State<AdminShell> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Sidebar(current: _screen, onNav: _go, email: email, onExitAdmin: widget.onExitAdmin),
+              _Sidebar(
+                current: _screen,
+                onNav: _go,
+                email: email,
+                configVersion: _configVersion,
+                onExitAdmin: widget.onExitAdmin,
+              ),
               Expanded(child: _buildContent()),
             ],
           ),
@@ -122,11 +163,22 @@ class _AdminShellState extends State<AdminShell> {
 }
 
 class _Sidebar extends StatelessWidget {
-  const _Sidebar({required this.current, required this.onNav, required this.email, this.onExitAdmin});
+  const _Sidebar({
+    required this.current,
+    required this.onNav,
+    required this.email,
+    required this.configVersion,
+    this.onExitAdmin,
+  });
 
   final String current;
   final void Function(String key) onNav;
   final String email;
+
+  /// Real `config/_meta.version` (#A7.1/#A7.3) — null while loading or if no
+  /// config has ever been published; the pill is omitted rather than
+  /// showing a fabricated number in that case.
+  final int? configVersion;
   final VoidCallback? onExitAdmin;
 
   @override
@@ -198,10 +250,24 @@ class _Sidebar extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(email, overflow: TextOverflow.ellipsis, style: MM.body(size: 11.5, color: MM.white)),
-                    Text('Owner · admin claim', style: MM.body(size: 10, color: Colors.white.withOpacity(0.36))),
+                    // Real admin claim check (#A0.5) — no "Owner"/other role
+                    // exists in this system today, just a boolean `admin`
+                    // custom claim, so that's the only thing said here.
+                    Text('Admin · claim verified', style: MM.body(size: 10, color: Colors.white.withOpacity(0.36))),
                   ],
                 ),
               ),
+              if (configVersion != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.06),
+                    border: Border.all(color: Colors.white.withOpacity(0.14)),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text('config v$configVersion',
+                      style: MM.body(size: 9.5, color: Colors.white.withOpacity(0.55))),
+                ),
             ]),
           ),
         ],

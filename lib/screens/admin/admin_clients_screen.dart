@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/admin_api_service.dart';
+import '../../services/csv_download.dart';
 import '../../theme/momentum_tokens.dart';
 import 'admin_widgets.dart';
 
@@ -28,6 +29,7 @@ class _AdminClientsScreenState extends State<AdminClientsScreen> {
   String _levelFilter = 'All levels';
   String _statusFilter = 'Any status';
   final Set<String> _selected = {};
+  bool _bulkBusy = false;
 
   @override
   void initState() {
@@ -61,6 +63,78 @@ class _AdminClientsScreenState extends State<AdminClientsScreen> {
         _loading = false;
       });
     }
+  }
+
+  /// #A2.2 bulk "Grant credits" — loops the same single-client
+  /// `adminAdjustClient` (`grant_credits`) call #A2.4 already ships, one
+  /// audit-log entry per affected account rather than one for the whole
+  /// batch (matches the plan's own scoping note: this is trivial once the
+  /// single-client version exists, not a new endpoint).
+  Future<void> _bulkGrantCredits() async {
+    final input = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => const _BulkCreditsDialog(),
+    );
+    if (input == null) return;
+    final uids = _selected.toList();
+    setState(() => _bulkBusy = true);
+    var okCount = 0;
+    final failures = <String>[];
+    for (final uid in uids) {
+      try {
+        await _api.adjustClient(
+          uid: uid,
+          action: 'grant_credits',
+          reason: input['reason'] as String,
+          amount: input['amount'] as int,
+        );
+        okCount++;
+      } catch (_) {
+        failures.add(uid);
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _bulkBusy = false;
+      _selected.clear();
+    });
+    final amount = input['amount'] as int;
+    final verb = amount >= 0 ? 'Granted' : 'Deducted';
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(failures.isEmpty
+          ? '$verb ${amount.abs()} credits for $okCount account${okCount == 1 ? '' : 's'}.'
+          : '$verb ${amount.abs()} credits for $okCount of ${uids.length} — ${failures.length} failed.'),
+    ));
+    await _load();
+  }
+
+  /// #A2.2 bulk "Export selected" — CSV of the currently-selected rows using
+  /// data already fetched by #A2.1's list call (no extra request). Web-only,
+  /// same limitation as the single "Export CSV" button next to it.
+  Future<void> _exportSelectedCsv() async {
+    final rows = _all.where((c) => _selected.contains('${c['uid']}')).toList();
+    const columns = ['uid', 'displayName', 'email', 'level', 'planet', 'streak', 'momentumScore', 'spaceCredits', 'status'];
+    final buffer = StringBuffer(columns.join(','))..write('\n');
+    for (final c in rows) {
+      buffer.write(columns.map((k) => _csvField(c[k])).join(','));
+      buffer.write('\n');
+    }
+    try {
+      downloadCsv('clients_selected.csv', buffer.toString());
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('CSV export is only available on web.')),
+      );
+    }
+  }
+
+  String _csvField(Object? value) {
+    final s = '${value ?? ''}';
+    if (s.contains(',') || s.contains('"') || s.contains('\n')) {
+      return '"${s.replaceAll('"', '""')}"';
+    }
+    return s;
   }
 
   List<Map> get _filtered {
@@ -152,11 +226,23 @@ class _AdminClientsScreenState extends State<AdminClientsScreen> {
             Row(children: [
               Text('${_selected.length} selected', style: MM.body(size: 12, color: MM.white, weight: FontWeight.w600)),
               const SizedBox(width: 14),
-              for (final label in ['Send nudge', 'Grant credits', 'Assign habit', 'Send password reset', 'Export selected'])
+              if (_bulkBusy)
+                const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: MM.blue))
+              else ...[
+                for (final label in ['Send nudge', 'Assign habit', 'Send password reset'])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 14),
+                    child: InkWell(onTap: () => adminShowSoon(context, label), child: Text(label, style: MM.body(size: 12, color: MM.blue))),
+                  ),
                 Padding(
                   padding: const EdgeInsets.only(right: 14),
-                  child: InkWell(onTap: () => adminShowSoon(context, label), child: Text(label, style: MM.body(size: 12, color: MM.blue))),
+                  child: InkWell(onTap: _bulkGrantCredits, child: Text('Grant credits', style: MM.body(size: 12, color: MM.blue))),
                 ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 14),
+                  child: InkWell(onTap: _exportSelectedCsv, child: Text('Export selected', style: MM.body(size: 12, color: MM.blue))),
+                ),
+              ],
             ]),
           ],
           const SizedBox(height: 14),
@@ -274,6 +360,82 @@ class _AdminClientsScreenState extends State<AdminClientsScreen> {
           onChanged: onChanged,
         ),
       ),
+    );
+  }
+}
+
+/// Amount + reason for the bulk "Grant credits" action (#A2.2). Same
+/// required-reason contract as every other admin mutation, kept as its own
+/// small dialog here rather than reusing Client Detail's private
+/// `_ActionDialog` — that one also handles planet/email fields this bulk
+/// action doesn't need.
+class _BulkCreditsDialog extends StatefulWidget {
+  const _BulkCreditsDialog();
+
+  @override
+  State<_BulkCreditsDialog> createState() => _BulkCreditsDialogState();
+}
+
+class _BulkCreditsDialogState extends State<_BulkCreditsDialog> {
+  final _amountCtrl = TextEditingController();
+  final _reasonCtrl = TextEditingController();
+  String? _formError;
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    _reasonCtrl.dispose();
+    super.dispose();
+  }
+
+  void _confirm() {
+    final amount = int.tryParse(_amountCtrl.text.trim());
+    if (amount == null || amount == 0) {
+      setState(() => _formError = 'Enter a non-zero whole number.');
+      return;
+    }
+    final reason = _reasonCtrl.text.trim();
+    if (reason.isEmpty) {
+      setState(() => _formError = 'Reason is required.');
+      return;
+    }
+    Navigator.pop(context, {'amount': amount, 'reason': reason});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: MM.navy,
+      title: Text('Grant / deduct credits', style: MM.display(size: 15, color: MM.white)),
+      content: SizedBox(
+        width: 360,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _amountCtrl,
+              keyboardType: const TextInputType.numberWithOptions(signed: true),
+              style: MM.body(size: 13, color: MM.white),
+              decoration: InputDecoration(labelText: 'Credits per account (use - to deduct)', labelStyle: MM.body(size: 12, color: Colors.white60)),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _reasonCtrl,
+              style: MM.body(size: 13, color: MM.white),
+              decoration: InputDecoration(labelText: 'Reason (required)', labelStyle: MM.body(size: 12, color: Colors.white60)),
+            ),
+            if (_formError != null) ...[
+              const SizedBox(height: 8),
+              Text(_formError!, style: MM.body(size: 11.5, color: MM.red)),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        ElevatedButton(onPressed: _confirm, style: ElevatedButton.styleFrom(backgroundColor: MM.blue), child: const Text('Confirm')),
+      ],
     );
   }
 }

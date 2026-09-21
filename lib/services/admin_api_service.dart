@@ -99,6 +99,98 @@ class AdminApiService {
     });
   }
 
+  /// §9 Audit log (#A9.3) — newest first. `action`/`adminUid` are exact-match
+  /// server-side filters, `since`/`until` bound `when`; `cursor` is the last
+  /// row's `id` from the previous page (`nextCursor` in the response).
+  Future<Map<String, dynamic>> listAuditLog({
+    String? action,
+    String? adminUid,
+    DateTime? since,
+    DateTime? until,
+    int limit = 50,
+    String? cursor,
+  }) {
+    return _get('adminListAuditLog', {
+      if (action != null && action.isNotEmpty) 'action': action,
+      if (adminUid != null && adminUid.isNotEmpty) 'adminUid': adminUid,
+      if (since != null) 'since': since.toUtc().toIso8601String(),
+      if (until != null) 'until': until.toUtc().toIso8601String(),
+      'limit': '$limit',
+      if (cursor != null) 'cursor': cursor,
+    });
+  }
+
+  /// §5 Momentum lists (#A5.1) — one row per distinct list type across both
+  /// stores (`system` 'momentum' | 'core'). No completion numbers by design
+  /// (there is no fixed prompt set to complete) — see the response `note`.
+  Future<Map<String, dynamic>> listMomentumLists() => _get('adminListMomentumLists');
+
+  /// §5 List Detail (#A5.4) — per-player progress for one list type.
+  /// `coreId` + `categoryId` are required when `system == 'core'`.
+  Future<Map<String, dynamic>> getListDetail({
+    required String system,
+    required String name,
+    String? coreId,
+    String? categoryId,
+  }) {
+    return _get('adminGetListDetail', {
+      'system': system,
+      'name': name,
+      if (coreId != null && coreId.isNotEmpty) 'coreId': coreId,
+      if (categoryId != null && categoryId.isNotEmpty) 'categoryId': categoryId,
+    });
+  }
+
+  /// §4 Habits library (#A4.1/#A4.2/#A4.4) — templates + real per-core
+  /// distribution + `config/streaks` (formation rules).
+  Future<Map<String, dynamic>> listHabitTemplates() => _get('adminListHabitTemplates');
+
+  /// §4 Habit template CRUD (#A4.1). `action` ∈ create|update|duplicate|
+  /// archive|unarchive (no hard delete). `reason` required. For `update`, pass
+  /// only the fields that changed (null fields are omitted from the request).
+  Future<Map<String, dynamic>> habitTemplate({
+    required String action,
+    required String reason,
+    String? templateId,
+    String? name,
+    String? coreId,
+    String? cadence,
+    String? difficulty,
+  }) {
+    return _post('adminHabitTemplate', {
+      'action': action,
+      'reason': reason,
+      if (templateId != null) 'templateId': templateId,
+      if (name != null) 'name': name,
+      if (coreId != null) 'coreId': coreId,
+      if (cadence != null) 'cadence': cadence,
+      if (difficulty != null) 'difficulty': difficulty,
+    });
+  }
+
+  /// §7 Economy config publish (#A7.3). `path` ∈ economy|levels|streaks|journey;
+  /// `changes` (changed keys only) is shallow-merged into `config/{path}`, the
+  /// config version is bumped, and the diff is audit-logged. `reason` required.
+  /// Response carries the new `version`.
+  Future<Map<String, dynamic>> setConfig({
+    required String path,
+    required Map<String, dynamic> changes,
+    required String reason,
+  }) {
+    return _post('adminSetConfig', {'path': path, 'changes': changes, 'reason': reason});
+  }
+
+  /// §7 Feature flags / kill switches (#A7.6/#A7.7). `patch` is merged into
+  /// `feature_flags/{key}` (a new key creates the flag); `reason` is required
+  /// and the change is audit-logged with a before/after diff.
+  Future<Map<String, dynamic>> setFeatureFlag({
+    required String key,
+    required Map<String, dynamic> patch,
+    required String reason,
+  }) {
+    return _post('adminSetFeatureFlag', {'key': key, 'patch': patch, 'reason': reason});
+  }
+
   /// §6 Integrations — #A6.2 "Test connection": a real round-trip health
   /// check against the Claude API (Models API — costs no tokens). `ok` (from the base `_decode`
   /// check) just means this endpoint ran; the real result is `connected`.

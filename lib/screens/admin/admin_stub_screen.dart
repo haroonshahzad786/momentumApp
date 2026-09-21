@@ -5,7 +5,7 @@ import 'admin_widgets.dart';
 
 /// Reachable-but-honest placeholder for sidebar sections that don't have a
 /// real screen yet. Some of these DO have a working backend already (e.g.
-/// Feature flags → adminSetFeatureFlag, Audit log → adminListAuditLog) —
+/// Feature flags → adminSetFeatureFlag, Economy → adminSetConfig) —
 /// this screen exists because no Flutter UI has been built on top of it yet,
 /// not because nothing works.
 class AdminStubScreen extends StatelessWidget {

@@ -35,6 +35,63 @@ on top of the backend below, built 2026-09-13 and verified in the browser (relea
   checkpoint, reset onboarding, suspend/unsuspend, send password reset, force reset, revoke sessions,
   change email — every one requires a reason (enforced client-side too, not just server-side) and hits
   the real backend verified earlier in this file.
+- `lib/screens/admin/admin_audit_screen.dart` — **§9 Audit log UI (2026-09-19; analyzer-clean, NOT yet
+  browser-verified)** on `adminListAuditLog` via `AdminApiService.listAuditLog`: design's filter bar (text search,
+  action, admin, date range) + When/Who/Action/Target/Reason table, cursor "Load more", client-side "Export log"
+  CSV. Action/admin/date filters are server-side; text search is client-side over loaded rows (endpoint has none).
+  Read-only by construction (log is append-only at the rules layer, #A9.2). `kAdminBuiltScreens` now = overview,
+  clients, audit, flags, economy, habits, lists.
+- `lib/screens/admin/admin_flags_screen.dart` — **§7 Feature flags + kill switches UI (2026-09-19; analyzer-clean,
+  NOT yet browser-verified)**. Reads `feature_flags/*` live from Firestore (world-read), writes only via
+  `adminSetFeatureFlag` (`AdminApiService.setFeatureFlag`; reason required, audit-logged with before/after). Table
+  (flag, platforms, cohort, rollout bar, last changed) + New/Edit flag dialog; kill-switch panel for
+  `maintenance_mode` / `force_update` (+ minVersion, semver-validated; a force-update can't be turned on without one).
+  Regular-flag doc shape is defined by the screen (`description`, `platforms{ios,android,web}`, `cohort`,
+  `rolloutPct`) — the backend imposes none. **The player app does not read `feature_flags` yet**, so flag/kill-switch
+  changes are recorded + audited but change no client behavior until client-side gating exists (stated on screen).
+  Live data today: only the two kill switches (both off, minVersion 1.0.0); zero regular flags.
+- `lib/screens/admin/admin_economy_screen.dart` — **§7 Economy config editor UI (2026-09-19; analyzer-clean, NOT yet
+  browser-verified)**. Left tree `config/{economy,levels,streaks,journey}`; right: generic editor over the doc's REAL
+  fields (no invented key list) typed by stored value — number / bool / text / JSON for null·object·list — with
+  per-row dirty state + "was …", **Preview diff**, and **Publish v{n+1}** (reason required) via `adminSetConfig`
+  (`AdminApiService.setConfig`, changed keys only). Change-history panel = `admin_publish_config` audit entries for
+  the selected doc (version, when, who, reason, key-by-key before→after). No add/delete-key. Discard-changes guard on
+  tree switch. **On-screen caveat: nothing reads `config/*` at runtime yet (#A7.2 open), so a publish is versioned +
+  audited but changes no live reward math.**
+  **Backend tweak (DEPLOYED + browser-verified 2026-09-21):** `adminListAuditLog` now also returns `before`/`after`
+  per row (CSV unchanged); the history panel shows version + key-by-key diffs (v6 `checkinCredits 11 → 10`, v5
+  `10 → 11`, v1 seed `null → …`). Deploy needed `FUNCTIONS_DISCOVERY_TIMEOUT=60` once (default 10s discovery timed out).
+- `lib/screens/admin/admin_habits_screen.dart` — **§4 Habits library UI (2026-09-19; analyzer-clean, NOT yet
+  browser-verified)** on `adminListHabitTemplates` + `adminHabitTemplate` (`AdminApiService.listHabitTemplates` /
+  `.habitTemplate`). Core filter chips with counts, show-archived toggle, table (template + id, core dot, cadence,
+  difficulty, Edit / Duplicate / Archive|Restore — no hard delete), New/Edit dialog (name, core, difficulty,
+  cadence; update sends changed fields only), reason required on every write. Below: read-only Formation rules
+  (`config/streaks`, with an "Open Economy →" link — edited there, one editor) and a real Habits-per-core tally.
+  **Assigned / Form rate show "—"** (nothing assigns a habit from a template yet, #A4.2 — not fabricated).
+- `lib/screens/admin/admin_lists_screen.dart` — **§5 Momentum lists UI (2026-09-19; analyzer-clean, NOT yet
+  browser-verified)** on `adminListMomentumLists` + `adminGetListDetail` (`AdminApiService.listMomentumLists` /
+  `.getListDetail`). Honest subset: 3 real summary tiles (list types, lists started, weighted avg items), searchable/
+  system-filterable table (list type, core, players, initiated, avg items, initiated-share bar), click-through detail
+  (per-player items + last updated, "View" → Client Detail via the shell's `_openClient`), client-side CSV export for
+  both levels. **Completion rate / where-players-stop / trend / per-prompt rates / Edit prompts are deliberately NOT
+  shown** (#A5.2/#A5.3/#A5.5 — no fixed prompt set exists; on-screen note explains) — needs a schema decision first.
+- **🔧 Index regression found + fixed while browser-testing (2026-09-19).** The `checkins.date` and
+  `golden_habits.formed` field overrides added for #A1.1 (2026-09-14) listed only `COLLECTION_GROUP` indexes; defining
+  a fieldOverride switches OFF Firestore's automatic single-field indexes for that field, so the collection-scope
+  `orderBy('date','desc')` in `adminGetClientDetail` (and the player app's `CheckinService.getRecent`) started failing
+  `FAILED_PRECONDITION`. Fixed by listing all four (ASC/DESC × COLLECTION/COLLECTION_GROUP) in
+  `vf-bridge/firestore.indexes.json`; deployed with `firebase deploy --only firestore:indexes`. **Verified:** Client
+  Detail loads again for a real account once the index finished building (~3 min). **Rule:** any fieldOverride must
+  re-declare every scope/order the field is queried with.
+- **Browser-verified 2026-09-19 (release web build, real admin session):** Audit log (filters/search), Feature flags
+  (live kill switches, dialogs + validation), Economy (real fields, dirty state, diff preview, discard, JSON/list/bool
+  editors), Habits library (archived toggle, formation rules, per-core tally, dialog validation), Momentum lists (32
+  list types, detail view, View → Client Detail). No writes were made during testing. Economy diff history verified after the
+  audit-log deploy. Not yet tested: real create/publish/archive writes.
+- **All sections with a finished backend now have a UI.** Remaining sidebar items are backend-blocked or unbuilt:
+  Daily Checks, Analytics (#A10), Cantina moderation (§11), Content editor (§8), Access & passwords (page-level view
+  of #A3 + #A0.6 admin 2FA). Then the unbuilt backends:
+  Cantina moderation (§11), #A10.4 analytics, Content editor (§8), #A0.6 admin 2FA.
 - Bulk actions, Export CSV, and Add client are visible per the design but call `adminShowSoon()` — a
   snackbar, not a silent no-op — since their backends don't exist yet (§A2.2/#A2.5's CSV-download
   trigger needs `dart:html`, deferred) or would need scope not yet built.
@@ -347,10 +404,11 @@ effort. #A5.1 and #A5.4 ship the honest subset of the same design: real counts, 
 > **Still to do outside this repo's control:**
 > - **Revoke the old Voiceflow API key** in the Voiceflow dashboard (it was exposed in plaintext in commit
 >   `7d1beb1` on the public remote — revoking it fully closes that exposure; no history scrub needed once dead).
->   Then `firebase functions:secrets:destroy VOICEFLOW_API_KEY` after the default codebase no longer binds it.
-> - The FlutterFlow-owned default codebase (`functions/index.js`) still contains `vfLaunchConversation`,
->   `vfSendMessage`, `vfGetLatestMessages`, `handleVoiceflowEvent`, and the `VOICEFLOW_API_KEY` binding;
->   left untouched pending a decision (the FlutterFlow build may still call them).
+> - The default codebase (`functions/index.js`) was cleaned too (2026-09-19, explicit client instruction —
+>   one-time exception to the "never touch FlutterFlow's index.js" rule): `vfLaunchConversation`,
+>   `vfSendMessage`, `vfGetLatestMessages`, `handleVoiceflowEvent`, `getUserProfileForVF`, the chat-parsing
+>   helpers and the `VOICEFLOW_API_KEY` binding are gone and the five endpoints are **deleted in production**.
+>   Still to do: `firebase functions:secrets:destroy VOICEFLOW_API_KEY` (no code binds it any more).
 
 - [x] **#A6.1 Secrets out of source** — DONE 2026-09-14 for `API_SECRET` (both codebases) and, at the time,
   `VOICEFLOW_API_KEY`. **Now moot for Voiceflow** (see banner). `ANTHROPIC_API_KEY` follows the same
