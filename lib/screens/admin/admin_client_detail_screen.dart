@@ -138,6 +138,7 @@ class _AdminClientDetailScreenState extends State<AdminClientDetailScreen> {
     final client = (_detail?['client'] as Map?) ?? const {};
     final habits = ((_detail?['goldenHabits'] as List?) ?? const []).cast<Map>();
     final checkins = ((_detail?['checkins'] as List?) ?? const []).cast<Map>();
+    final momentumLists = ((_detail?['momentumLists'] as List?) ?? const []).cast<Map>();
     final suspended = client['suspended'] == true;
     final cantinaMuted = client['cantinaMuted'] == true;
 
@@ -214,6 +215,8 @@ class _AdminClientDetailScreenState extends State<AdminClientDetailScreen> {
                 const SizedBox(width: 16),
                 Expanded(child: _checkinsPanel(checkins)),
               ]),
+              const SizedBox(height: 16),
+              _momentumListsPanel(momentumLists),
             ],
           ),
         ),
@@ -267,6 +270,77 @@ class _AdminClientDetailScreenState extends State<AdminClientDetailScreen> {
         ]),
       ),
     );
+  }
+
+  /// The actual per-player list content — what was missing when this page
+  /// was reached via Momentum Lists' "View" (#A5.4 only ever passed a uid,
+  /// never the player's real items). Shows every list doc across both
+  /// stores (momentum_lists + per-core golden_habit/pain_point), not just
+  /// the one the admin clicked from, since an admin support call is more
+  /// often "what's in this player's lists" than "what's in this one list".
+  Widget _momentumListsPanel(List<Map> lists) {
+    final sorted = [...lists]..sort((a, b) => '${a['name']}'.compareTo('${b['name']}'));
+    return AdminPanel(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('MOMENTUM LISTS', style: MM.displayX(size: 10, color: Colors.white.withOpacity(0.5))),
+          const SizedBox(height: 10),
+          if (sorted.isEmpty)
+            Text('No lists started yet.', style: MM.body(size: 12, color: Colors.white.withOpacity(0.5)))
+          else
+            for (final l in sorted) ...[
+              _momentumListRow(l),
+              const Divider(height: 20, color: Colors.white12),
+            ],
+        ]),
+      ),
+    );
+  }
+
+  Widget _momentumListRow(Map l) {
+    final items = ((l['items'] as List?) ?? const []).map((e) => '$e').toList();
+    final coreLabel = l['coreLabel'];
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Expanded(
+          child: Text('${l['name']}', style: MM.body(size: 13, color: MM.white, weight: FontWeight.w600)),
+        ),
+        if (coreLabel != null) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: MM.blue.withOpacity(0.14),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: MM.blue.withOpacity(0.35)),
+            ),
+            child: Text('$coreLabel', style: MM.displayX(size: 8.5, color: MM.blue)),
+          ),
+          const SizedBox(width: 8),
+        ],
+        Text('${items.length} item${items.length == 1 ? '' : 's'}',
+            style: MM.mono(size: 11, color: Colors.white.withOpacity(0.4))),
+      ]),
+      if (items.isEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text('(empty)', style: MM.body(size: 12, color: Colors.white.withOpacity(0.35))),
+        )
+      else
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final item in items)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Text('•  $item', style: MM.body(size: 12.5, color: Colors.white.withOpacity(0.8))),
+                ),
+            ],
+          ),
+        ),
+    ]);
   }
 
   Widget _checkinsPanel(List<Map> checkins) {

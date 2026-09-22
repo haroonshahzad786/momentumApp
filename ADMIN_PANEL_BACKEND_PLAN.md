@@ -420,6 +420,18 @@ effort. #A5.1 and #A5.4 ship the honest subset of the same design: real counts, 
   rate is **not** included (same structural finding as #A5.2). **Deployed and verified**: real players
   returned for both a momentum list (4 users) and a per-core list (2 users, correct core filter),
   missing `coreId`/`categoryId` on a `system=core` request correctly rejected with 400.
+  **Real gap found and fixed 2026-09-22** (user caught it live): "View" deep-links into Client Detail,
+  but Client Detail never actually showed the player's list CONTENT — only `itemCount` existed anywhere
+  in the admin surface (this endpoint and #A5.1), never the real `items[]`. Fixed by extending
+  `adminGetClientDetail` to also fetch and return `momentumLists: [{system, name, coreId, coreLabel,
+  categoryId, items, updatedAt}]` for that one uid — both stores (`users/{uid}/momentum_lists` +
+  `users/{uid}/core/*/{golden_habit,pain_point}`), scoped queries (not a collection-group scan), so no
+  new index needed. New "MOMENTUM LISTS" panel on `admin_client_detail_screen.dart` shows every list
+  the player has (not just the one they were viewed from — a support call is more often "what's in
+  this player's lists" than "what's in this one list type"), with real item text and a core-label chip
+  where applicable. **Deployed + browser-verified**: real account showed all 8 of its lists with real
+  item text ("Back to the Future List" → "Relationships Core - Confident", etc.), core-tagged rows
+  correctly labeled "Relationships Core".
 - [ ] **#A5.5 Edit prompts / Export CSV.** Export CSV is **done** (both endpoints above). "Edit
   prompts" is **not applicable** as designed — there are no prompts to edit (see the structural finding
   above); once a real prompt schema exists this becomes content management parallel to **#B9**.
