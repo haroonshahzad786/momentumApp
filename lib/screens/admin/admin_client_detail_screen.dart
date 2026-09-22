@@ -121,6 +121,8 @@ class _AdminClientDetailScreenState extends State<AdminClientDetailScreen> {
         'reset_onboarding' => 'Reset onboarding',
         'suspend' => 'Suspend account',
         'unsuspend' => 'Unsuspend account',
+        'cantina_mute' => 'Mute in Cantina',
+        'cantina_unmute' => 'Unmute in Cantina',
         'send_password_reset' => 'Send password reset link',
         'force_password_reset' => 'Force reset on next sign-in',
         'revoke_sessions' => 'Revoke all sessions',
@@ -137,6 +139,7 @@ class _AdminClientDetailScreenState extends State<AdminClientDetailScreen> {
     final habits = ((_detail?['goldenHabits'] as List?) ?? const []).cast<Map>();
     final checkins = ((_detail?['checkins'] as List?) ?? const []).cast<Map>();
     final suspended = client['suspended'] == true;
+    final cantinaMuted = client['cantinaMuted'] == true;
 
     return Stack(
       children: [
@@ -194,6 +197,7 @@ class _AdminClientDetailScreenState extends State<AdminClientDetailScreen> {
                 _actionButton('Restore rocket checkpoint', () => _runAdjust('restore_checkpoint', needsPlanet: true)),
                 _actionButton('Reset onboarding', () => _runAdjust('reset_onboarding')),
                 _actionButton(suspended ? 'Unsuspend account' : 'Suspend account', () => _runAdjust(suspended ? 'unsuspend' : 'suspend'), destructive: !suspended),
+                _actionButton(cantinaMuted ? 'Unmute in Cantina' : 'Mute in Cantina', () => _runAdjust(cantinaMuted ? 'cantina_unmute' : 'cantina_mute'), destructive: !cantinaMuted),
               ]),
               const SizedBox(height: 24),
               Text('ACCESS & PASSWORDS', style: MM.displayX(size: 11, color: Colors.white.withOpacity(0.6))),

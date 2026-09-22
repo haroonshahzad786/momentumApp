@@ -196,6 +196,73 @@ class AdminApiService {
   /// check) just means this endpoint ran; the real result is `connected`.
   Future<Map<String, dynamic>> testAiConnection() => _get('adminAiTestConnection');
 
+  /// §6 Integrations — #A6.3. `current` is the live (model, prompt) pair;
+  /// `history` is every distinct version ever detected, newest first.
+  Future<Map<String, dynamic>> getNovaConfigHistory() => _get('adminGetNovaConfigHistory');
+
+  /// §8 Content editor (#A8.1). Returns every `content/{section}` doc as
+  /// `{id, keys, updatedAt, updatedBy}` — no pagination, small collection.
+  Future<Map<String, dynamic>> listContent() => _get('adminListContent');
+
+  /// §10 Analytics (#A10.4). Real `habitsByCore` + points/credits
+  /// issued-vs-spent; `dauWau`/`retention`/`phase1Funnel`/`economyAnomaly`
+  /// each come back as `{needsSpec: true}` — not built, not faked (#A10.1-3).
+  Future<Map<String, dynamic>> getAnalytics() => _get('adminGetAnalytics');
+
+  /// §11 Cantina moderation. `type` ∈ posts|tribes|reports|banned_words.
+  /// `status` only applies to type='reports' (filters open/resolved/dismissed).
+  Future<Map<String, dynamic>> listCantinaContent({required String type, String? status}) {
+    return _get('adminListCantinaContent', {
+      'type': type,
+      if (status != null) 'status': status,
+    });
+  }
+
+  /// §11 Cantina moderation. One call, `type`+`action` pick the branch — see
+  /// adminModerateCantina's own doc comment in functions-flutter/index.js for
+  /// the full type/action/extra-field matrix. `reason` required except for
+  /// type='banned_words' where it's still required by the backend but not
+  /// listed as a hard client-side precondition here (kept consistent: always
+  /// pass one).
+  Future<Map<String, dynamic>> moderateCantina({
+    required String type,
+    String? id,
+    required String action,
+    String? reason,
+    String? name,
+    String? status,
+    String? note,
+    List<String>? words,
+  }) {
+    return _post('adminModerateCantina', {
+      'type': type,
+      if (id != null) 'id': id,
+      'action': action,
+      if (reason != null) 'reason': reason,
+      if (name != null) 'name': name,
+      if (status != null) 'status': status,
+      if (note != null) 'note': note,
+      if (words != null) 'words': words,
+    });
+  }
+
+  /// §8 Content editor (#A8.1). `changes` adds/updates string keys in
+  /// `content/{section}` (creating the section if new); `deletes` removes
+  /// keys. `reason` required. Response carries the new content version.
+  Future<Map<String, dynamic>> setContent({
+    required String section,
+    Map<String, String> changes = const {},
+    List<String> deletes = const [],
+    required String reason,
+  }) {
+    return _post('adminSetContent', {
+      'section': section,
+      if (changes.isNotEmpty) 'changes': changes,
+      if (deletes.isNotEmpty) 'deletes': deletes,
+      'reason': reason,
+    });
+  }
+
   /// §3 Access & Passwords (#A3.1–#A3.4). `reason` required.
   Future<Map<String, dynamic>> clientAccess({
     required String uid,

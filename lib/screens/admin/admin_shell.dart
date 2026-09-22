@@ -5,8 +5,11 @@ import '../../services/admin_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/starfield.dart';
 import 'admin_audit_screen.dart';
+import 'admin_analytics_screen.dart';
+import 'admin_cantina_screen.dart';
 import 'admin_client_detail_screen.dart';
 import 'admin_clients_screen.dart';
+import 'admin_content_screen.dart';
 import 'admin_economy_screen.dart';
 import 'admin_flags_screen.dart';
 import 'admin_habits_screen.dart';
@@ -53,7 +56,10 @@ const List<(String, List<AdminNavItem>)> kAdminNavGroups = [
 /// Sections with a real, working screen behind them today. Everything else
 /// in [kAdminNavGroups] renders [AdminStubScreen] — reachable, not hidden,
 /// but honestly not built rather than faked.
-const Set<String> kAdminBuiltScreens = {'overview', 'clients', 'audit', 'flags', 'economy', 'habits', 'lists'};
+const Set<String> kAdminBuiltScreens = {
+  'overview', 'clients', 'audit', 'flags', 'economy', 'habits', 'lists', 'integrations', 'content',
+  'analytics', 'cantina',
+};
 
 /// The admin panel — a full-screen takeover matching
 /// design/ref/admin-panel-export/Admin Panel.dc.html exactly: one sidebar
@@ -119,6 +125,15 @@ class _AdminShellState extends State<AdminShell> {
     }
     if (_screen == 'economy') {
       return const AdminEconomyScreen();
+    }
+    if (_screen == 'content') {
+      return const AdminContentScreen();
+    }
+    if (_screen == 'analytics') {
+      return const AdminAnalyticsScreen();
+    }
+    if (_screen == 'cantina') {
+      return const AdminCantinaScreen();
     }
     if (_screen == 'flags') {
       return const AdminFlagsScreen();

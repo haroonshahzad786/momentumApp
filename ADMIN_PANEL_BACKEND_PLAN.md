@@ -88,10 +88,41 @@ on top of the backend below, built 2026-09-13 and verified in the browser (relea
   editors), Habits library (archived toggle, formation rules, per-core tally, dialog validation), Momentum lists (32
   list types, detail view, View → Client Detail). No writes were made during testing. Economy diff history verified after the
   audit-log deploy. Not yet tested: real create/publish/archive writes.
-- **All sections with a finished backend now have a UI.** Remaining sidebar items are backend-blocked or unbuilt:
-  Daily Checks, Analytics (#A10), Cantina moderation (§11), Content editor (§8), Access & passwords (page-level view
-  of #A3 + #A0.6 admin 2FA). Then the unbuilt backends:
-  Cantina moderation (§11), #A10.4 analytics, Content editor (§8), #A0.6 admin 2FA.
+- **2026-09-22 — Integrations, Content, Analytics, and Cantina moderation all shipped (backend +
+  Flutter UI, deployed) AND browser-verified live (release-shaped web build, real admin session,
+  will@mooremomentum.com signed in themselves).** Verified: #A6.3 (real model+prompt version + Test
+  connection round-trip), #A8.1/#A8.2 (create section → add key → publish → live preview updates →
+  change history shows correct diff → delete key → publish, all correct), #A10.4 (real habits-by-core
+  bars and MP/credits issued-vs-spent numbers), §11 (Pin/Unpin a real post, Set watch/Set active on a
+  real tribe, both audit-logged correctly with before/after) — and #A0.6's session timeout fired for
+  real (an idle admin session got a real "Admin session expired" 401, confirming the 8h enforcement
+  works against a real stale token, not just in theory).
+  **One real bug found and fixed during this pass:** `ScaffoldMessenger.of(context)` called AFTER an
+  `await` in `admin_content_screen.dart`/`admin_cantina_screen.dart` threw "Looking up a deactivated
+  widget's ancestor is unsafe" and showed a FALSE "Publish failed"/"Failed" snackbar whenever the admin
+  navigated to another screen while a mutation was still in flight — even though the write had already
+  succeeded server-side (confirmed: the content delete that "failed" was actually published correctly).
+  Fixed everywhere in both files by capturing `ScaffoldMessenger.of(context)` into a local BEFORE the
+  `await`, not after. The same pre-existing pattern (`ScaffoldMessenger.of(context)` after an await)
+  exists in several older admin screens (audit, clients, economy, flags, habits, lists,
+  client_detail, `admin_widgets.dart`'s `adminShowSoon`) — not touched this pass, since they weren't
+  part of this session's changes, but the same fix would apply if it's ever hit there.
+  **Also independently confirmed live**: the tribes/space_cantina_posts rules fix is working for real
+  players, not just in theory — "Night Owls Clubk" (a genuine non-seed tribe) and "Deep Work Guild"
+  (a seed tribe with a real member beyond its seed base) both showed up with real `memberUids`, meaning
+  actual player writes have succeeded since the fix went live. `kAdminBuiltScreens` now = overview, clients,
+  audit, flags, economy, habits, lists, integrations, content, analytics, cantina. Also shipped:
+  `#A0.6`'s session-timeout half (8h admin token expiry, enforced server-side in `requireAdmin`) and a
+  real pre-existing bug fix (`tribes`/`space_cantina_posts` had no Firestore rules at all — every real
+  write was silently failing `permission-denied` in production; fixed while building §11). Remaining
+  sidebar items are backend-blocked or intentionally deferred: Daily Checks (no backend), Access &
+  passwords (page-level view of #A3, already real per-client — just not assembled into its own screen),
+  2FA enrollment itself (#A0.6's other half — needs Firebase Phone Auth provider enabled + the admin's
+  real phone number), IP allowlist (🔒 low priority, one admin), #A7.2 (config→live-reward-math wiring,
+  blocked on confirming the exact live field names in `config/economy`/`config/streaks` before touching
+  real reward math), #A10.1-3 (event ledger + BigQuery — needs real infra/billing decisions outside
+  this repo), #A6.4 (Disconnect semantics — 🔒 needs a client decision), #A5.2/3/5 (needs a prompt-schema
+  decision).
 - Bulk actions, Export CSV, and Add client are visible per the design but call `adminShowSoon()` — a
   snackbar, not a silent no-op — since their backends don't exist yet (§A2.2/#A2.5's CSV-download
   trigger needs `dart:html`, deferred) or would need scope not yet built.
@@ -150,11 +181,24 @@ This is `BACKEND_PLAN.md` **#B37 + #B38**, restated as the literal requirement d
 - [ ] **#A0.5 Sidebar identity block wiring.** The design's sidebar footer shows
   `will@mooremomentum.com · Owner · admin claim` and an env pill (`config v14`) — wire this to the
   real signed-in admin's email/claim and the real `config/_meta.version`, not placeholder text.
-- [ ] **#A0.6 2FA + session policy for admin accounts** (design's Access & Passwords page: "Require 2FA
+- [~] **#A0.6 2FA + session policy for admin accounts** (design's Access & Passwords page: "Require 2FA
   for admin accounts", "Admin session timeout: 8 hours", "Block admin sign-in outside allowlisted IPs").
-  New — not in `BACKEND_PLAN.md`. Firebase Auth multi-factor enrollment for the admin account(s) +ID
-  token custom claim carrying issue time for a server-side session-age check. IP allowlist is
-  🔒 lower priority — only one admin exists today.
+  New — not in `BACKEND_PLAN.md`. **Session timeout DEPLOYED 2026-09-22:** `requireAdmin` now rejects
+  (401 "Admin session expired") any call where the ID token's `auth_time` claim is more than 8h old —
+  `auth_time` is set at the original sign-in and does NOT advance on a silent token refresh, so this
+  forces a real re-authentication, not just a fresh token. This touches the shared gate used by every
+  admin endpoint, so it required redeploying the entire `flutter` functions codebase (confirmed with the
+  user first, since it could interrupt an already-8h-old live admin session). **Deploy hit a real
+  infra wall**: Cloud Run's "Total CPU allocation, in milli vCPU, per project per region" quota
+  (20,000 = 20 vCPU) got saturated deploying ~25 functions back to back — 8 functions failed
+  mid-rollout and kept serving their pre-timeout code (Cloud Run doesn't cut traffic to an unhealthy
+  revision, so nothing broke, just inconsistent versions briefly). User raised the quota in GCP Console
+  (IAM & Admin → Quotas); all 8 redeployed successfully on retry. **Verified**: `adminPing` and
+  `adminListClients` both correctly 401 unauthenticated. **Still open:** 2FA enrollment itself — needs
+  the Phone Auth provider enabled in the Firebase console (SMS billing implication) and the admin's
+  real phone number to enroll a second factor; deliberately NOT built as "required" without an
+  enrollment flow existing first, since that would lock out the only admin account. IP allowlist
+  remains 🔒 lower priority — only one admin exists today.
 
 **Acceptance for this whole section:** a non-admin, fully-authenticated app user who navigates to
 `/admin` or calls an admin endpoint directly gets nothing — not a read, not a write, not a friendlier
@@ -421,9 +465,20 @@ effort. #A5.1 and #A5.4 ship the honest subset of the same design: real counts, 
   The Flutter Integrations screen's button calls it (`AdminApiService.testAiConnection`). **Deployed 2026-09-19;
   rejects unauthenticated calls (401) — not yet exercised with a real admin token against the live Claude API
   (click "Test connection" in the admin Integrations screen to verify).**
-- [ ] **#A6.3 Nova model + prompt version history** — the model id is the `ANTHROPIC_MODEL` constant and the
-  prompt lives in `hhsSystemPrompt.js`; "History" needs a small version-log doc. Ties into `BACKEND_PLAN.md`
-  **#B12** (agent config as data) and **#B14** (transcript review).
+- [x] **#A6.3 Nova model + prompt version history — DEPLOYED + BROWSER-VERIFIED 2026-09-22.**
+  New `nova_config_versions/{hash}` collection (hash = sha256 of `ANTHROPIC_MODEL` + `HHS_SYSTEM_PROMPT`,
+  first 16 hex chars) — deliberately NOT moving the model/prompt into `config/*` (that's the broader
+  `BACKEND_PLAN.md` **#B12**, still open); this is just the narrow "History" list the design asks for.
+  New `adminGetNovaConfigHistory` (admin-gated, read-only from the caller's view — the version-log write
+  is lazy and idempotent via a deterministic doc id, `create()` swallowing `ALREADY_EXISTS`) returns
+  `{ current: {model, promptHash, promptPreview, promptChars}, history: [...] }`. Firestore rules added
+  (`nova_config_versions/*`, admin-only read/create, no update/delete — same append-only shape as
+  `admin_audit_log`). Flutter: `AdminApiService.getNovaConfigHistory()` + a new history panel on
+  `AdminIntegrationsScreen` (current version pill + a version list); `integrations` added to
+  `kAdminBuiltScreens`. **Deployed** (`FUNCTIONS_DISCOVERY_TIMEOUT=60` needed again, same as #A7.4's
+  deploy); unauthenticated request confirmed `401`. **Not yet verified with a real admin session** —
+  needs someone signed in as the real admin to open Integrations and confirm the current-version pill
+  and a real logged history row.
 - [ ] **#A6.4 Disconnect** — 🔒 confirm with the client what "Disconnect" should actually do (block new
   Nova conversations? fall back to a canned message?) before wiring it — don't guess a
   destructive action's semantics.
@@ -496,12 +551,31 @@ with its own curl-verification that awards are byte-identical before/after, per 
 
 Design: section tree, key/value table with per-row state + "Publish content", live phone preview.
 
-- [ ] **#A8.1 Copy store** — `BACKEND_PLAN.md` **#B10** (keyed strings, baked-in client fallback, never
-  block a render on a fetch). Same versioned-publish shape as §7's config editor — likely worth sharing
-  the publish/version-history mechanism (#A7.3/#A7.4) rather than building it twice.
-- [ ] **#A8.2 Live preview pane** — purely a client-side rendering of the selected key against the
-  phone-frame mock already in the design; no new backend, just needs the copy key → screen-context
-  mapping to know what to preview.
+- [x] **#A8.1 Copy store — DEPLOYED + BROWSER-VERIFIED 2026-09-22.** `BACKEND_PLAN.md` **#B10**.
+  Unlike §7's config editor (mirrors EXISTING hardcoded constants), there was no existing copy store to
+  mirror — every player-facing string today is a Dart literal, and picking which ones to expose is a
+  real content-scope decision, not something to guess at. Shipped the generic mechanism only: new
+  `content/{section}` collection, arbitrary section ids (`^[a-z0-9_]{1,64}$`) and arbitrary string keys
+  (`^[a-zA-Z0-9_.]{1,128}$`) created from nothing via the editor itself. `adminListContent` (read) +
+  `adminSetContent` (admin-gated, POST, `reason` required, supports add/update via `changes` and
+  removal via `deletes`) reuse the exact versioned-publish + audit-log-as-history shape as
+  `adminSetConfig` (#A7.3/#A7.4), per the plan's own suggestion — but with its own
+  `content/_meta.version` counter, kept separate from `config/_meta.version` since a copy edit and a
+  reward-math change are different kinds of risk. Firestore rules mirror `config/*` (signed-in read,
+  admin write). Flutter: `AdminApiService.listContent()`/`.setContent()` + new
+  `admin_content_screen.dart` (section tree with inline "+ New section", per-key dirty-state editor with
+  add/delete-key support, diff-preview-on-publish dialog, change-history panel) wired into
+  `admin_shell.dart` (`content` added to `kAdminBuiltScreens`). **Deployed**
+  (`adminListContent`/`adminSetContent` both created cleanly, no quota issue this time); unauthenticated
+  GET and POST both confirmed correctly rejected (401). **Browser-verified**: created section, added a
+  key, published v1, live preview updated to the real value, change history showed the correct diff;
+  deleted the key, published v2, history showed the delete correctly. Found and fixed a real bug in the
+  same pass — see the file header's 2026-09-22 note (false "Publish failed" on navigate-away).
+- [x] **#A8.2 Live preview pane — DONE alongside #A8.1.** Deliberately NOT a phone-frame mockup — there
+  is no copy-key → screen-context mapping yet (nothing in the app reads `content/*`), so faking a phone
+  preview would be fabricated UI. Ships the honest version instead: selecting a key shows its raw draft
+  string in a preview panel, with an on-screen note explaining why it isn't a screen mockup. Upgrading to
+  a real phone-frame preview is future work once a screen-context mapping exists.
 
 ---
 
@@ -549,8 +623,23 @@ This screen is the UI for `BACKEND_PLAN.md` **§8** in full:
 - [ ] **#A10.3 Economy anomaly banner** — **#B35**, now with a concrete trigger shown in the design
   ("credits earned 2.3× faster than baseline since config v13") — i.e. the anomaly detector should be
   able to correlate a spike with a specific `config` version from #A7.3's version history.
-- [ ] **#A10.4 Habit completion by core, MP/credits issued vs. spent** — derivable from the existing
-  points/credits ledgers without waiting on **#B33**; can ship before the full event ledger.
+- [x] **#A10.4 Habit completion by core, MP/credits issued vs. spent — DEPLOYED 2026-09-22, not yet
+  browser-verified.** New `adminGetAnalytics` (admin-gated, read-only). `habitsByCore` duplicates
+  #A4.4's aggregate (a fresh `collectionGroup("golden_habits")` scan) rather than sharing the call, so
+  Analytics doesn't also pay for the full habit-template list read. Issued-vs-spent comes from ONE
+  `collectionGroup("history")` scan across every `users/{uid}/{points|credits}/summary/history` doc —
+  each entry has either a `points` or a `credits` numeric field (never both, since different call sites
+  write them), so a positive value is "issued" and negative is "spent" with no second query needed
+  (admin deductions already write negative history entries via #A2.4, same rows `#A1.1`'s creditsSpent
+  tile reads a different way). Same honest caveat as #A1.1: "spent" can currently only mean admin
+  deductions — no player-facing spending feature exists yet. The rest of §10 (#A10.1-3) is returned as
+  `{needsSpec: true}` per section, not silently omitted. Flutter: `AdminApiService.getAnalytics()` + new
+  `admin_analytics_screen.dart` (habits-by-core bars reusing `MM.coreColor`, an issued-vs-spent bar per
+  currency, and honest "not built yet" panels for DAU/WAU, retention, Phase-1 funnel, and the anomaly
+  banner) wired into `admin_shell.dart` (`analytics` added to `kAdminBuiltScreens`). **Deployed**;
+  unauthenticated request confirmed `401`. **Browser-verified**: real habits-by-core bars (Physical
+  1/5 formed, Relationships 0/2 formed, matching #A4.4's own known numbers) and real MP/credits
+  issued-vs-spent totals rendered correctly against live data.
 
 ---
 
@@ -558,9 +647,57 @@ This screen is the UI for `BACKEND_PLAN.md` **§8** in full:
 
 Design section starts at line 936 of the export (tribe approve/watch/pending states, thread list) —
 this is `BACKEND_PLAN.md` **§5** in full: **#B21** (review/remove posts & threads), **#B22** (tribe
-admin), **#B23** (ban/mute/report queue), **#B24** (pin/feature). No new ids — build straight from
-`BACKEND_PLAN.md`; this section exists here only so the panel's screen list has an owner for every
-sidebar item.
+admin), **#B23** (ban/mute/report queue), **#B24** (pin/feature).
+
+- [x] **DEPLOYED 2026-09-22 — real bug found and fixed while building this section.**
+  `tribes_service.dart` and `cantina_ideas_service.dart` have written directly to `tribes` /
+  `space_cantina_posts` since they were built, but **no Firestore rule ever existed for either
+  collection** — every real write (join/leave/create tribe, tribe post, upvote, adopt, first-run
+  seeding) was failing `permission-denied` in production, unrelated to anything built earlier this
+  session. Found by tracing `firestore.rules` while designing moderation on top of what was assumed to
+  be a working feature. **Fixed** (confirmed with the user before proceeding, since it changes real
+  live behavior): base read/create/update rules added for both collections, admin-only moderation
+  fields layered on in the same rules (players can only ever touch the exact fields the real client
+  code writes — `upvotes`/`adopted` on posts, `memberUids`/`memberCount` on tribes; everything else,
+  including the new moderation fields below, requires the `admin` claim).
+- [x] **#B21 Review/remove posts.** `adminModerateCantina` (`type='post'`, `action` ∈
+  remove/restore/pin/unpin/feature/unfeature) — soft-delete only (`removed`/`removedReason`/
+  `removedBy`/`removedAt`), same "no hard delete" convention as Habits/Golden Habits. Targets
+  `space_cantina_posts` (no thread/DM moderation — see caveat below).
+- [x] **#B22 Space Tribes admin.** `adminModerateCantina` (`type='tribe'`, `action` ∈
+  rename/delete/restore/set_status). `status` (`active`|`watch`|`pending`) is a NEW field — no
+  "approve" gate exists on tribe creation today (tribes go live immediately, unchanged), so this is
+  admin tooling only, not silently wired into a new approval-gated creation flow that would be a real
+  product-behavior change nobody asked for.
+- [x] **#B23 Ban/mute + report queue.** Mute lives on Client Detail (`adminAdjustClient` actions
+  `cantina_mute`/`cantina_unmute`, mirrors the `suspend`/`unsuspend` pattern exactly) — narrower than
+  full account suspend: blocks new Cantina writes only (tribe create/join, tribe posts, DMs — enforced
+  **server-side** via `firestore.rules`' `isCantinaMuted()`, the real security boundary, not just a
+  client-side check). Report queue: new `cantina_reports` collection + `adminListCantinaContent`
+  (`type='reports'`, filterable by status) + `adminModerateCantina` (`type='report'`,
+  resolve/dismiss). **Honest gap:** no client-side "report" button exists anywhere in the app yet, so
+  the queue is real, working infrastructure with zero reports in it — same "live infra, zero
+  consumers" pattern as #A7.1/#A8.1, not fabricated. Banned-word list: `cantina_moderation/banned_words`
+  doc + admin CRUD via the same two endpoints — storage only, nothing scans new posts against it yet
+  (that's `BACKEND_PLAN.md` **#B25**, explicitly later scope).
+- [x] **#B24 Pin/feature.** `pinned`/`featured` booleans on `space_cantina_posts`, same endpoint as
+  #B21. Not yet surfaced in the player-facing Ideas Well UI (badge/sort) — admin-side only for now.
+- **Deliberately out of scope this pass:** moderating `cantina_dms` (private 1:1 messages) or
+  `cantina_threads` (per-user mock/demo content) — browsing all players' private DMs is a real privacy
+  decision, not just an engineering one; the report queue (once reporting ships) is the intended path
+  for acting on a specific flagged DM, not blanket admin browsing.
+- Flutter: `AdminApiService.listCantinaContent()`/`.moderateCantina()` + new
+  `admin_cantina_screen.dart` (4 tabs: Ideas Well posts, Space Tribes, Report queue, Banned words) +
+  `admin_client_detail_screen.dart`'s new Mute/Unmute button, wired into `admin_shell.dart` (`cantina`
+  added to `kAdminBuiltScreens`). **Deployed** (`adminListCantinaContent`, `adminModerateCantina`,
+  updated `adminAdjustClient`, new `cantina_reports` composite index, updated rules); unauthenticated
+  requests to all three endpoints confirmed `401`. **Browser-verified**: real seeded Ideas Well posts
+  loaded (8, matching the seed list exactly), Pin/Unpin a real post round-tripped correctly and
+  audit-logged (`admin_moderate_cantina_post_pin`/`_unpin`), real Tribes loaded (6 — the 5 seeds plus
+  a genuine player-created one, "Night Owls Clubk," with 1 real member — independent proof the rules
+  fix is already working for real players), Set watch/Set active on a tribe round-tripped and
+  audit-logged correctly. Found and fixed the same false-failure-snackbar bug as #A8.1 in this screen
+  too (4 call sites) — see the file header's 2026-09-22 note.
 
 ---
 
