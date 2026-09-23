@@ -63,7 +63,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
       return AdminErrorView(message: _error!, onRetry: _load);
     }
     final data = _data!;
-    final habitsByCore = ((data['habitsByCore'] as List?) ?? const []).cast<Map>();
+    final habitsByCore = asMapList(data['habitsByCore']);
     final points = (data['points'] as Map?) ?? const {};
     final credits = (data['credits'] as Map?) ?? const {};
 

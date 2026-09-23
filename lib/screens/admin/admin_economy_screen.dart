@@ -66,7 +66,7 @@ class _AdminEconomyScreenState extends State<AdminEconomyScreen> {
       final resp = await _api.listAuditLog(action: 'admin_publish_config', limit: 100);
       if (!mounted) return;
       setState(() {
-        _history = ((resp['rows'] as List?) ?? const []).cast<Map>();
+        _history = asMapList(resp['rows']);
         _historyLoading = false;
       });
     } catch (e) {

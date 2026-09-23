@@ -136,9 +136,9 @@ class _AdminClientDetailScreenState extends State<AdminClientDetailScreen> {
     if (_error != null) return AdminErrorView(message: _error!, onRetry: _load);
 
     final client = (_detail?['client'] as Map?) ?? const {};
-    final habits = ((_detail?['goldenHabits'] as List?) ?? const []).cast<Map>();
-    final checkins = ((_detail?['checkins'] as List?) ?? const []).cast<Map>();
-    final momentumLists = ((_detail?['momentumLists'] as List?) ?? const []).cast<Map>();
+    final habits = asMapList(_detail?['goldenHabits']);
+    final checkins = asMapList(_detail?['checkins']);
+    final momentumLists = asMapList(_detail?['momentumLists']);
     final suspended = client['suspended'] == true;
     final cantinaMuted = client['cantinaMuted'] == true;
 

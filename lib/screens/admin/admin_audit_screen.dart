@@ -96,7 +96,7 @@ class _AdminAuditScreenState extends State<AdminAuditScreen> {
     try {
       final resp = await _fetch();
       if (!mounted) return;
-      final rows = ((resp['rows'] as List?) ?? const []).cast<Map>();
+      final rows = asMapList(resp['rows']);
       _absorbOptions(rows);
       setState(() {
         _rows = rows;
@@ -119,7 +119,7 @@ class _AdminAuditScreenState extends State<AdminAuditScreen> {
     try {
       final resp = await _fetch(cursor: cursor);
       if (!mounted) return;
-      final more = ((resp['rows'] as List?) ?? const []).cast<Map>();
+      final more = asMapList(resp['rows']);
       _absorbOptions(more);
       setState(() {
         _rows = [..._rows, ...more];

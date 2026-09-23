@@ -76,7 +76,7 @@ class _AdminListsScreenState extends State<AdminListsScreen> {
     try {
       final r = await _api.listMomentumLists();
       if (!mounted) return;
-      final lists = ((r['lists'] as List?) ?? const []).cast<Map>().toList()
+      final lists = asMapList(r['lists'])
         ..sort((a, b) {
           final byPlayers = _n(b['usersWithList']).compareTo(_n(a['usersWithList']));
           return byPlayers != 0 ? byPlayers : '${a['name']}'.compareTo('${b['name']}');
@@ -420,7 +420,7 @@ class _ListDetailViewState extends State<_ListDetailView> {
       if (!mounted) return;
       setState(() {
         _summary = (r['list'] as Map?) ?? const {};
-        _players = ((r['players'] as List?) ?? const []).cast<Map>();
+        _players = asMapList(r['players']);
         _loading = false;
       });
     } catch (e) {

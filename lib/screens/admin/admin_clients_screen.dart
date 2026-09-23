@@ -53,7 +53,7 @@ class _AdminClientsScreenState extends State<AdminClientsScreen> {
       final resp = await _api.listClients(limit: 100);
       if (!mounted) return;
       setState(() {
-        _all = ((resp['rows'] as List?) ?? const []).cast<Map>();
+        _all = asMapList(resp['rows']);
         _loading = false;
       });
     } catch (e) {
@@ -183,36 +183,44 @@ class _AdminClientsScreenState extends State<AdminClientsScreen> {
             ),
           ),
           const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(
-                width: 260,
-                child: TextField(
-                  controller: _searchCtrl,
-                  style: MM.body(size: 12.5, color: MM.white),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    prefixIcon: const Icon(Icons.search, size: 16, color: Colors.white38),
-                    hintText: 'Name, email or uid',
-                    hintStyle: MM.body(size: 12, color: Colors.white.withOpacity(0.36)),
-                    filled: true,
-                    fillColor: MM.pageBg,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: BorderSide(color: Colors.white.withOpacity(0.18))),
-                  ),
+              Expanded(
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 260,
+                      child: TextField(
+                        controller: _searchCtrl,
+                        style: MM.body(size: 12.5, color: MM.white),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          prefixIcon: const Icon(Icons.search, size: 16, color: Colors.white38),
+                          hintText: 'Name, email or uid',
+                          hintStyle: MM.body(size: 12, color: Colors.white.withOpacity(0.36)),
+                          filled: true,
+                          fillColor: MM.pageBg,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: BorderSide(color: Colors.white.withOpacity(0.18))),
+                        ),
+                      ),
+                    ),
+                    _dropdown(_levelFilter, levels, (v) => setState(() => _levelFilter = v!)),
+                    _dropdown(_statusFilter, statuses, (v) => setState(() => _statusFilter = v!)),
+                  ],
                 ),
               ),
-              _dropdown(_levelFilter, levels, (v) => setState(() => _levelFilter = v!)),
-              _dropdown(_statusFilter, statuses, (v) => setState(() => _statusFilter = v!)),
-              const Spacer(),
+              const SizedBox(width: 10),
               OutlinedButton.icon(
                 onPressed: () => adminShowSoon(context, 'Export CSV'),
                 icon: const Icon(Icons.download, size: 14),
                 label: const Text('Export CSV'),
               ),
+              const SizedBox(width: 10),
               ElevatedButton.icon(
                 onPressed: () => adminShowSoon(context, 'Add client'),
                 icon: const Icon(Icons.add, size: 14),

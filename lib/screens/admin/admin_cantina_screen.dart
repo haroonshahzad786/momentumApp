@@ -175,7 +175,7 @@ class _PostsTabState extends State<_PostsTab> {
     try {
       final resp = await widget.api.listCantinaContent(type: 'posts');
       if (!mounted) return;
-      setState(() => _posts = ((resp['posts'] as List?) ?? const []).cast<Map>());
+      setState(() => _posts = asMapList(resp['posts']));
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = '$e');
@@ -327,7 +327,7 @@ class _TribesTabState extends State<_TribesTab> {
     try {
       final resp = await widget.api.listCantinaContent(type: 'tribes');
       if (!mounted) return;
-      setState(() => _tribes = ((resp['tribes'] as List?) ?? const []).cast<Map>());
+      setState(() => _tribes = asMapList(resp['tribes']));
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = '$e');
@@ -524,7 +524,7 @@ class _ReportsTabState extends State<_ReportsTab> {
     try {
       final resp = await widget.api.listCantinaContent(type: 'reports', status: _status);
       if (!mounted) return;
-      setState(() => _reports = ((resp['reports'] as List?) ?? const []).cast<Map>());
+      setState(() => _reports = asMapList(resp['reports']));
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = '$e');

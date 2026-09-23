@@ -5,6 +5,19 @@ import '../../theme/momentum_tokens.dart';
 /// Small shared pieces reused across the admin screens, so each screen file
 /// stays focused on its own layout rather than redefining card chrome.
 
+/// Safely converts a JSON-decoded `List` of row objects into real
+/// `Map<String, dynamic>` instances. `jsonDecode` hands back elements typed
+/// as `_JsonMap`, which only satisfies `is Map` lazily; calling `.cast<Map>()`
+/// on that list defers the type check to whenever each element is first
+/// read (e.g. inside a `ListView` itemBuilder), and under release-mode
+/// dart2js minification that lazy check throws instead of passing — the
+/// list renders blank with no error until the deferred check finally
+/// fires. Eagerly copying each element into a genuine `LinkedHashMap` here
+/// sidesteps that entirely and surfaces failures inside the caller's own
+/// try/catch instead of during a widget build.
+List<Map<String, dynamic>> asMapList(Object? value) =>
+    ((value as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+
 class AdminPanel extends StatelessWidget {
   const AdminPanel({super.key, required this.child, this.width});
   final Widget child;

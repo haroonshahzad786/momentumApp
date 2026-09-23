@@ -66,7 +66,7 @@ class _AdminHabitsScreenState extends State<AdminHabitsScreen> {
       final r = await _api.listHabitTemplates();
       if (!mounted) return;
       setState(() {
-        _templates = ((r['templates'] as List?) ?? const []).cast<Map>();
+        _templates = asMapList(r['templates']);
         _distribution = (r['distribution'] as Map?)?.cast<String, dynamic>() ?? const {};
         _rules = (r['formationRules'] as Map?)?.cast<String, dynamic>() ?? const {};
         _templatesNote = '${r['templatesNote'] ?? ''}';

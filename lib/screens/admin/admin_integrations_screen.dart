@@ -171,7 +171,7 @@ class _NovaHistoryList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final current = (result['current'] as Map?)?.cast<String, dynamic>();
-    final history = (result['history'] as List?)?.cast<Map>() ?? const [];
+    final history = asMapList(result['history']);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
