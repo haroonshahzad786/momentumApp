@@ -1,0 +1,6 @@
+export default {
+  TITLE_COCKPIT: 'ADD ITEM',
+  CATEGORY: 'CATEGORY',
+  BUTTON_NEXT: 'DONE',
+  BUTTON_OK: 'Ok',
+}

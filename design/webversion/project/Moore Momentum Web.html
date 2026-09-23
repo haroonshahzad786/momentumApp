@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Moore Momentum — Web</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    a { color: var(--mm-blue); text-decoration: none; }
+    a:hover { color: #4d9bff; }
+    #root { min-height: 100vh; }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb { background: rgba(241,241,241,.14); border-radius: 6px; border: 2px solid transparent; background-clip: padding-box; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(241,241,241,.26); background-clip: padding-box; }
+    .web-scroll { height: 100vh; overflow: auto; }
+    .web-content-bg {
+      position: relative;
+      background:
+        radial-gradient(ellipse 80% 50% at 60% -5%, rgba(42,125,225,.12), transparent 60%),
+        radial-gradient(ellipse at 50% 50%, #0a1030 0%, #06070d 60%, #02030a 100%);
+    }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- shared component library (same modules the mobile app uses) -->
+  <script type="text/babel" src="ios-frame.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="boot.jsx"></script>
+  <script type="text/babel" src="rocket.jsx"></script>
+  <script type="text/babel" src="dashboard.jsx"></script>
+  <script type="text/babel" src="checkin.jsx"></script>
+  <script type="text/babel" src="phase1.jsx"></script>
+  <script type="text/babel" src="phase2x.jsx"></script>
+  <script type="text/babel" src="summary.jsx"></script>
+  <script type="text/babel" src="gamification.jsx"></script>
+  <script type="text/babel" src="habits.jsx"></script>
+  <script type="text/babel" src="screens.jsx"></script>
+
+  <!-- desktop web layer -->
+  <script type="text/babel" src="web.jsx"></script>
+  <script type="text/babel" src="web-screens.jsx"></script>
+
+  <script type="text/babel">
+    const { useState } = React;
+
+    // ── page title map for the desktop topbar ──
+    const PAGE_META = {
+      cockpit:  { title: 'Cockpit',   subtitle: 'MISSION CONTROL', accent: '#2a7de1' },
+      routines: { title: 'Routines',  subtitle: 'FULL ROUTINES LIST', accent: '#00a98f' },
+      habits:   { title: 'Golden Habits', subtitle: 'THE FORGE', accent: '#ff3d8b' },
+      tasks:    { title: 'Tasks',     subtitle: 'MISSION QUEUE', accent: '#FFC629' },
+      lists:    { title: 'Lists',     subtitle: 'MANIFEST', accent: '#2a7de1' },
+      cantina:  { title: 'Space Cantina', subtitle: 'SOCIAL DECK', accent: '#9b5cff' },
+      trophy:   { title: 'Trophy Room', subtitle: 'IDENTITY PAYOFF', accent: '#FFC629' },
+      profile:  { title: 'Profile',   subtitle: 'COMMANDER FILE', accent: '#9b5cff' },
+    };
+
+    // ═══════════════════════════════════════════════════════════
+    // DESKTOP SHELL
+    // ═══════════════════════════════════════════════════════════
+    function DesktopApp({ tweaks, account }) {
+      const [page, setPage] = useState('cockpit');
+      const [overlay, setOverlay] = useState(null); // 'checkin' | 'summary' | 'chat' | null
+      const meta = PAGE_META[page] || PAGE_META.cockpit;
+
+      const body = () => {
+        switch (page) {
+          case 'cockpit':  return <WebCockpit tweaks={tweaks} onNav={setPage} onCheckIn={() => setOverlay('checkin')} />;
+          case 'routines': return <WebRoutines onNav={setPage} />;
+          case 'habits':   return <WebHabits />;
+          case 'tasks':    return <WebTasks />;
+          case 'lists':    return <WebLists />;
+          case 'cantina':  return <WebCantina />;
+          case 'trophy':   return <WebTrophy />;
+          case 'profile':  return <WebProfile tweaks={tweaks} account={account} />;
+          default:         return <WebCockpit tweaks={tweaks} onNav={setPage} onCheckIn={() => setOverlay('checkin')} />;
+        }
+      };
+
+      return (
+        <div style={{ display: 'flex', minHeight: '100vh' }}>
+          <WebSidebar current={page} onNav={setPage} account={account}
+            streak={tweaks.streak} planet={tweaks.planet} level={tweaks.level} />
+          <main className="web-scroll web-content-bg" style={{ flex: 1 }}>
+            <div className="mm-stars" style={{ position: 'fixed', inset: 0, opacity: .4, pointerEvents: 'none' }} />
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <WebTopbar title={meta.title} subtitle={meta.subtitle} accent={meta.accent}
+                onCheckIn={() => setOverlay('checkin')} onChat={() => setOverlay('chat')} />
+              {body()}
+            </div>
+          </main>
+
+          {/* overlays — reuse the real mobile flows in a centered phone-width panel */}
+          {(overlay === 'checkin' || overlay === 'summary' || overlay === 'chat') && (
+            <div onClick={() => setOverlay(null)} style={{ position: 'fixed', inset: 0, zIndex: 300,
+              background: 'rgba(6,7,13,.82)', backdropFilter: 'blur(10px)', display: 'grid', placeItems: 'center', padding: 24 }}>
+              <div onClick={e => e.stopPropagation()} style={{ width: 400, maxWidth: '100%', height: 760, maxHeight: '92vh',
+                position: 'relative', borderRadius: 28, overflow: 'hidden', border: '1px solid rgba(241,241,241,.14)',
+                boxShadow: '0 30px 80px rgba(0,0,0,.6)' }}>
+                {overlay === 'checkin' && <CheckIn tweaks={tweaks} onClose={() => setOverlay(null)} onComplete={() => setOverlay('summary')} />}
+                {overlay === 'summary' && <Summary tweaks={tweaks} onClose={() => setOverlay(null)} />}
+                {overlay === 'chat' && <ChatScreen onBack={() => setOverlay(null)} />}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // MOBILE BRANCH — the existing screens, full-bleed (current look)
+    // ═══════════════════════════════════════════════════════════
+    function MobileApp({ tweaks, account, phase1State, signOut }) {
+      const [screen, setScreen] = useState('dashboard');
+      const [menuOpen, setMenuOpen] = useState(false);
+      const [chatOpen, setChatOpen] = useState(false);
+
+      const back = () => setScreen('dashboard');
+      const navProps = { onBack: back, onChat: () => setChatOpen(true), onNav: (k) => setScreen(k) };
+
+      const render = () => {
+        if (screen === 'dashboard') return <Dashboard tweaks={tweaks} phase1State={phase1State}
+          onCheckIn={() => setScreen('checkin')} onNav={(k) => setScreen(k)}
+          onMenu={() => setMenuOpen(true)} onChat={() => setChatOpen(true)} />;
+        if (screen === 'checkin') return <CheckIn tweaks={tweaks} onClose={back} onComplete={() => setScreen('summary')} />;
+        if (screen === 'summary') return <Summary tweaks={tweaks} onClose={back} />;
+        if (screen === 'lists')    return <ListsScreen {...navProps} />;
+        if (screen === 'routines') return <RoutinesScreen {...navProps} />;
+        if (screen === 'habits')   return <HabitsScreen {...navProps} />;
+        if (screen === 'tasks')    return <TasksScreen {...navProps} />;
+        if (screen === 'cantina')  return <CantinaScreen {...navProps} />;
+        if (screen === 'trophy')   return <TrophyScreen {...navProps} />;
+        if (screen === 'profile')  return <ProfileScreen tweaks={tweaks} onSignOut={signOut} {...navProps} />;
+        return <Dashboard tweaks={tweaks} onCheckIn={() => setScreen('checkin')} onNav={(k) => setScreen(k)} onMenu={() => setMenuOpen(true)} onChat={() => setChatOpen(true)} />;
+      };
+
+      return (
+        <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh' }}>
+          <div style={{ width: '100%', maxWidth: 480, height: '100vh', position: 'relative', overflow: 'hidden',
+            background: '#06070d', boxShadow: '0 0 60px rgba(0,0,0,.5)' }}>
+            {chatOpen ? <ChatScreen onBack={() => setChatOpen(false)} /> : render()}
+            {menuOpen && !chatOpen && (
+              <MenuDrawer account={account}
+                onAuth={() => setMenuOpen(false)}
+                onSignOut={() => { signOut(); setMenuOpen(false); }}
+                onNav={(k) => { setScreen(k); setMenuOpen(false); }}
+                onChat={() => { setChatOpen(true); setMenuOpen(false); }}
+                onClose={() => setMenuOpen(false)} />
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // ROOT — responsive switch
+    // ═══════════════════════════════════════════════════════════
+    function App() {
+      const [tweaks, setTweak] = useTweaks({
+        streak: 47, planet: 'mars', level: 'navigator', momentumScore: 8420, balance: 78,
+        activeCores: ['mindset', 'career', 'physical'],
+        scoringMode: 'auto', celebrate: 'off', showMysteryBox: true,
+      });
+      const isDesktop = useIsDesktop();
+      const account = { name: 'Alex Moore' };
+      const phase1State = { stage1Completed: true, stage2Completed: true, stage1Progress: 5 };
+      const t = tweaks;
+
+      return (
+        <>
+          {isDesktop
+            ? <DesktopApp tweaks={t} account={account} />
+            : <MobileApp tweaks={t} account={account} phase1State={phase1State} signOut={() => {}} />}
+
+          <TweaksPanel title="Moore Momentum Web">
+            <TweakSection label="View" />
+            <div style={{ fontSize: 11, color: 'rgba(241,241,241,.6)', lineHeight: 1.5, padding: '2px 2px 8px' }}>
+              Currently showing the <b style={{ color: '#fff' }}>{isDesktop ? 'desktop web' : 'mobile'}</b> layout.
+              Resize the window past {WEB_BREAKPOINT}px to switch — narrow widths keep the current mobile app design.
+            </div>
+
+            <TweakSection label="Player state" />
+            <TweakSlider label="Streak (days)" value={t.streak} min={1} max={365} unit="d" onChange={(v) => setTweak('streak', v)} />
+            <TweakSelect label="Planet" value={t.planet}
+              options={[['earth','Earth'],['moon','Moon'],['mars','Mars'],['jupiter','Jupiter'],['saturn','Saturn'],['pluto','Pluto']].map(([value,label]) => ({ value, label }))}
+              onChange={(v) => setTweak('planet', v)} />
+            <TweakRadio label="Level" value={t.level}
+              options={[['cadet','Cadet'],['navigator','Navig.'],['commander','Cmdr']].map(([value,label]) => ({ value, label }))}
+              onChange={(v) => setTweak('level', v)} />
+            <TweakNumber label="Momentum" value={t.momentumScore} min={0} max={99999} step={50} onChange={(v) => setTweak('momentumScore', v)} />
+            <TweakSlider label="Balance %" value={t.balance} min={0} max={100} unit="%" onChange={(v) => setTweak('balance', v)} />
+
+            <TweakSection label="Active Cores" />
+            {[['mindset','🧠 Mindset'],['career','💰 Career & Finances'],['relationships','👥 Relationships'],['physical','💪 Physical Health'],['emotional','🧘 Emotional & Mental']].map(([id, name]) => (
+              <TweakToggle key={id} label={name} value={t.activeCores.includes(id)}
+                onChange={(on) => setTweak('activeCores', on ? [...t.activeCores, id] : t.activeCores.filter(x => x !== id))} />
+            ))}
+
+            <TweakSection label="Presets" />
+            <div style={{ display: 'flex', gap: 6 }}>
+              <TweakButton label="Cadet · early" onClick={() => setTweak({ streak: 4, planet: 'moon', level: 'cadet', activeCores: ['mindset'], momentumScore: 240, balance: 35 })} />
+              <TweakButton label="Navigator" secondary onClick={() => setTweak({ streak: 47, planet: 'mars', level: 'navigator', activeCores: ['mindset','career','physical'], momentumScore: 8420, balance: 78 })} />
+            </div>
+            <TweakButton label="Commander · veteran" onClick={() => setTweak({ streak: 180, planet: 'saturn', level: 'commander', activeCores: ['mindset','career','relationships','physical','emotional'], momentumScore: 42600, balance: 94 })} />
+          </TweaksPanel>
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

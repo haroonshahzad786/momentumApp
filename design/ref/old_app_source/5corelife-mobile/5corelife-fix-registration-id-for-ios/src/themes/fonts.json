@@ -1,0 +1,524 @@
+{
+  "INPUT": {
+    "fontFamily": "A-SpaceLightDemo",
+    "fontSize": 7.8,
+    "letterSpacing": 0
+  },
+
+  "BUTTON_SMALL": {
+    "fontFamily": "CanterBold",
+    "fontSize": 19,
+    "letterSpacing": 0
+  },
+
+  "BUTTON_MEDIUM": {
+    "fontFamily": "CanterBold",
+    "fontSize": 21.8,
+    "letterSpacing": 0
+  },
+
+  "BUTTON_LARGE": {
+    "fontFamily": "CanterBold",
+    "fontSize": 30.5,
+    "letterSpacing": 1.83
+  },
+
+  "SWITCH": {
+    "fontFamily": "CanterBold",
+    "fontSize": 15.2,
+    "letterSpacing": -0.3
+  },
+
+  "LIST_HEADER": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 8.2,
+    "letterSpacing": 0
+  },
+
+  "IMPROVEMENT_TITLE_LARGE": {
+    "fontFamily": "CanterBold",
+    "fontSize": 26.5,
+    "letterSpacing": -1.06
+  },
+
+  "IMPROVEMENT_TITLE_MEDIUM": {
+    "fontFamily": "CanterBold",
+    "fontSize": 25,
+    "letterSpacing": -1
+  },
+
+  "IMPROVEMENT_TITLE_SMALL": {
+    "fontFamily": "CanterBold",
+    "fontSize": 21.7,
+    "letterSpacing": -0.87
+  },
+
+  "CORE_TITLE": {
+    "fontFamily": "CanterBold",
+    "fontSize": 44,
+    "letterSpacing": 0
+  },
+
+  "CORE_SUBTITLE": {
+    "fontFamily": "CanterBold",
+    "fontSize": 26.7,
+    "letterSpacing": 0
+  },
+
+  "CORE_ACTIVATE_TITLE": {
+    "fontFamily": "A-SpaceDemo-Bold",
+    "fontSize": 16,
+    "letterSpacing": 0
+  },
+
+  "CORE_ACTIVATE_SUBTITLE": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 11.5,
+    "letterSpacing": 0
+  },
+
+  "CORE_HABIT_TITLE": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 15.2,
+    "letterSpacing": 0
+  },
+
+  "CORE_HABIT_TITLE_LOW_PRIORITY": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 11.7,
+    "letterSpacing": -0.23
+  },
+
+  "CORE_HABIT_PROGRESS": {
+    "fontFamily": "CanterBold",
+    "fontSize": 15.5,
+    "letterSpacing": -0.31
+  },
+
+  "CORE_HABIT_LIST_HEADER": {
+    "fontFamily": "CanterBold",
+    "fontSize": 18.3,
+    "letterSpacing": -0.37
+  },
+
+  "CORE_HABIT_LIST_ITEM": {
+    "fontFamily": "CanterBold",
+    "fontSize": 17.5,
+    "letterSpacing": 0
+  },
+
+  "CORE_HABIT_LIST_ITEM_SELECTED": {
+    "fontFamily": "CanterBold",
+    "fontSize": 18.5,
+    "letterSpacing": 0
+  },
+
+  "CORE_HABIT_SCORE": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 15,
+    "letterSpacing": -0.3
+  },
+
+  "CORE_HABIT_SCORE_HIGHLIGHT": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 23.5,
+    "letterSpacing": -0.47
+  },
+
+  "CORE_HABIT_CHECK_LIST_HEADER": {
+    "fontFamily": "CanterBold",
+    "fontSize": 20.2,
+    "letterSpacing": -0.4
+  },
+
+  "CORE_HABIT_CHECK_LIST_ITEM": {
+    "fontFamily": "CanterBold",
+    "fontSize": 18.3,
+    "letterSpacing": 0
+  },
+
+  "CORE_HABIT_CHECK_ACHIEVED": {
+    "fontFamily": "CanterBold",
+    "fontSize": 28,
+    "letterSpacing": -0.56
+  },
+
+  "MODAL_TITLE": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 11.5,
+    "letterSpacing": 0
+  },
+
+  "MODAL_HABIT": {
+    "fontFamily": "CanterBold",
+    "fontSize": 35.3,
+    "letterSpacing": 0
+  },
+
+  "MODAL_SUBTITLE": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 11.5,
+    "letterSpacing": 0
+  },
+
+  "MODAL_PARAGRAPH": {
+    "fontFamily": "CanterLight",
+    "fontSize": 18.3,
+    "letterSpacing": 0
+  },
+
+  "MODAL_FORMED_HABIT": {
+    "fontFamily": "CanterBold",
+    "fontSize": 21.8,
+    "letterSpacing": 0
+  },
+
+  "MODAL_HABIT_CONFIRMATION": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 14,
+    "letterSpacing": 0
+  },
+
+  "LOGIN_TITLE": {
+    "fontFamily": "A-SpaceLightDemo",
+    "fontSize": 14.7,
+    "letterSpacing": 0
+  },
+  "LOGIN_TITLE_0": {
+    "fontFamily": "A-SpaceLightDemo",
+    "fontSize": 12,
+    "letterSpacing": 0
+  },
+  "LOGIN_SIGN_IN": {
+    "fontFamily": "A-SpaceLightDemo",
+    "fontSize": 10.7,
+    "letterSpacing": 0
+  },
+
+  "LOGIN_CONNECT_WITH": {
+    "fontFamily": "A-SpaceLightDemo",
+    "fontSize": 7.8,
+    "letterSpacing": 0
+  },
+
+  "LOGIN_REGISTER": {
+    "fontFamily": "A-SpaceLightDemo",
+    "fontSize": 9,
+    "letterSpacing": 0
+  },
+
+  "LOGIN_FORGOT_PASSWORD": {
+    "fontFamily": "A-SpaceLightDemo",
+    "fontSize": 7,
+    "letterSpacing": 0
+  },
+
+  "MANTRA_TITLE": {
+    "fontFamily": "CanterBold",
+    "fontSize": 36,
+    "letterSpacing": 0
+  },
+
+  "MANTRA_PARAGRAPH": {
+    "fontFamily": "CanterLight",
+    "fontSize": 17,
+    "letterSpacing": 0
+  },
+
+  "DASHBOARD_COINS": {
+    "fontFamily": "CanterBold",
+    "fontSize": 17,
+    "letterSpacing": 1.51
+  },
+
+  "DASHBOARD_PLANET": {
+    "fontFamily": "CanterBold",
+    "fontSize": 8.5,
+    "letterSpacing": 1.18
+  },
+
+  "DASHBOARD_SCORE": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 6,
+    "letterSpacing": 0.89
+  },
+
+  "DASHBOARD_SCORE_PERCENTAGE": {
+    "fontFamily": "A-SpaceDemo-Bold",
+    "fontSize": 8.5,
+    "letterSpacing": 0.89
+  },
+
+  "DASHBOARD_SCORE_AMOUNT": {
+    "fontFamily": "CanterBold",
+    "fontSize": 14.5,
+    "letterSpacing": 1.5
+  },
+
+  "SETTINGS_CARD_TITLE": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 11.7,
+    "letterSpacing": 0
+  },
+
+  "SETTINGS_CARD_CHECK_IN": {
+    "fontFamily": "CanterBold",
+    "fontSize": 17,
+    "letterSpacing": 0
+  },
+
+  "SETTINGS_CARD_CHECK_IN_HOUR": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 11.7,
+    "letterSpacing": -0.23
+  },
+
+  "SETTINGS_CARD_PARAGRAPH": {
+    "fontFamily": "CanterLight",
+    "fontSize": 16.7,
+    "letterSpacing": 0
+  },
+
+  "PROFILE_USER_NAME": {
+    "fontFamily": "CanterBold",
+    "fontSize": 29.8,
+    "letterSpacing": 0
+  },
+
+  "PROFILE_CARD_CATEGORY": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 10,
+    "letterSpacing": 0.2
+  },
+
+  "PROFILE_CARD_CATEGORY_PERCENTAGE": {
+    "fontFamily": "A-SpaceThinDemo",
+    "fontSize": 13.5,
+    "letterSpacing": 0.81
+  },
+
+  "PROFILE_CARD_CATEGORY_AMOUNT": {
+    "fontFamily": "CanterBold",
+    "fontSize": 25,
+    "letterSpacing": 1.5
+  },
+
+  "ACCORDION_TITLE": {
+    "fontFamily": "CanterBold",
+    "fontSize": 26.7,
+    "letterSpacing": 0
+  },
+
+  "ACCORDION_SUBTITLE": {
+    "fontFamily": "CanterBold",
+    "fontSize": 23,
+    "letterSpacing": 1.5
+  },
+
+  "ACCORDION_DESCRIPTION": {
+    "fontFamily": "CanterLight",
+    "fontSize": 23,
+    "letterSpacing": 1.5
+  },
+
+  "SETTINGS_CARD_QUEST": {
+    "fontFamily": "CanterBold",
+    "fontSize": 19.8,
+    "letterSpacing": 0
+  },
+
+  "HABITS_TAB": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 10,
+    "letterSpacing": 0
+  },
+
+  "HABITS_ACCORDION": {
+    "fontFamily": "CanterBold",
+    "fontSize": 23.3,
+    "letterSpacing": 0
+  },
+
+  "LEADERBOARD_LIST_ITEM": {
+    "fontFamily": "CanterBold",
+    "fontSize": 23.3,
+    "letterSpacing": 0
+  },
+
+  "COCKPIT_TITLE": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 11,
+    "letterSpacing": 0
+  },
+
+  "COCKPIT_CATEGORY": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 10,
+    "letterSpacing": 0
+  },
+
+  "COCKPIT_SUBTITLE": {
+    "fontFamily": "CanterBold",
+    "fontSize": 13.25,
+    "letterSpacing": 0
+  },
+
+  "COCKPIT_INPUT": {
+    "fontFamily": "CanterLight",
+    "fontSize": 13.25,
+    "letterSpacing": 0
+  },
+
+  "COCKPIT_FINISH_TITLE": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 14,
+    "letterSpacing": 0
+  },
+
+  "COCKPIT_FINISH_SUBTITLE": {
+    "fontFamily": "CanterLight",
+    "fontSize": 17,
+    "letterSpacing": 0
+  },
+
+  "TROPHIES_UNLOCK_TITLE": {
+    "fontFamily": "CanterBold",
+    "fontSize": 40.7,
+    "letterSpacing": 0
+  },
+
+  "TROPHIES_UNLOCK_STREAK": {
+    "fontFamily": "CanterBold",
+    "fontSize": 30,
+    "letterSpacing": 0
+  },
+
+  "LIFETIME_PLANET": {
+    "fontFamily": "CanterBold",
+    "fontSize": 11.7,
+    "letterSpacing": 0.7
+  },
+
+  "LIFETIME_USER_NAME": {
+    "fontFamily": "CanterBold",
+    "fontSize": 12.3,
+    "letterSpacing": 0.74
+  },
+
+  "LIFETIME_USER_STREAK": {
+    "fontFamily": "CanterLight",
+    "fontSize": 10,
+    "letterSpacing": 0.6
+  },
+
+  "LIFETIME_MOMENTUM_NEEDED": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 5,
+    "letterSpacing": 0.1
+  },
+
+  "LIFETIME_MOMENTUM_AMOUNT": {
+    "fontFamily": "CanterBold",
+    "fontSize": 11.3,
+    "letterSpacing": 0.68
+  },
+  
+
+  "QUEST_DAYS_NUMBER": {
+    "fontFamily": "CanterBold",
+    "fontSize": 52.62,
+    "letterSpacing": -1.06
+  },
+  "QUEST_DAYS_DESCRIPTION": {
+    "fontFamily": "CanterBold",
+    "fontSize": 34.98,
+    "letterSpacing": -1.06
+  },
+  "QUEST_DESCRIPTION": {
+    "fontFamily": "CanterBold",
+    "fontSize": 17.1,
+    "letterSpacing": -1.06
+  },
+
+  "QUIZ_TITLE": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 10.38,
+    "letterSpacing": 0
+  },
+  "QUIZ_SUBTITLE": {
+    "fontFamily": "CanterBold",
+    "fontSize": 31.8,
+    "letterSpacing": 0
+  },
+  "QUIZ_QUESTION_ANSWER": {
+    "fontFamily": "CanterBold",
+    "fontSize": 16.5,
+    "letterSpacing": 0
+  },
+  "QUIZ_QUESTION_DESCRIPTION": {
+    "fontFamily": "CanterLight",
+    "fontSize": 16.5,
+    "letterSpacing": 0
+  },
+  "QUIZ_SCORE_BIG": {
+    "fontFamily": "CanterBold",
+    "fontSize": 37.8,
+    "letterSpacing": 0
+  },
+  "QUIZ_SCORE_SMALL": {
+    "fontFamily": "CanterBold",
+    "fontSize": 25.2,
+    "letterSpacing": 0
+  },
+
+  "CHECK_IN_TITLE": {
+    "fontFamily": "A-SpaceDemo",
+    "fontSize": 10.38,
+    "letterSpacing": 0
+  },
+  "CHECK_IN_STATS": {
+    "fontFamily": "CanterBold",
+    "fontSize": 19.2,
+    "letterSpacing": 0
+  },
+  "CHECK_IN_NUMBERS_BIG": {
+    "fontFamily": "CanterBold",
+    "fontSize": 29.88,
+    "letterSpacing": 0
+  },
+  "CHECK_IN_NUMBERS_SMALL": {
+    "fontFamily": "MyriadPro-Regular",
+    "fontSize": 17.7,
+    "letterSpacing": 0
+  },
+  "CHECK_IN_NUMBERS_DESCRIPTION": {
+    "fontFamily": "CanterLight",
+    "fontSize": 20.22,
+    "letterSpacing": 0
+  },
+  "CHECK_IN_REWARD_TITLE": {
+    "fontFamily": "CanterBold",
+    "fontSize": 14.22,
+    "letterSpacing": 0
+  },
+  "CHECK_IN_REWARD_AMOUNT": {
+    "fontFamily": "CanterBold",
+    "fontSize": 43.98,
+    "letterSpacing": 0
+  },
+  "BUTTON_CIRCLE_INFO": {
+    "fontFamily": "MyriadPro-Regular",
+    "fontSize": 8.7,
+    "letterSpacing": 0
+  },
+  "BUTTON_CIRCLE_INFO_BOLD": {
+    "fontFamily": "AkzidenzGroteskBQ-Bold",
+    "fontSize": 10,
+    "letterSpacing": 0
+  },
+  "TROPHIE_DESCRIPTION": {
+    "fontFamily": "CanterLight",
+    "fontSize": 27,
+    "letterSpacing": 0
+  }
+}
