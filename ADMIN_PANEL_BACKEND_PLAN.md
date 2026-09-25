@@ -35,14 +35,14 @@ on top of the backend below, built 2026-09-13 and verified in the browser (relea
   checkpoint, reset onboarding, suspend/unsuspend, send password reset, force reset, revoke sessions,
   change email — every one requires a reason (enforced client-side too, not just server-side) and hits
   the real backend verified earlier in this file.
-- `lib/screens/admin/admin_audit_screen.dart` — **§9 Audit log UI (2026-09-19; analyzer-clean, NOT yet
-  browser-verified)** on `adminListAuditLog` via `AdminApiService.listAuditLog`: design's filter bar (text search,
+- `lib/screens/admin/admin_audit_screen.dart` — **§9 Audit log UI (2026-09-19; analyzer-clean, BROWSER-VERIFIED
+  read-only 2026-09-25)** on `adminListAuditLog` via `AdminApiService.listAuditLog`: design's filter bar (text search,
   action, admin, date range) + When/Who/Action/Target/Reason table, cursor "Load more", client-side "Export log"
   CSV. Action/admin/date filters are server-side; text search is client-side over loaded rows (endpoint has none).
   Read-only by construction (log is append-only at the rules layer, #A9.2). `kAdminBuiltScreens` now = overview,
   clients, audit, flags, economy, habits, lists.
 - `lib/screens/admin/admin_flags_screen.dart` — **§7 Feature flags + kill switches UI (2026-09-19; analyzer-clean,
-  NOT yet browser-verified)**. Reads `feature_flags/*` live from Firestore (world-read), writes only via
+  BROWSER-VERIFIED read-only 2026-09-25)**. Reads `feature_flags/*` live from Firestore (world-read), writes only via
   `adminSetFeatureFlag` (`AdminApiService.setFeatureFlag`; reason required, audit-logged with before/after). Table
   (flag, platforms, cohort, rollout bar, last changed) + New/Edit flag dialog; kill-switch panel for
   `maintenance_mode` / `force_update` (+ minVersion, semver-validated; a force-update can't be turned on without one).
@@ -50,8 +50,8 @@ on top of the backend below, built 2026-09-13 and verified in the browser (relea
   `rolloutPct`) — the backend imposes none. **The player app does not read `feature_flags` yet**, so flag/kill-switch
   changes are recorded + audited but change no client behavior until client-side gating exists (stated on screen).
   Live data today: only the two kill switches (both off, minVersion 1.0.0); zero regular flags.
-- `lib/screens/admin/admin_economy_screen.dart` — **§7 Economy config editor UI (2026-09-19; analyzer-clean, NOT yet
-  browser-verified)**. Left tree `config/{economy,levels,streaks,journey}`; right: generic editor over the doc's REAL
+- `lib/screens/admin/admin_economy_screen.dart` — **§7 Economy config editor UI (2026-09-19; analyzer-clean, BROWSER-VERIFIED
+  read-only 2026-09-25)**. Left tree `config/{economy,levels,streaks,journey}`; right: generic editor over the doc's REAL
   fields (no invented key list) typed by stored value — number / bool / text / JSON for null·object·list — with
   per-row dirty state + "was …", **Preview diff**, and **Publish v{n+1}** (reason required) via `adminSetConfig`
   (`AdminApiService.setConfig`, changed keys only). Change-history panel = `admin_publish_config` audit entries for
@@ -61,15 +61,15 @@ on top of the backend below, built 2026-09-13 and verified in the browser (relea
   **Backend tweak (DEPLOYED + browser-verified 2026-09-21):** `adminListAuditLog` now also returns `before`/`after`
   per row (CSV unchanged); the history panel shows version + key-by-key diffs (v6 `checkinCredits 11 → 10`, v5
   `10 → 11`, v1 seed `null → …`). Deploy needed `FUNCTIONS_DISCOVERY_TIMEOUT=60` once (default 10s discovery timed out).
-- `lib/screens/admin/admin_habits_screen.dart` — **§4 Habits library UI (2026-09-19; analyzer-clean, NOT yet
-  browser-verified)** on `adminListHabitTemplates` + `adminHabitTemplate` (`AdminApiService.listHabitTemplates` /
+- `lib/screens/admin/admin_habits_screen.dart` — **§4 Habits library UI (2026-09-19; analyzer-clean, BROWSER-VERIFIED
+  read-only 2026-09-25)** on `adminListHabitTemplates` + `adminHabitTemplate` (`AdminApiService.listHabitTemplates` /
   `.habitTemplate`). Core filter chips with counts, show-archived toggle, table (template + id, core dot, cadence,
   difficulty, Edit / Duplicate / Archive|Restore — no hard delete), New/Edit dialog (name, core, difficulty,
   cadence; update sends changed fields only), reason required on every write. Below: read-only Formation rules
   (`config/streaks`, with an "Open Economy →" link — edited there, one editor) and a real Habits-per-core tally.
   **Assigned / Form rate show "—"** (nothing assigns a habit from a template yet, #A4.2 — not fabricated).
-- `lib/screens/admin/admin_lists_screen.dart` — **§5 Momentum lists UI (2026-09-19; analyzer-clean, NOT yet
-  browser-verified)** on `adminListMomentumLists` + `adminGetListDetail` (`AdminApiService.listMomentumLists` /
+- `lib/screens/admin/admin_lists_screen.dart` — **§5 Momentum lists UI (2026-09-19; analyzer-clean, BROWSER-VERIFIED
+  read-only 2026-09-25)** on `adminListMomentumLists` + `adminGetListDetail` (`AdminApiService.listMomentumLists` /
   `.getListDetail`). Honest subset: 3 real summary tiles (list types, lists started, weighted avg items), searchable/
   system-filterable table (list type, core, players, initiated, avg items, initiated-share bar), click-through detail
   (per-player items + last updated, "View" → Client Detail via the shell's `_openClient`), client-side CSV export for
@@ -635,8 +635,8 @@ This screen is the UI for `BACKEND_PLAN.md` **§8** in full:
 - [ ] **#A10.3 Economy anomaly banner** — **#B35**, now with a concrete trigger shown in the design
   ("credits earned 2.3× faster than baseline since config v13") — i.e. the anomaly detector should be
   able to correlate a spike with a specific `config` version from #A7.3's version history.
-- [x] **#A10.4 Habit completion by core, MP/credits issued vs. spent — DEPLOYED 2026-09-22, not yet
-  browser-verified.** New `adminGetAnalytics` (admin-gated, read-only). `habitsByCore` duplicates
+- [x] **#A10.4 Habit completion by core, MP/credits issued vs. spent — DEPLOYED 2026-09-22, BROWSER-VERIFIED
+  2026-09-25.** New `adminGetAnalytics` (admin-gated, read-only). `habitsByCore` duplicates
   #A4.4's aggregate (a fresh `collectionGroup("golden_habits")` scan) rather than sharing the call, so
   Analytics doesn't also pay for the full habit-template list read. Issued-vs-spent comes from ONE
   `collectionGroup("history")` scan across every `users/{uid}/{points|credits}/summary/history` doc —
