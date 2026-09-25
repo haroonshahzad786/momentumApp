@@ -24,6 +24,7 @@ import '../../services/offline.dart';
 import '../../models/cantina_message.dart';
 import '../../services/cantina_service.dart';
 import 'add_habit_page.dart';
+import '../../services/leaderboard_score.dart';
 
 // ─── LISTS ─────────────────────────────────────────────────
 class ListsScreen extends StatefulWidget {
@@ -1116,7 +1117,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
 
     _toast('Saving ${draft.name}…');
     try {
-      // Dual-write, mirroring the Voiceflow HHS so the habit shows in BOTH
+      // Dual-write, mirroring the Claude HHS agent so the habit shows in BOTH
       // screens: the per-core list (Routines screen) AND the structured
       // golden_habits object (Habits screen). A routine IS a Golden Habit.
       await _service.addHabit(
@@ -1325,7 +1326,7 @@ class _RoutineRow extends StatelessWidget {
 
 /// Bottom sheet to correct the parsed parts of a habit and set its stage.
 /// Edits are applied to the in-session model (the player can modify); they do
-/// not yet write back to Firestore (Voiceflow owns the save path).
+/// not yet write back to Firestore (the onboarding agent owns the save path).
 class _RoutineEditSheet extends StatefulWidget {
   const _RoutineEditSheet({required this.habit});
   final _RoutineHabit habit;
@@ -2944,7 +2945,11 @@ class _TasksScreenState extends State<TasksScreen> {
 class _CrewMember {
   const _CrewMember(this.id, this.name, this.score, this.level, this.online,
       this.hex, this.avatar, this.streak, this.planet, this.cores,
-      {this.me = false, this.isReal = false, this.uid});
+      {this.me = false,
+      this.isReal = false,
+      this.uid,
+      this.longestStreak = 0,
+      this.formedHabitsCount = 0});
 
   /// Builds a crew member from a real registered user.
   factory _CrewMember.fromUser(CantinaUser u, {required bool isMe}) {
@@ -2972,6 +2977,8 @@ class _CrewMember {
       me: isMe,
       isReal: true,
       uid: u.uid,
+      longestStreak: u.longestStreak,
+      formedHabitsCount: u.formedHabitsCount,
     );
   }
 
@@ -2992,22 +2999,33 @@ class _CrewMember {
 
   /// Firebase uid for real users; null for demo crew.
   final String? uid;
+
+  /// Achievements inputs for the leaderboard's multi-factor score (Cantina
+  /// Pillar 3): longest streak ever + habits formed. Demo crew carry
+  /// hand-picked flavor values matching their existing invented score/streak,
+  /// same as the rest of `_crew` below — not real economy numbers.
+  final int longestStreak;
+  final int formedHabitsCount;
 }
 
 const _crew = <_CrewMember>[
   _CrewMember('maya', 'Maya R.', 12420, 'CMDR', true, MM.magenta, 'M', 84,
       'Saturn',
-      ['mindset', 'career', 'relationships', 'physical', 'emotional']),
+      ['mindset', 'career', 'relationships', 'physical', 'emotional'],
+      longestStreak: 91, formedHabitsCount: 5),
   _CrewMember('devon', 'Devon T.', 10115, 'NAV', true, MM.blue, 'D', 62,
       'Jupiter',
-      ['mindset', 'career', 'physical', 'emotional']),
+      ['mindset', 'career', 'physical', 'emotional'],
+      longestStreak: 62, formedHabitsCount: 4),
   _CrewMember('me', 'You', 8420, 'NAV', true, MM.yellow, 'Y', 47, 'Mars',
       ['mindset', 'career', 'physical'],
-      me: true),
+      me: true, longestStreak: 47, formedHabitsCount: 3),
   _CrewMember('aisha', 'Aisha K.', 7980, 'NAV', false, MM.teal, 'A', 41,
-      'Mars', ['mindset', 'career', 'physical']),
+      'Mars', ['mindset', 'career', 'physical'],
+      longestStreak: 41, formedHabitsCount: 3),
   _CrewMember('leo', 'Leo M.', 3210, 'CDT', false, MM.violet, 'L', 12, 'Moon',
-      ['mindset', 'physical']),
+      ['mindset', 'physical'],
+      longestStreak: 15, formedHabitsCount: 1),
 ];
 
 class _Thread {
@@ -4774,7 +4792,19 @@ class _IdeasWellState extends State<_IdeasWell> {
   }
 }
 
-/// The weekly leaderboard: real registered users (from `users`) merged with
+/// Pillar-3 composite leaderboard scores — see `compositeLeaderboardScores`
+/// (services/leaderboard_score.dart) for the 60/25/15 rationale.
+List<({_CrewMember member, double score})> _compositeScores(
+        List<_CrewMember> members) =>
+    compositeLeaderboardScores(
+      members,
+      score: (m) => m.score,
+      streak: (m) => m.streak,
+      longestStreak: (m) => m.longestStreak,
+      formedHabits: (m) => m.formedHabitsCount,
+    );
+
+/// Leaderboard pillar (Pillar 3 — Anti-Shame Leaderboards): real users +
 /// the demo crew, sorted by score. Real rows open a 2-way DM; demo rows open
 /// the mock profile; your own row opens your profile.
 class _LeaderboardList extends StatefulWidget {
@@ -4792,6 +4822,9 @@ class _LeaderboardListState extends State<_LeaderboardList> {
       _svc.watchInbox();
   late final String _myUid = _svc.currentUid;
 
+  /// 'global' or one of `_ideasCores`' short core ids.
+  String _filter = 'global';
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<CantinaUser>>(
@@ -4803,61 +4836,157 @@ class _LeaderboardListState extends State<_LeaderboardList> {
         final hasMe = real.any((m) => m.me);
         // Keep all demo crew; drop the demo "You" once a real self row exists.
         final demo = _crew.where((c) => !c.me || !hasMe).toList();
-        final all = [...real, ...demo]
+        final all = [...real, ...demo];
+
+        // Multi-factor anti-shame composite (Cantina spec Pillar 3): 60%
+        // momentum score + 25% ship upgrades + 15% achievements (formed
+        // habits + current/longest streak), each min-max normalized against
+        // this crew so no bucket can dominate just by having a bigger unit.
+        // Ship upgrades don't exist yet (13d is [PLACEHOLDER]/undesigned), so
+        // that slice is a stubbed 0 for everyone — never fabricated, and a
+        // constant added to every member can't change the ordering, so the
+        // ranking is still correct today and picks up real weight the moment
+        // 13d ships.
+        final scored = _compositeScores(all)
           ..sort((a, b) => b.score.compareTo(a.score));
 
-        // Layer the live inbox over the score-sorted crew. The rank number
-        // stays tied to score; the display order floats anyone you've chatted
-        // with to the top (most-recent conversation first) and keeps them
-        // there after the message is read — unread only drives the badge.
-        return StreamBuilder<Map<String, CantinaInboxEntry>>(
-          stream: _inboxStream,
-          builder: (context, inboxSnap) {
-            final inbox = inboxSnap.data ?? const <String, CantinaInboxEntry>{};
+        final visible = _filter == 'global'
+            ? scored
+            : scored.where((s) => s.member.cores.contains(_filter)).toList();
 
-            CantinaInboxEntry? entryFor(_CrewMember c) {
-              if (!c.isReal || c.me || c.uid == null) return null;
-              return inbox[_svc.dmPairId(c.uid!)];
-            }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _filterRow(),
+            const SizedBox(height: 10),
+            // Layer the live inbox over the composite-ranked crew. The rank
+            // number stays tied to the composite score; the display order
+            // floats anyone you've chatted with to the top (most-recent
+            // conversation first) and keeps them there after the message is
+            // read — unread only drives the badge.
+            StreamBuilder<Map<String, CantinaInboxEntry>>(
+              stream: _inboxStream,
+              builder: (context, inboxSnap) {
+                final inbox =
+                    inboxSnap.data ?? const <String, CantinaInboxEntry>{};
 
-            // Stable score rank (1-based) captured before reordering.
-            final ranked = [
-              for (var i = 0; i < all.length; i++) (rank: i + 1, member: all[i]),
-            ];
-
-            // Conversations float up by recency; everyone you haven't messaged
-            // keeps their score order below them.
-            ranked.sort((a, b) {
-              final ea = entryFor(a.member);
-              final eb = entryFor(b.member);
-              final aChat = ea != null;
-              final bChat = eb != null;
-              if (aChat != bChat) return aChat ? -1 : 1;
-              if (aChat && bChat) {
-                final ta = ea.updatedAt, tb = eb.updatedAt;
-                if (ta != null && tb != null && ta != tb) {
-                  return tb.compareTo(ta); // most recent first
+                CantinaInboxEntry? entryFor(_CrewMember c) {
+                  if (!c.isReal || c.me || c.uid == null) return null;
+                  return inbox[_svc.dmPairId(c.uid!)];
                 }
-                if (ta != null && tb == null) return -1;
-                if (tb != null && ta == null) return 1;
-                // No timestamps to separate them → unread first, then score.
-                final ua = ea.unreadCount, ub = eb.unreadCount;
-                if ((ua > 0) != (ub > 0)) return ua > 0 ? -1 : 1;
-              }
-              return a.rank.compareTo(b.rank);
-            });
 
-            return Column(
-              children: [
-                for (final r in ranked)
-                  _row(r.rank, r.member, entryFor(r.member)?.unreadCount ?? 0),
-              ],
-            );
-          },
+                // Stable composite rank (1-based) captured before reordering.
+                final ranked = [
+                  for (var i = 0; i < visible.length; i++)
+                    (rank: i + 1, member: visible[i].member),
+                ];
+
+                // Conversations float up by recency; everyone you haven't
+                // messaged keeps their composite-score order below them.
+                ranked.sort((a, b) {
+                  final ea = entryFor(a.member);
+                  final eb = entryFor(b.member);
+                  final aChat = ea != null;
+                  final bChat = eb != null;
+                  if (aChat != bChat) return aChat ? -1 : 1;
+                  if (aChat && bChat) {
+                    final ta = ea.updatedAt, tb = eb.updatedAt;
+                    if (ta != null && tb != null && ta != tb) {
+                      return tb.compareTo(ta); // most recent first
+                    }
+                    if (ta != null && tb == null) return -1;
+                    if (tb != null && ta == null) return 1;
+                    // No timestamps to separate them → unread first, then rank.
+                    final ua = ea.unreadCount, ub = eb.unreadCount;
+                    if ((ua > 0) != (ub > 0)) return ua > 0 ? -1 : 1;
+                  }
+                  return a.rank.compareTo(b.rank);
+                });
+
+                return Column(
+                  children: [
+                    for (final r in ranked)
+                      _row(r.rank, visible.length, r.member,
+                          entryFor(r.member)?.unreadCount ?? 0),
+                  ],
+                );
+              },
+            ),
+          ],
         );
       },
     );
   }
+
+  /// Global / per-Core view switch (Cantina spec Pillar 3: "Global / Core /
+  /// Tribe / Friends"). Tribe + Friends views need cross-referencing tribe
+  /// membership / a friends concept this app doesn't have yet — flagged SOON
+  /// rather than faked.
+  Widget _filterRow() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(children: [
+        _filterChip('global', 'Global', MM.white),
+        for (final core in _ideasCores)
+          _filterChip(core[0] as String, core[1] as String, core[2] as Color),
+        const SizedBox(width: 4),
+        Opacity(
+          opacity: 0.4,
+          child: MMChip(label: 'TRIBE · FRIENDS SOON'),
+        ),
+      ]),
+    );
+  }
+
+  Widget _filterChip(String key, String label, Color color) {
+    final on = _filter == key;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: GestureDetector(
+        onTap: () => setState(() => _filter = key),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: on ? color.withOpacity(0.18) : Colors.white.withOpacity(0.05),
+            border: Border.all(
+                color: on ? color.withOpacity(0.6) : Colors.white.withOpacity(0.1)),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(label.toUpperCase(),
+              style: MM.display(
+                  size: 9,
+                  color: on ? color : Colors.white.withOpacity(0.5),
+                  letterSpacing: 0.4)),
+        ),
+      ),
+    );
+  }
+
+  /// One player's rank slot: 🥇🥈🥉 medals for the top 3, plain rank number
+  /// otherwise. Anti-shame rules per the Cantina spec forbid red / down
+  /// arrows / comparative language, not a plain ordinal — the encouraging
+  /// "RISING EXPLORER" tag (see [_isRisingTier]) carries the positive framing
+  /// for the bottom of the list instead of replacing the number.
+  Widget _rankSlot(int rank) {
+    const medals = {1: '🥇', 2: '🥈', 3: '🥉'};
+    if (medals.containsKey(rank)) {
+      return SizedBox(
+        width: 20,
+        child: Text(medals[rank]!, style: const TextStyle(fontSize: 14)),
+      );
+    }
+    return SizedBox(
+      width: 16,
+      child: Text('$rank',
+          style: MM.display(size: 11, color: Colors.white.withOpacity(0.5))),
+    );
+  }
+
+  /// Bottom fifth of the visible list (min list size 4) — "Bottom ranks
+  /// labelled 'Rising Explorer' etc." per the Cantina anti-shame spec.
+  bool _isRisingTier(int rank, int total) =>
+      total >= 4 && rank > total - (total ~/ 5).clamp(1, total);
 
   String _fmt(int n) {
     final s = n.toString();
@@ -4869,7 +4998,7 @@ class _LeaderboardListState extends State<_LeaderboardList> {
     return b.toString();
   }
 
-  Widget _row(int rank, _CrewMember c, int unread) {
+  Widget _row(int rank, int total, _CrewMember c, int unread) {
     return InkWell(
       onTap: () => widget.onNav?.call(c.me
           ? 'profile'
@@ -4884,12 +5013,7 @@ class _LeaderboardListState extends State<_LeaderboardList> {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(children: [
-          SizedBox(
-            width: 16,
-            child: Text('$rank',
-                style: MM.display(
-                    size: 11, color: Colors.white.withOpacity(0.5))),
-          ),
+          _rankSlot(rank),
           Stack(children: [
             Container(
               width: 30,
@@ -4933,6 +5057,10 @@ class _LeaderboardListState extends State<_LeaderboardList> {
                 const SizedBox(width: 6),
                 _UnreadBadge(count: unread),
               ],
+              if (_isRisingTier(rank, total)) ...[
+                const SizedBox(width: 6),
+                const _RisingTag(),
+              ],
             ]),
           ),
           MMChip(label: c.level),
@@ -4943,6 +5071,29 @@ class _LeaderboardListState extends State<_LeaderboardList> {
               color: Colors.white.withOpacity(0.4), size: 16),
         ]),
       ),
+    );
+  }
+}
+
+/// Encouraging tag for the bottom tier of the leaderboard — "no worst
+/// performer" language, positive framing only (Cantina anti-shame spec).
+class _RisingTag extends StatelessWidget {
+  const _RisingTag();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: MM.teal.withOpacity(0.14),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.trending_up, size: 10, color: MM.teal),
+        const SizedBox(width: 3),
+        Text('RISING',
+            style: MM.display(size: 8, color: MM.teal, letterSpacing: 0.3)),
+      ]),
     );
   }
 }

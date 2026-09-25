@@ -47,7 +47,7 @@ class NotificationService {
     FirebaseMessaging.onMessage.listen(_handleForeground);
   }
 
-  /// Stores this device's token at users/{uid}/fcmTokens/{token} so the
+  /// Stores this device's token  at users/{uid}/fcmTokens/{token} so the
   /// Cloud Function can target it. Re-saves on refresh.
   Future<void> saveTokenForUser(String uid) async {
     try {

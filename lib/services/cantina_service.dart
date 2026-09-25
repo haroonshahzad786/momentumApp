@@ -12,6 +12,8 @@ class CantinaUser {
     required this.email,
     required this.score,
     required this.streak,
+    required this.longestStreak,
+    required this.formedHabitsCount,
     required this.level,
     required this.planet,
     required this.activeCores,
@@ -22,6 +24,16 @@ class CantinaUser {
   final String email;
   final int score;
   final int streak;
+
+  /// Longest streak ever reached (#10). Mirrored onto the user doc so the
+  /// leaderboard's achievements factor (Pillar 3) can read it cross-user.
+  final int longestStreak;
+
+  /// Count of habits marked formed (Trophy Room / #11). Mirrored onto the
+  /// user doc by `flutterSetHabitFormed` — clients can't read another user's
+  /// `golden_habits` subcollection, only their own, so this denormalized
+  /// counter is the only way the leaderboard can score achievements fairly.
+  final int formedHabitsCount;
   final String level;
   final String planet;
   final List<String> activeCores;
@@ -42,6 +54,11 @@ class CantinaUser {
       email: email,
       score: scoreNum.toInt(),
       streak: d['streak'] is num ? (d['streak'] as num).toInt() : 0,
+      longestStreak:
+          d['longestStreak'] is num ? (d['longestStreak'] as num).toInt() : 0,
+      formedHabitsCount: d['formedHabitsCount'] is num
+          ? (d['formedHabitsCount'] as num).toInt()
+          : 0,
       level: (d['level'] ?? 'CDT').toString(),
       planet: (d['planet'] ?? 'Earth').toString(),
       activeCores: (d['activeCores'] as List? ?? const [])

@@ -121,6 +121,8 @@ class _AdminClientDetailScreenState extends State<AdminClientDetailScreen> {
         'reset_onboarding' => 'Reset onboarding',
         'suspend' => 'Suspend account',
         'unsuspend' => 'Unsuspend account',
+        'delete_account' => 'Delete account',
+        'restore_account' => 'Restore account',
         'cantina_mute' => 'Mute in Cantina',
         'cantina_unmute' => 'Unmute in Cantina',
         'send_password_reset' => 'Send password reset link',
@@ -141,6 +143,7 @@ class _AdminClientDetailScreenState extends State<AdminClientDetailScreen> {
     final momentumLists = asMapList(_detail?['momentumLists']);
     final suspended = client['suspended'] == true;
     final cantinaMuted = client['cantinaMuted'] == true;
+    final deleted = client['deleted'] == true;
 
     return Stack(
       children: [
@@ -209,6 +212,41 @@ class _AdminClientDetailScreenState extends State<AdminClientDetailScreen> {
                 _actionButton('Revoke all sessions', () => _runAccess('revoke_sessions'), destructive: true),
                 _actionButton('Change email', () => _runAccess('change_email', needsNewEmail: true)),
               ]),
+              const SizedBox(height: 24),
+              Text('DANGER ZONE', style: MM.displayX(size: 11, color: MM.red.withOpacity(0.8))),
+              const SizedBox(height: 10),
+              AdminPanel(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            deleted ? 'This account is deleted.' : 'Delete this account.',
+                            style: MM.body(size: 12.5, color: MM.white, weight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            deleted
+                                ? 'Sign-in is disabled and it\'s hidden from active use. Data is kept — restore to reactivate.'
+                                : 'Disables sign-in and hides the account from active use. Their data is kept, not erased — this can be undone with Restore.',
+                            style: MM.body(size: 11.5, color: Colors.white.withOpacity(0.5)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    _actionButton(
+                      deleted ? 'Restore account' : 'Delete account',
+                      () => _runAdjust(deleted ? 'restore_account' : 'delete_account'),
+                      destructive: !deleted,
+                    ),
+                  ]),
+                ),
+              ),
               const SizedBox(height: 24),
               Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(child: _habitsPanel(habits)),

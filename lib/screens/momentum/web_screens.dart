@@ -27,6 +27,7 @@ import '../../services/profile_service.dart';
 import '../../services/tribes_service.dart';
 import '../../services/accountability_service.dart';
 import '../../theme/momentum_tokens.dart';
+import '../../services/leaderboard_score.dart';
 
 const Map<String, String> kCoreIcon = {
   'mindset': '🧠',
@@ -1410,7 +1411,12 @@ class _RadarPainter extends CustomPainter {
 // ═══════════════════════════════════════════════════════════════
 class _WebCrew {
   const _WebCrew(this.id, this.name, this.score, this.streak, this.hex,
-      {this.me = false, this.isReal = false, this.uid});
+      {this.me = false,
+      this.isReal = false,
+      this.uid,
+      this.cores = const [],
+      this.longestStreak = 0,
+      this.formedHabitsCount = 0});
   final String id;
   final String name;
   final int score;
@@ -1419,15 +1425,51 @@ class _WebCrew {
   final bool me;
   final bool isReal;
   final String? uid;
+
+  /// Active Core ids — drives the Global/Core filter (Pillar 3).
+  final List<String> cores;
+
+  /// Achievements inputs for the composite score (Pillar 3): longest streak
+  /// ever + habits formed. Demo crew carry hand-picked flavor values matching
+  /// their existing invented score/streak, same precedent as the rest of this
+  /// list — not real economy numbers.
+  final int longestStreak;
+  final int formedHabitsCount;
 }
 
 const _webDemoCrew = <_WebCrew>[
-  _WebCrew('maya', 'Maya R.', 12420, 84, MM.magenta),
-  _WebCrew('devon', 'Devon T.', 10115, 62, MM.blue),
-  _WebCrew('me', 'You', 8420, 47, MM.yellow, me: true),
-  _WebCrew('aisha', 'Aisha K.', 7980, 41, MM.teal),
-  _WebCrew('leo', 'Leo M.', 3210, 12, MM.violet),
+  _WebCrew('maya', 'Maya R.', 12420, 84, MM.magenta,
+      cores: ['mindset', 'career', 'relationships', 'physical', 'emotional'],
+      longestStreak: 91,
+      formedHabitsCount: 5),
+  _WebCrew('devon', 'Devon T.', 10115, 62, MM.blue,
+      cores: ['mindset', 'career', 'physical', 'emotional'],
+      longestStreak: 62,
+      formedHabitsCount: 4),
+  _WebCrew('me', 'You', 8420, 47, MM.yellow,
+      me: true,
+      cores: ['mindset', 'career', 'physical'],
+      longestStreak: 47,
+      formedHabitsCount: 3),
+  _WebCrew('aisha', 'Aisha K.', 7980, 41, MM.teal,
+      cores: ['mindset', 'career', 'physical'],
+      longestStreak: 41,
+      formedHabitsCount: 3),
+  _WebCrew('leo', 'Leo M.', 3210, 12, MM.violet,
+      cores: ['mindset', 'physical'], longestStreak: 15, formedHabitsCount: 1),
 ];
+
+/// Pillar-3 composite leaderboard scores — same shared formula as mobile,
+/// see `compositeLeaderboardScores` (services/leaderboard_score.dart).
+List<({_WebCrew member, double score})> _webCompositeScores(
+        List<_WebCrew> members) =>
+    compositeLeaderboardScores(
+      members,
+      score: (m) => m.score,
+      streak: (m) => m.streak,
+      longestStreak: (m) => m.longestStreak,
+      formedHabits: (m) => m.formedHabitsCount,
+    );
 
 class WebCantina extends StatefulWidget {
   const WebCantina({super.key, required this.onNav});
@@ -1465,6 +1507,9 @@ class _WebCantinaState extends State<WebCantina> {
   AccountabilityPairing? _pairing;
   bool _apLoading = true;
   bool _apBusy = false;
+
+  /// Leaderboard Global/Core filter (Pillar 3): 'global' or a core id.
+  String _lbFilter = 'global';
 
   @override
   void initState() {
@@ -1727,6 +1772,14 @@ class _WebCantinaState extends State<WebCantina> {
     );
   }
 
+  static const _lbCoreLabels = {
+    'mindset': 'Mind',
+    'career': 'Career',
+    'relationships': 'Rel.',
+    'physical': 'Phys.',
+    'emotional': 'Emo.',
+  };
+
   Widget _leaderboard() {
     return StreamBuilder<List<CantinaUser>>(
       stream: _users,
@@ -1735,12 +1788,28 @@ class _WebCantinaState extends State<WebCantina> {
           final hex = _palette[u.uid.hashCode.abs() % _palette.length];
           return _WebCrew(u.uid, u.uid == _myUid ? 'You' : u.name, u.score,
               u.streak, hex,
-              me: u.uid == _myUid, isReal: true, uid: u.uid);
+              me: u.uid == _myUid,
+              isReal: true,
+              uid: u.uid,
+              cores: u.activeCores,
+              longestStreak: u.longestStreak,
+              formedHabitsCount: u.formedHabitsCount);
         }).toList();
         final hasMe = real.any((m) => m.me);
         final demo = _webDemoCrew.where((c) => !c.me || !hasMe).toList();
-        final all = [...real, ...demo]
+        final all = [...real, ...demo];
+
+        // Multi-factor anti-shame composite (Cantina spec Pillar 3): 60%
+        // momentum score + 25% ship upgrades (stubbed 0 — 13d undesigned,
+        // and a constant added to every member can't change the ordering) +
+        // 15% achievements (formed habits + current/longest streak).
+        final scored = _webCompositeScores(all)
           ..sort((a, b) => b.score.compareTo(a.score));
+
+        final visible = _lbFilter == 'global'
+            ? scored
+            : scored.where((s) => s.member.cores.contains(_lbFilter)).toList();
+
         return StreamBuilder<Map<String, CantinaInboxEntry>>(
           stream: _inbox,
           builder: (context, inboxSnap) {
@@ -1750,14 +1819,22 @@ class _WebCantinaState extends State<WebCantina> {
               return inbox[_svc.dmPairId(c.uid!)]?.unreadCount ?? 0;
             }
 
-            return WebPanel(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                children: [
-                  for (var i = 0; i < all.length; i++)
-                    _row(i + 1, all[i], unreadFor(all[i])),
-                ],
-              ),
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _lbFilterRow(),
+                const SizedBox(height: 10),
+                WebPanel(
+                  padding: const EdgeInsets.all(8),
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < visible.length; i++)
+                        _row(i + 1, visible.length, visible[i].member,
+                            unreadFor(visible[i].member)),
+                    ],
+                  ),
+                ),
+              ],
             );
           },
         );
@@ -1765,7 +1842,70 @@ class _WebCantinaState extends State<WebCantina> {
     );
   }
 
-  Widget _row(int rank, _WebCrew c, int unread) {
+  /// Global / per-Core filter chips (Cantina spec Pillar 3: "Global / Core /
+  /// Tribe / Friends"). Tribe/Friends need cross-referencing tribe membership
+  /// / a friends concept this app doesn't have yet — flagged SOON, not faked.
+  Widget _lbFilterRow() {
+    Widget chip(String key, String label, Color color) {
+      final on = _lbFilter == key;
+      return Padding(
+        padding: const EdgeInsets.only(right: 6),
+        child: GestureDetector(
+          onTap: () => setState(() => _lbFilter = key),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color:
+                  on ? color.withOpacity(0.18) : Colors.white.withOpacity(0.05),
+              border: Border.all(
+                  color:
+                      on ? color.withOpacity(0.6) : Colors.white.withOpacity(0.1)),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(label.toUpperCase(),
+                style: MM.display(
+                    size: 9,
+                    color: on ? color : Colors.white.withOpacity(0.5),
+                    letterSpacing: 0.4)),
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(children: [
+        chip('global', 'Global', MM.white),
+        for (final entry in _lbCoreLabels.entries)
+          chip(entry.key, entry.value, coreHex(entry.key)),
+        const SizedBox(width: 4),
+        Opacity(
+          opacity: 0.4,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              border: Border.all(color: Colors.white.withOpacity(0.12)),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text('TRIBE · FRIENDS SOON',
+                style: TextStyle(
+                    fontSize: 11,
+                    letterSpacing: 0.04 * 11,
+                    color: MM.white)),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  /// Bottom fifth of the visible list (min list size 4) — "Bottom ranks
+  /// labelled 'Rising Explorer' etc." per the Cantina anti-shame spec.
+  bool _isRisingTier(int rank, int total) =>
+      total >= 4 && rank > total - (total ~/ 5).clamp(1, total);
+
+  Widget _row(int rank, int total, _WebCrew c, int unread) {
     final rankColor = rank <= 3
         ? [MM.yellow, const Color(0xFFCFD8E6), const Color(0xFFE8A35C)][rank - 1]
         : Colors.white.withOpacity(0.5);
@@ -1843,6 +1983,29 @@ class _WebCantinaState extends State<WebCantina> {
                             ),
                             child: Text('$unread',
                                 style: MM.mono(size: 9, color: Colors.white)),
+                          ),
+                        ],
+                        if (_isRisingTier(rank, total)) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: MM.teal.withOpacity(0.14),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.trending_up,
+                                      size: 10, color: MM.teal),
+                                  const SizedBox(width: 3),
+                                  Text('RISING',
+                                      style: MM.display(
+                                          size: 8,
+                                          color: MM.teal,
+                                          letterSpacing: 0.3)),
+                                ]),
                           ),
                         ],
                       ],

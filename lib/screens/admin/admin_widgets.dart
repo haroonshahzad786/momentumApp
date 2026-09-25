@@ -50,6 +50,7 @@ class AdminStatusChip extends StatelessWidget {
         return MM.yellow;
       case 'regressed':
       case 'suspended':
+      case 'deleted':
         return MM.red;
       case 'invited':
         return MM.blue;
