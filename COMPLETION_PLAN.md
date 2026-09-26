@@ -793,10 +793,26 @@ distances/momentum values (see #40).
   Progress Summary meter: green/yellow/red gauges, "x.x / 5" with ⚠️, "Balance n%", and an alert line.
   7 tests (1 golden). **Not built (🔒):** Balance Bonus (days/amount; PRD tiers conflict with spec
   placeholder) and the pause/exit rules of Emergency Simplification Mode.
-- [ ] **#19 Trophy Room completion** (spec §8) — AI validation before "formed"; 30/60/90-day review
+- [x] **#19 Trophy Room completion** (spec §8) — AI validation before "formed"; 30/60/90-day review
   prompts; un-form path ("adaptation, not failure"); formation celebration + identity copy; **Habit
   Formation Goals** (default 1 habit/14 days, adjustable 7–21, progress bar, "closest habit to forming",
   at-risk alert, goal-crushed celebration + next goal).
+  **Built 26 Sep.** Server: `formation.js` (5 tests) + 3 endpoints — `flutterConfirmHabitFormation`
+  (re-checks 14 days / 80% from Firestore, then Nova (Claude) reads that Core's scores + Captain's Log
+  and confirms or says "not yet"; if the model is down the rule stands), `flutterReviewFormedHabit`
+  (30/60/90 keep, or un-form — credits never clawed back, bonus never paid twice),
+  `flutterSetFormationGoal` (first goal 7–21 days, then the spec ladder 1/14 → 2/30 → 3/45 → 4/60).
+  `setHabitFormedTx` shared by all formation writes; habits now carry `formedVia` / `reviews` /
+  `unformedAt`; profile returns `formationGoal`. Client: one shared **FormationRoom** (web + mobile
+  Trophy Room): goal card (suggestion + slider, progress bar, days left, closest habit with days +
+  consistency, at-risk "Only N days left… Need help?" → Nova, goal crushed → next challenge), review
+  cards (slip warning when the Core average dropped 1.0+), trophies with Un-form, forming habits with
+  Confirm formation / Mark formed early, and the formation celebration (confetti, habit name, "This is
+  now automatic and part of who you ARE!", credits). **Behaviour change:** meeting the rule no longer
+  counts as formed on its own — the habit shows "Ready to form" until confirmed (spec: AI validation
+  required). 5 tests + golden; deployed; browser-checked (no goal set on the real account).
+  Not built: ship-upgrade progress / achievement from formation (post-MVP systems); formation bonus
+  amount stays the admin `formationCredits` (spec placeholder).
 **P1 — Phase 2 experience the PRD/Sequence mark MVP**
 - [ ] **#20 Rocket Dashboard completion** — streak bar across the top (+ days to next milestone), stats
   box (planet · Momentum Score · Balance %), 4 tip-of-rocket icons (🎯 Command Center · ⏰ Routines ·

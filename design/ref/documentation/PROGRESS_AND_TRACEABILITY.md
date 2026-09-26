@@ -571,6 +571,17 @@ These three come straight from the Gamification Mechanics Specs Reference (§6 S
 - **Verified:** 7 tests (incl. golden of the multi-Core alert); browser-checked the Cockpit stat.
 - **Open for Will:** Balance Bonus (days + credits), Emergency Simplification pause/exit rules.
 
+### #19 Trophy Room completion — formation goals, AI validation, reviews ✅
+- **Spec (§8):** AI validation before "formed"; celebration with identity language; reviews at 30/60/90 days with un-forming "adaptation, not failure"; Habit Formation Goals (suggested 1 habit / 14 days, adjustable 7–21, progress bar, closest habit, at-risk alert, goal-crushed + next challenge, ladder 1/14 → 2/30 → 3/45 → 4/60).
+- **Built:**
+  - **Confirm formation:** the server re-checks the 14-day / 80% rule from Firestore, then Nova reads that Core's scores and Captain's Log and confirms (or explains "not yet"). Early "mark formed" stays available.
+  - **Celebration:** confetti, the habit's name, "This is now automatic and part of who you ARE!", credits, and "goal crushed" when it completes the goal.
+  - **Reviews** at 30/60/90 days: "Still automatic ✓" or "Un-form & rebuild"; a slip warning when the Core average has dropped 1.0+ since formation. Un-form is also on every trophy; credits are never taken back.
+  - **Formation Goal card** with the suggested goal, slider, progress, days left, closest habit, at-risk help from Nova and the next challenge.
+  - One shared Trophy Room implementation for web and mobile.
+- **Verified:** 5 server + 5 client tests (incl. golden of the celebration); deployed; browser-checked the web Trophy Room on real data.
+- **Note:** a habit meeting the rule now shows "Ready to form" until confirmed, instead of counting as formed automatically.
+
 ---
 
 ## 3. Engineering notes (for your technical reviewer)

@@ -1,3 +1,4 @@
+import '../services/formation.dart';
 import 'phase1_state.dart';
 
 /// Dashboard-facing view of a user's state, returned by
@@ -24,6 +25,8 @@ class UserProfile {
     this.vacationMaxDays = 7,
     this.activeVacation,
     this.upcomingVacation,
+    this.formationGoal,
+    this.formationGoalsCompleted = 0,
     required this.planet,
     required this.level,
     required this.balance,
@@ -80,6 +83,10 @@ class UserProfile {
   final VacationRange? activeVacation;
   final VacationRange? upcomingVacation;
 
+  /// #19 Habit Formation Goal (null = not set yet) + goals hit so far.
+  final FormationGoal? formationGoal;
+  final int formationGoalsCompleted;
+
   bool get onVacation => activeVacation != null || missState == 'vacation';
 
   bool get needsRelaunch =>
@@ -128,6 +135,9 @@ class UserProfile {
         vacationMaxDays: (json['vacationMaxDays'] as num? ?? 7).toInt(),
         activeVacation: VacationRange.tryParse(json['activeVacation']),
         upcomingVacation: VacationRange.tryParse(json['upcomingVacation']),
+        formationGoal: FormationGoal.tryParse(json['formationGoal']),
+        formationGoalsCompleted:
+            (json['formationGoalsCompleted'] as num? ?? 0).toInt(),
         planet: (json['planet'] ?? 'earth').toString(),
         level: (json['level'] ?? 'cadet').toString(),
         balance: (json['balance'] as num? ?? 0).toInt(),

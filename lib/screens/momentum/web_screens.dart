@@ -29,6 +29,7 @@ import '../../services/accountability_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../services/leaderboard_score.dart';
 import '../../widgets/momentum/captains_log_archive.dart';
+import '../../widgets/momentum/formation_room.dart';
 
 const Map<String, String> kCoreIcon = {
   'mindset': '🧠',
@@ -706,80 +707,13 @@ class WebTrophy extends StatefulWidget {
 }
 
 class _WebTrophyState extends State<WebTrophy> {
-  final _onboarding = OnboardingService();
-  final _checkin = CheckinService();
-  List<_Formed> _formed = const [];
+  int _formedCount = 0;
   int _totalHabits = 0;
-  bool _loading = true;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  @override
-  void dispose() {
-    _onboarding.dispose();
-    super.dispose();
-  }
-
-  Future<void> _load() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null || uid.isEmpty) {
-      setState(() {
-        _loading = false;
-        _error = 'Not signed in';
-      });
-      return;
-    }
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final habits = await _onboarding.goldenHabits(uid);
-      List<DailyCheckin> checkins = const [];
-      try {
-        checkins = await _checkin.getRecent(uid, limit: 30);
-      } catch (_) {}
-      final byCore = <String, List<int>>{};
-      for (final c in checkins) {
-        c.scores.forEach((k, v) => byCore.putIfAbsent(k, () => []).add(v));
-      }
-      final formed = <_Formed>[];
-      for (final h in habits) {
-        final scores = byCore[h.shortCoreId] ?? const <int>[];
-        final isFormed = h.formed || deriveRoutineStage(scores) == 'formed';
-        if (isFormed) {
-          formed.add(_Formed(
-            name: h.habitName.trim().isNotEmpty
-                ? h.habitName.trim()
-                : 'Golden Habit',
-            core: h.shortCoreId,
-            days: scores.length,
-          ));
-        }
-      }
-      if (!mounted) return;
-      setState(() {
-        _formed = formed;
-        _totalHabits = habits.length;
-        _loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    final n = _formed.length;
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final n = _formedCount;
     final badges = <(String, String, bool, Color, String)>[
       ('First Launch', 'Began your journey', true, MM.blue, '🚀'),
       ('Habit Forged', 'First formed habit', n >= 1, MM.yellow, '🛠️'),
@@ -789,9 +723,9 @@ class _WebTrophyState extends State<WebTrophy> {
           '🔥'),
     ];
     return _ScreenScaffold(
-      loading: _loading,
-      error: _error,
-      onRetry: _load,
+      loading: false,
+      error: uid.isEmpty ? 'Not signed in' : null,
+      onRetry: () => setState(() {}),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -799,61 +733,18 @@ class _WebTrophyState extends State<WebTrophy> {
             title: 'TROPHY ROOM',
             meta: '$n FORMED IDENTITY HABIT${n == 1 ? '' : 'S'}',
             accent: MM.yellow,
-            child: _formed.isEmpty
-                ? _empty('No formed habits yet',
-                    'Keep a habit green and it graduates here.')
-                : _Grid(
-                    minTileWidth: 230,
-                    children: _formed.map((h) {
-                      final hex = coreHex(h.core);
-                      return WebPanel(
-                        padding: const EdgeInsets.all(18),
-                        borderColor: hex.withOpacity(0.33),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(kCoreIcon[h.core] ?? '•',
-                                style: const TextStyle(fontSize: 34)),
-                            const SizedBox(height: 10),
-                            Text(h.name,
-                                textAlign: TextAlign.center,
-                                style: MM.body(
-                                    size: 14.5,
-                                    color: Colors.white,
-                                    weight: FontWeight.w600)),
-                            const SizedBox(height: 5),
-                            Text(h.core.toUpperCase(),
-                                style: GoogleFonts.orbitron(
-                                    fontSize: 8.5,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1.2,
-                                    color: hex)),
-                            const SizedBox(height: 12),
-                            Container(
-                                height: 1,
-                                color: Colors.white.withOpacity(0.08)),
-                            const SizedBox(height: 12),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Text('🟢',
-                                    style: TextStyle(fontSize: 13)),
-                                const SizedBox(width: 6),
-                                Text('${h.days}',
-                                    style:
-                                        MM.display(size: 15, color: MM.teal)),
-                                const SizedBox(width: 6),
-                                Text('days tracked',
-                                    style: MM.body(
-                                        size: 11,
-                                        color: Colors.white.withOpacity(0.5))),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
+            // #19 — goal, reviews, trophies and forming habits (shared with
+            // the mobile Trophy Room).
+            child: FormationRoom(
+              userId: uid,
+              tileWidth: 330,
+              onFormedCount: (c) {
+                if (mounted && c != _formedCount) setState(() => _formedCount = c);
+              },
+              onHabitCount: (c) {
+                if (mounted && c != _totalHabits) setState(() => _totalHabits = c);
+              },
+            ),
           ),
           const SizedBox(height: 30),
           WebSection(

@@ -135,6 +135,8 @@ class GoldenHabitRef {
     this.formed = false,
     this.formedAt = '',
     this.createdAt = '',
+    this.formedVia = '',
+    this.reviews = const {},
   });
 
   final String habitId;
@@ -147,6 +149,12 @@ class GoldenHabitRef {
   final bool formed;
   final String formedAt;
   final String createdAt;
+
+  /// #19: 'ai_validated' · 'rule' · 'manual' (early), '' when not formed.
+  final String formedVia;
+
+  /// #19: 30/60/90-day reviews done — {"30": "yyyy-MM-dd"}.
+  final Map<String, String> reviews;
 
   /// Golden Habits store coreId in long form (`physical_health_core`); the
   /// check-in/dashboard key Cores by short id (`physical`). Map long → short.
@@ -177,6 +185,13 @@ class GoldenHabitRef {
         formed: j['formed'] == true,
         formedAt: (j['formedAt'] ?? '').toString(),
         createdAt: (j['createdAt'] ?? '').toString(),
+        formedVia: (j['formedVia'] ?? '').toString(),
+        reviews: j['reviews'] is Map
+            ? {
+                for (final e in (j['reviews'] as Map).entries)
+                  '${e.key}': '${e.value}'
+              }
+            : const {},
       );
 }
 
@@ -373,5 +388,98 @@ class OnboardingService {
     }
   }
 
+  /// #19 — asks the server to validate (rule + AI) and confirm formation.
+  /// Throws on a network/server failure.
+  Future<FormationConfirmResult> confirmHabitFormation({
+    required String userId,
+    required String habitId,
+  }) async {
+    final j = await _post('flutterConfirmHabitFormation',
+        {'userId': userId, 'habitId': habitId});
+    return FormationConfirmResult(
+      eligible: j['eligible'] == true,
+      confirmed: j['confirmed'] == true,
+      note: (j['note'] ?? '').toString(),
+      days: (j['days'] as num? ?? 0).toInt(),
+      consistency: (j['consistency'] as num? ?? 0).toInt(),
+      creditsEarned: (j['creditsEarned'] as num? ?? 0).toInt(),
+    );
+  }
+
+  /// #19 — 30/60/90 review: keep (records the milestone) or un-form.
+  Future<void> reviewFormedHabit({
+    required String userId,
+    required String habitId,
+    required bool keep,
+    int? milestone,
+  }) =>
+      _post('flutterReviewFormedHabit', {
+        'userId': userId,
+        'habitId': habitId,
+        'action': keep ? 'keep' : 'unform',
+        if (milestone != null) 'milestone': milestone,
+        'today': _today(),
+      });
+
+  /// #19 — set the first Habit Formation Goal (7–21 days) or advance to the
+  /// next rung after hitting one. Returns the raw goal map.
+  Future<Map<String, dynamic>> setFormationGoal({
+    required String userId,
+    required bool next,
+    int? days,
+  }) async {
+    final j = await _post('flutterSetFormationGoal', {
+      'userId': userId,
+      'today': _today(),
+      'action': next ? 'next' : 'set',
+      if (days != null) 'days': days,
+    });
+    return (j['formationGoal'] as Map?)?.cast<String, dynamic>() ?? const {};
+  }
+
+  static String _today() {
+    final d = DateTime.now();
+    return '${d.year.toString().padLeft(4, '0')}-'
+        '${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<Map<String, dynamic>> _post(String fn, Map<String, dynamic> body) async {
+    final response = await _client.post(
+      Uri.parse('$_baseUrl/$fn'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({'secret': _secret, ...body}),
+    );
+    Object? decoded;
+    try {
+      decoded = jsonDecode(response.body);
+    } catch (_) {}
+    if (response.statusCode != 200 || decoded is! Map || decoded['ok'] != true) {
+      final msg = decoded is Map ? decoded['error'] : null;
+      throw Exception((msg ?? '$fn failed (${response.statusCode})').toString());
+    }
+    return decoded.cast<String, dynamic>();
+  }
+
   void dispose() => _client.close();
+}
+
+/// Result of an AI-validated formation request (#19).
+class FormationConfirmResult {
+  const FormationConfirmResult({
+    required this.eligible,
+    required this.confirmed,
+    required this.note,
+    required this.days,
+    required this.consistency,
+    required this.creditsEarned,
+  });
+
+  final bool eligible;
+  final bool confirmed;
+
+  /// Nova's note to the player (may be empty).
+  final String note;
+  final int days;
+  final int consistency;
+  final int creditsEarned;
 }
