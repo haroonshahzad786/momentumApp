@@ -799,7 +799,7 @@ distances/momentum values (see #40).
   at-risk alert, goal-crushed celebration + next goal).
   **Built 26 Sep.** Server: `formation.js` (5 tests) + 3 endpoints — `flutterConfirmHabitFormation`
   (re-checks 14 days / 80% from Firestore, then Nova (Claude) reads that Core's scores + Captain's Log
-  and confirms or says "not yet"; if the model is down the rule stands), `flutterReviewFormedHabit`
+  and confirms or says "not yet" — runs on Haiku 4.5 for speed; if the model is down the rule stands), `flutterReviewFormedHabit`
   (30/60/90 keep, or un-form — credits never clawed back, bonus never paid twice),
   `flutterSetFormationGoal` (first goal 7–21 days, then the spec ladder 1/14 → 2/30 → 3/45 → 4/60).
   `setHabitFormedTx` shared by all formation writes; habits now carry `formedVia` / `reviews` /
