@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../../services/admin_api_service.dart';
+import '../../services/journey_config_service.dart';
 import '../../theme/momentum_tokens.dart';
 import 'admin_widgets.dart';
 
@@ -22,15 +23,16 @@ import 'admin_widgets.dart';
 /// "dirty" when its parsed value differs from what's published. Only dirty keys
 /// are sent. Adding or deleting keys is deliberately not offered here.
 ///
-/// HONEST CAVEAT, shown on screen: nothing reads `config/*` at runtime yet
-/// (#A7.2 is open — reward math still uses constants in the Cloud Functions), so
-/// a publish is versioned and audited but does not change live rewards.
+/// #A7.2: the Cloud Functions' reward math reads economy / levels / streaks
+/// (economyConfig.js), so a publish changes live rewards within ~1 minute.
+/// `journey` and the streak grace rules (#B4) are not wired yet — the on-screen
+/// note says so.
 const _kPaths = ['economy', 'levels', 'streaks', 'journey'];
 const _kPathNotes = {
   'economy': 'Momentum Points and Space Credits earn rates',
   'levels': 'Level ladder — a level never downgrades',
   'streaks': 'Streak, miss and habit-formation rules',
-  'journey': 'World order and MP thresholds',
+  'journey': 'Planet route for the current galaxy',
 };
 
 class AdminEconomyScreen extends StatefulWidget {
@@ -131,9 +133,9 @@ class _AdminEconomyScreenState extends State<AdminEconomyScreen> {
                 Expanded(
                   child: Text(
                     'Edit a value, preview the diff, then publish — each publish bumps the config version and is '
-                    'written to the audit log with your reason. Note: the app and Cloud Functions do not read '
-                    'config/* yet (reward math still uses built-in constants), so a publish is versioned and '
-                    'audited but does not change live rewards until that wiring (#A7.2) is done.',
+                    'written to the audit log with your reason. Live: economy (incl. the Momentum Points mode), '
+                    'levels, streak milestones / qualifying average, and the planet route change the app within '
+                    'about a minute of publishing. Not wired yet: the streak grace/break rules (#B4).',
                     style: MM.body(size: 12, color: Colors.white.withOpacity(0.6)),
                   ),
                 ),
@@ -211,9 +213,26 @@ class _AdminEconomyScreenState extends State<AdminEconomyScreen> {
             }
             final meta = metaSnap.data!.data() ?? const <String, dynamic>{};
             final version = (meta['version'] as num?)?.toInt() ?? 0;
+            final card = switch (path) {
+              'economy' => _PointsModeCard(
+                  key: ValueKey('pts|${data['updatedAt']}'),
+                  data: data,
+                  currentVersion: version,
+                  api: _api,
+                  onPublished: _loadHistory,
+                ),
+              'journey' => _PlanetsCard(
+                  key: ValueKey('planets|${data['updatedAt']}'),
+                  data: data,
+                  currentVersion: version,
+                  api: _api,
+                  onPublished: _loadHistory,
+                ),
+              _ => null,
+            };
             // Re-key on the doc's own updatedAt so a successful publish (or an
             // external edit) rebuilds the editor from the fresh published values.
-            return _ConfigEditor(
+            final editor = _ConfigEditor(
               key: ValueKey('$path|${data['updatedAt']}'),
               path: path,
               note: _kPathNotes[path] ?? '',
@@ -229,6 +248,12 @@ class _AdminEconomyScreenState extends State<AdminEconomyScreen> {
               },
               onPublished: _loadHistory,
             );
+            if (card == null) return editor;
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              card,
+              const SizedBox(height: 14),
+              editor,
+            ]);
           },
         );
       },
@@ -753,6 +778,372 @@ class _DiffDialogState extends State<_DiffDialog> {
             child: Text('Publish v${widget.nextVersion}'),
           ),
       ],
+    );
+  }
+}
+
+// ─── Purpose-built cards (Will's decisions, 2026-09-25) ────────────────────
+
+/// Shared publish step for the cards: diff + required reason → adminSetConfig.
+Future<bool> _publishCard(
+  BuildContext context, {
+  required String path,
+  required int currentVersion,
+  required AdminApiService api,
+  required Map<String, dynamic> published,
+  required Map<String, dynamic> changes,
+}) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final reason = await showDialog<String>(
+    context: context,
+    builder: (_) => _DiffDialog(
+      path: path,
+      nextVersion: currentVersion + 1,
+      diffs: [
+        for (final e in changes.entries) (e.key, _show(_sanitize(published[e.key])), _show(e.value)),
+      ],
+      publish: true,
+    ),
+  );
+  if (reason == null) return false;
+  try {
+    final resp = await api.setConfig(path: path, changes: changes, reason: reason);
+    messenger.showSnackBar(SnackBar(content: Text('Published config/$path as v${resp['version']}.')));
+    return true;
+  } catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text('Publish failed: $e')));
+    return false;
+  }
+}
+
+Widget _cardHeader(String title, String subtitle) => Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+      child: Row(children: [
+        Text(title, style: MM.displayX(size: 11, color: MM.white)),
+        const SizedBox(width: 12),
+        Expanded(child: Text(subtitle, style: MM.body(size: 11.5, color: Colors.white.withOpacity(0.5)))),
+      ]),
+    );
+
+InputDecoration _numDec() => InputDecoration(
+      isDense: true,
+      filled: true,
+      fillColor: MM.pageBg,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(7),
+        borderSide: BorderSide(color: Colors.white.withOpacity(0.18)),
+      ),
+    );
+
+/// #41 — how many Momentum Points a completed check-in earns: a fixed amount
+/// (the Gamification spec's +10, default) or scaled by the day's Core scores.
+class _PointsModeCard extends StatefulWidget {
+  const _PointsModeCard({
+    super.key,
+    required this.data,
+    required this.currentVersion,
+    required this.api,
+    required this.onPublished,
+  });
+  final Map<String, dynamic> data;
+  final int currentVersion;
+  final AdminApiService api;
+  final VoidCallback onPublished;
+
+  @override
+  State<_PointsModeCard> createState() => _PointsModeCardState();
+}
+
+class _PointsModeCardState extends State<_PointsModeCard> {
+  static const _defaultTable = {1: 0, 2: 5, 3: 10, 4: 15, 5: 20};
+  late String _mode;
+  late final TextEditingController _flat;
+  late final TextEditingController _base;
+  late final Map<int, TextEditingController> _table;
+  bool _busy = false;
+
+  int _int(Object? v, int d) => v is num && v >= 0 ? v.toInt() : d;
+
+  @override
+  void initState() {
+    super.initState();
+    final d = widget.data;
+    _mode = d['checkinPointsMode'] == 'scaled' ? 'scaled' : 'flat';
+    _flat = TextEditingController(text: '${_int(d['checkinPoints'], 10)}');
+    _base = TextEditingController(text: '${_int(d['scaledCheckinBase'], 10)}');
+    final t = d['scaledPointsPerScore'] is Map ? d['scaledPointsPerScore'] as Map : const {};
+    _table = {
+      for (final k in [1, 2, 3, 4, 5])
+        k: TextEditingController(text: '${_int(t['$k'] ?? t[k], _defaultTable[k]!)}'),
+    };
+    for (final c in [_flat, _base, ..._table.values]) {
+      c.addListener(() => setState(() {}));
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in [_flat, _base, ..._table.values]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  int? _read(TextEditingController c) {
+    final n = int.tryParse(c.text.trim());
+    return n != null && n >= 0 ? n : null;
+  }
+
+  /// Keys that differ from what's live; null while any field is invalid.
+  Map<String, dynamic>? get _changes {
+    final flat = _read(_flat), base = _read(_base);
+    final table = {for (final e in _table.entries) '${e.key}': _read(e.value)};
+    if (flat == null || base == null || table.values.any((v) => v == null)) return null;
+    final next = <String, dynamic>{
+      'checkinPointsMode': _mode,
+      'checkinPoints': flat,
+      'scaledCheckinBase': base,
+      'scaledPointsPerScore': table,
+    };
+    return {
+      for (final e in next.entries)
+        if (_canon(e.value) != _canon(_sanitize(widget.data[e.key]))) e.key: e.value,
+    };
+  }
+
+  Future<void> _publish() async {
+    final changes = _changes;
+    if (changes == null || changes.isEmpty) return;
+    setState(() => _busy = true);
+    final ok = await _publishCard(context,
+        path: 'economy',
+        currentVersion: widget.currentVersion,
+        api: widget.api,
+        published: widget.data,
+        changes: changes);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (ok) widget.onPublished();
+  }
+
+  String _example(List<int> scores) {
+    final base = _read(_base) ?? 0;
+    final b = [for (final s in scores) _read(_table[s]!) ?? 0];
+    return '${base + (b.reduce((a, c) => a + c) / b.length).round()}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final changes = _changes;
+    return AdminPanel(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _cardHeader('MOMENTUM POINTS PER CHECK-IN', 'What a completed weekday check-in earns'),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'flat', label: Text('Fixed amount'), icon: Icon(Icons.horizontal_rule, size: 16)),
+                ButtonSegment(
+                    value: 'scaled', label: Text('Scale with scores'), icon: Icon(Icons.trending_up, size: 16)),
+              ],
+              selected: {_mode},
+              onSelectionChanged: (v) => setState(() => _mode = v.first),
+            ),
+          ),
+        ),
+        if (_mode == 'flat')
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+            child: Row(children: [
+              Text('Points per check-in', style: MM.body(size: 12.5, color: MM.white)),
+              const SizedBox(width: 12),
+              SizedBox(width: 90, child: TextField(controller: _flat, style: MM.mono(size: 12.5), decoration: _numDec())),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text('Same for every check-in, whatever the scores (Gamification spec: +10).',
+                    style: MM.body(size: 11.5, color: Colors.white.withOpacity(0.5))),
+              ),
+            ]),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Text('Base points', style: MM.body(size: 12.5, color: MM.white)),
+                const SizedBox(width: 12),
+                SizedBox(width: 90, child: TextField(controller: _base, style: MM.mono(size: 12.5), decoration: _numDec())),
+              ]),
+              const SizedBox(height: 10),
+              Text('+ bonus by Core score (averaged over the Cores scored that day)',
+                  style: MM.body(size: 11.5, color: Colors.white.withOpacity(0.6))),
+              const SizedBox(height: 6),
+              Wrap(spacing: 10, runSpacing: 8, children: [
+                for (final e in _table.entries)
+                  SizedBox(
+                    width: 110,
+                    child: Row(children: [
+                      Text('Score ${e.key}', style: MM.mono(size: 11.5, color: Colors.white.withOpacity(0.7))),
+                      const SizedBox(width: 6),
+                      Expanded(child: TextField(controller: e.value, style: MM.mono(size: 12.5), decoration: _numDec())),
+                    ]),
+                  ),
+              ]),
+              const SizedBox(height: 8),
+              if (_read(_base) != null && _table.values.every((c) => _read(c) != null))
+                Text(
+                  'Example: one Core scored 4 → ${_example([4])} MP · Cores scored 4 and 2 → ${_example([4, 2])} MP · '
+                  'all 5s → ${_example([5])} MP',
+                  style: MM.mono(size: 11, color: MM.teal),
+                ),
+            ]),
+          ),
+        Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(children: [
+            Text(
+              changes == null
+                  ? 'Enter whole numbers ≥ 0'
+                  : changes.isEmpty
+                      ? 'Matches what is live'
+                      : changes.keys.every((k) => !widget.data.containsKey(k)) && _mode == 'flat' &&
+                              changes['checkinPoints'] == 10
+                          ? 'Live now: built-in default (+10 fixed). Publish to save it to config.'
+                          : '${changes.length} unpublished change${changes.length == 1 ? '' : 's'}',
+              style: MM.body(
+                  size: 12, color: changes == null ? MM.red : (changes.isEmpty ? Colors.white38 : MM.yellow)),
+            ),
+            const Spacer(),
+            ElevatedButton(
+              onPressed: _busy || changes == null || changes.isEmpty ? null : _publish,
+              style: ElevatedButton.styleFrom(backgroundColor: MM.blue),
+              child: Text('Publish v${widget.currentVersion + 1}'),
+            ),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+/// #42 — which planets are on the route for the current galaxy. Earth is the
+/// fixed launch point; 5–8 destinations (default 5). Publishing rewrites
+/// `config/journey.planets` as the full catalogue with `enabled` flags, keeping
+/// any names / MP thresholds already published.
+class _PlanetsCard extends StatefulWidget {
+  const _PlanetsCard({
+    super.key,
+    required this.data,
+    required this.currentVersion,
+    required this.api,
+    required this.onPublished,
+  });
+  final Map<String, dynamic> data;
+  final int currentVersion;
+  final AdminApiService api;
+  final VoidCallback onPublished;
+
+  @override
+  State<_PlanetsCard> createState() => _PlanetsCardState();
+}
+
+class _PlanetsCardState extends State<_PlanetsCard> {
+  late final List<JourneyPlanet> _published;
+  late final Map<String, bool> _on;
+  late final String _galaxy;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final (g, planets) = JourneyConfigService.parse(widget.data);
+    _galaxy = g;
+    _published = planets;
+    _on = {for (final p in planets) p.id: p.enabled};
+  }
+
+  int get _count => _published.where((p) => !p.start && _on[p.id]!).length;
+  bool get _valid =>
+      _count >= JourneyConfigService.minDestinations && _count <= JourneyConfigService.maxDestinations;
+
+  /// Also dirty while the live doc predates the catalogue format (no
+  /// galaxyId / enabled flags), so the first publish writes the full shape.
+  bool get _dirty => _published.any((p) => p.enabled != _on[p.id]) || widget.data['galaxyId'] == null;
+
+  String _hex(Color c) => '#${(c.value & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+
+  Future<void> _publish() async {
+    setState(() => _busy = true);
+    final planets = [
+      for (var i = 0; i < _published.length; i++)
+        {
+          'id': _published[i].id,
+          'name': _published[i].name,
+          'order': i,
+          'color': _hex(_published[i].color),
+          'mpRequired': _published[i].mpRequired,
+          'enabled': _on[_published[i].id],
+        },
+    ];
+    final ok = await _publishCard(context,
+        path: 'journey',
+        currentVersion: widget.currentVersion,
+        api: widget.api,
+        published: widget.data,
+        changes: {'galaxyId': _galaxy, 'planets': planets});
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (ok) widget.onPublished();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AdminPanel(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _cardHeader(
+            'PLANET ROUTE',
+            'Galaxy: ${_galaxy == 'milky_way' ? 'Milky Way' : _galaxy} · Earth → destinations → Station. '
+                'Reaching the last planet will unlock the next galaxy (future).'),
+        for (final p in _published)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+            child: Row(children: [
+              Container(width: 12, height: 12, decoration: BoxDecoration(color: p.color, shape: BoxShape.circle)),
+              const SizedBox(width: 10),
+              Expanded(child: Text(p.name, style: MM.body(size: 13, color: MM.white))),
+              if (p.start)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Text('Launch point — always on', style: MM.body(size: 11.5, color: Colors.white38)),
+                )
+              else
+                Switch(
+                  value: _on[p.id]!,
+                  activeColor: MM.blue,
+                  onChanged: (v) => setState(() => _on[p.id] = v),
+                ),
+            ]),
+          ),
+        Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(children: [
+            Text(
+              '$_count destinations — '
+              '${!_valid ? 'choose between 5 and 8' : !_dirty ? 'matches what is live' : _published.every((p) => p.enabled == _on[p.id]) ? 'live now: built-in default route. Publish to save it to config.' : 'unpublished changes'}',
+              style: MM.body(size: 12, color: !_valid ? MM.red : (_dirty ? MM.yellow : Colors.white38)),
+            ),
+            const Spacer(),
+            ElevatedButton(
+              onPressed: _busy || !_valid || !_dirty ? null : _publish,
+              style: ElevatedButton.styleFrom(backgroundColor: MM.blue),
+              child: Text('Publish v${widget.currentVersion + 1}'),
+            ),
+          ]),
+        ),
+      ]),
     );
   }
 }

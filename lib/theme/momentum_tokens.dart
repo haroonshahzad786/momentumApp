@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/journey_config_service.dart';
 
 class MM {
   MM._();
@@ -37,14 +38,11 @@ class MM {
   };
 
   // ─── Planets ─────────────────────────────────────────────
-  static const List<Map<String, dynamic>> planets = [
-    {'id': 'earth',   'name': 'Earth',   'color': Color(0xFF3AA6FF)},
-    {'id': 'moon',    'name': 'Moon',    'color': Color(0xFFCFD2DC)},
-    {'id': 'mars',    'name': 'Mars',    'color': Color(0xFFD76B3A)},
-    {'id': 'jupiter', 'name': 'Jupiter', 'color': Color(0xFFD9A86B)},
-    {'id': 'saturn',  'name': 'Saturn',  'color': Color(0xFFE8C178)},
-    {'id': 'pluto',   'name': 'Pluto',   'color': Color(0xFF9AA3C7)},
-  ];
+  /// The live planet route (Earth first), from `config/journey` via
+  /// [JourneyConfigService] — admin-controlled, 5–8 destinations. Same map
+  /// shape as the old const list: {'id', 'name', 'color'}.
+  static List<Map<String, dynamic>> get planets =>
+      [for (final p in JourneyConfigService.route) p.toMap()];
 
   // ─── Radii ───────────────────────────────────────────────
   static const double r1 = 4;

@@ -46,7 +46,16 @@ class WorldBackdrops {
 
   /// Falls back to Earth rather than throwing — a missing backdrop should never
   /// be what takes a screen down.
-  static String _safe(String id) => ids.contains(id) ? id : 'earth';
+  static String _safe(String id) =>
+      ids.contains(id) ? id : (_stand_in[id] ?? 'earth');
+
+  /// Worlds on the admin-extendable route (config/journey) that have journey
+  /// art but no full-screen backdrop yet — shown on the closest-looking world.
+  static const Map<String, String> _stand_in = {
+    'spacestation': 'station',
+    'uranus': 'pluto',
+    'neptune': 'pluto',
+  };
 
   static String _prefix(WorldView v) => v == WorldView.surface ? 'land-' : '';
 

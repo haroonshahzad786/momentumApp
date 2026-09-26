@@ -74,7 +74,7 @@ class _DashboardPageState extends State<DashboardPage> {
       ValueNotifier<double>(journeyIdleWarp(_planetIdx));
 
   int get _planetIdx =>
-      MM.planets.indexWhere((p) => p['id'] == widget.planet).clamp(0, 5);
+      MM.planets.indexWhere((p) => p['id'] == widget.planet).clamp(0, MM.planets.length - 1);
 
   @override
   void dispose() {

@@ -21,6 +21,11 @@ hook and flag *needs spec from the user*.
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · 🔒 blocked on user spec
 
+> **▶ 2026-09-25 UPDATE — read first:** the client's full doc set was reviewed; see **"MASTER docs review
+> (2026-09-25)"** near the end of this file. Leveling / planets / ship / Mystery Box / badges are **post-MVP**
+> per the newest docs, so the critical path is now **#15 Captain's Log → #16 miss sequence → #17 streak
+> protection → #18 balance → #19 formation goals**, then the P1 Phase 2 experience (#20–#29).
+>
 > **▶ RESUME HERE (next session, updated 2026-07-07):** #1–#12 ✅ core loop DONE. **#13 economy IN PROGRESS**
 > (see the #13 block in the Deferred section for full detail + the design-image findings):
 > - ✅ **13a** Space Credits ledger + **ALL of set ① earning** (check-in 10💎 · high-score 5💎 · formation
@@ -671,6 +676,151 @@ several Stage-1 items are OWNED by the Voiceflow "Nova" agent (Claude can't edit
 > F38 rocket/planets = 13c; F39 badges = 13f; F40 rocket customization = 13d; F41 planet landings = 13c;
 > F44 power-ups = 13h/13d; F45/F46 leaderboards/tribes = #14; F51/F52/F54/F55/F60 infra = done. All the
 > above are already represented in this plan — only the un-listed BG-F* items above are net-new gaps.
+
+---
+
+## MASTER docs review (2026-09-25) — updated scope + new tasks #15–#40
+
+_Added after reading the client's full doc set in `design/ref/MASTER/` (52 files, extracted to
+`design/ref/_extracted/MASTER/`). The user will **test the app against "Gamification Mechanics Specs
+Reference (Pre-PRD)"**, so that doc is the acceptance reference._
+
+**Source precedence when docs disagree** (newest scope wins; the Gamification spec wins on mechanics):
+1. `Gamification Mechanics Specs Reference (Pre-PRD)` (Mar 2026) — **test basis**, mechanics + values.
+2. `10K VIEW…` (Jun 2026) + `HOW GAMIFICATION, AI, AND SCIENCE…` (Mar 2026) — newest MVP/post-MVP labels.
+3. `PHASE 1 AND 2 SEQUENCE (…FOR CODERS)` (Phase 2 part May 2026) — player-facing flow + visuals.
+4. `PRD - Product Requirements Doc` (v4.0, Feb 2026) — full feature catalog (A–G format).
+5. `Scope v2` (Jan 2026) — **older**, but the only doc with concrete numbers for most placeholders →
+   usable as *proposed defaults* for Will to confirm, never as final values.
+6. `Haroon Calls and meetings` (call notes through 9/9/26) — Will's direct asks to Haroon.
+Unchanged vs the copies #1–#14 were built from: Phase 1&2 Details, Space Cantina, Design Rationale,
+Build Guide. Superseded/historical (scanned, not driving work): Nov-2025 doc set, No-Code/Replit docs,
+archived "Issues & Features (Detailed)" (= PRD's predecessor), Wireframe guide (Nov 2025).
+
+### Scope reset — what is actually post-MVP
+The 10K View + How-Gamification docs mark **Leveling, Planet Journey mechanics, Ship Upgrades, Mystery
+Box, Badges = POST-MVP** (and full Cantina post-MVP; MVP = Reddit-style). So **13b/13c/13d/13e/13f are not
+launch blockers** — keep them 🔒, but stop treating them as the critical path. Keep the planet *visual*
+(journey stage + zoom-out view): Will asked for it on the 7/22 call for demos. MVP economy = Momentum
+Points + Space Credits + streaks + Trophy Room + Balance (all largely built).
+If Will wants the post-MVP economy early, `Scope v2` has candidate defaults (all → `config/*`, confirm first):
+levels (Navigator = 3 formed + Jupiter + 14-day streak; Commander = 8 formed + Pluto + all 5 Cores + 30-day
+streak), planets (Moon 2 · Mars 3 · Jupiter 6 · Saturn 8 · Pluto 18 days), ship costs (200/500/1000/5000,
+Epic Thrusters 2500), Mystery Box drop table. The old Codario Django back office also holds tested planet
+distances/momentum values (see #40).
+
+### Conflicts to resolve with Will (docs disagree — don't pick silently)
+| Topic | Gamification spec | Other doc(s) |
+|---|---|---|
+| MP per check-in | flat +10, regardless of score (**built**) | PRD/Sequence: scales with score + Captain's Log + Balance Bonus (+25 on Day 1 example) |
+| Streak Savers | earned at 30-day milestone, max **1** banked | PRD/How-Gamif: variable-reward drops, max **3** |
+| Streak milestones | 3/7/14/30/60/90/180/365 (**built**, credits user-set) | PRD: 7/14/21/30… |
+| Armor | 1/2/3-day grace, Epic = week | PRD: 1/2 grace days *per month* |
+| Thrusters | +25/50/75/100% MP | PRD: +10/20% · Scope v2: +2..+10 Core Power/day |
+| Planets | Moon→Mars→Jupiter→Saturn→Pluto | PRD: Space Station→…→Uranus→Neptune→Pluto |
+| Leaderboard rank | ship tier → Momentum Score → trophies; trending arrows; opt-out | PRD 16.3: 60/25/15 composite (**built**) |
+| Bottom-rank label | "Just Getting Started" | built: "RISING" tag |
+| Vacation Mode length | placeholder | PRD: up to 7 days |
+| Balance alert source | Core **scores** <3.0 for 5 days | PRD: 7-day **rolling average** <3.0 for 5 days |
+
+### Will's decisions (2026-09-25, relayed by Haroon)
+- **Momentum Points:** admin-selectable mode in the Economy panel — *flat* (+N per check-in, default 10,
+  current behaviour) **or** *score-scaled*. → task #41.
+- **Planets:** controlled from the admin panel; **default 5** (Moon→Mars→Jupiter→Saturn→Pluto), can be
+  raised to **8**. → task #42.
+- **Endless journey (future):** reaching the final planet unlocks a new journey in another galaxy; the app
+  grows stage by stage. Build the schema galaxy-ready now (#39), no second galaxy content yet.
+- **Cantina:** MVP keeps our in-app Cantina. A Reddit **share button** comes later (post-MVP) — #38 resolved.
+- Still open with Will: Streak Saver cap, milestone schedule, Armor/Thrusters values, leaderboard ranking,
+  bottom-rank label, Vacation Mode limits, balance alert source, Scope v2 defaults.
+
+- [~] **#41 Momentum Points mode (admin)** — BUILT + DEPLOYED 2026-09-25 (award fn reads mode; 18 config tests pass; admin card browser-checked). Pending: a real publish (admin session had expired) + one scaled check-in. — `config/economy.checkinPointsMode` (`flat`|`scaled`),
+  `checkinPoints` (flat, default 10), `scaledCheckinBase` + `scaledPointsPerScore` {1..5}; award function
+  reads it; Economy screen edits it. Default stays flat 10 → no behaviour change until an admin switches.
+- [~] **#42 Planets from config (admin)** — BUILT 2026-09-25: catalogue of 8 (Space Station, Moon, Mars, Jupiter, Saturn, Uranus, Neptune, Pluto; Uranus/Neptune/Space Station art reused from the Codario build), default 5, `MM.planets` now reads config, journey scene lays out non-default routes; layout tests pass; admin card browser-checked. Pending: publish a 6–8 route and eyeball the journey scene; full-screen backdrops for Uranus/Neptune (they borrow Pluto's). — `config/journey` holds the ordered planet catalogue (8 stops)
+  with an enabled flag each, default 5 enabled; client journey/cockpit/summary read it instead of
+  `MM.planets`; admin can enable 5–8. Keyed by `galaxyId` so a second galaxy is just new data (#39).
+
+### New / newly-scoped MVP tasks (priority order)
+**P0 — core-loop gaps you'll hit when testing against the Gamification spec**
+- [ ] **#15 Captain's Log** (spec §6/§7, PRD 12.C) — per-Core 🏆 Wins / 📚 Lessons in every check-in,
+  optional; archive = Momentum List #15; feeds auto-flag, score validation, Mystery Box anti-gaming.
+  **Not built anywhere** (supersedes BG-F28). Highest priority.
+- [ ] **#16 Ship Warnings / miss sequence** (spec §6, Sequence P2 pathway 2) — miss 1 weekday: supportive
+  warning + 1-hour defer; miss 2: checkpoint regression + MP reduction 🔒(amount) + [Get Support] options
+  (Captain's Log review · Emergency Simplification · Cantina · AI coaching · pause); 5+ days: "Welcome back,
+  Captain — let's relaunch" screen listing what's preserved + minimal one-Core check-in. Server already
+  computes warning/broken; UI + regression missing.
+- [ ] **#17 Streak protection** (spec §6) — Vacation Mode (PRD: ≤7 days; per-year limit 🔒), Streak Saver
+  (earned at 30-day milestone, auto-applied on 1 missed weekday, "Streak Saver Available" badge; cap per
+  conflicts table), both honored by the streak engine (ties to #B4).
+- [ ] **#18 Core Balance completion** (spec §10) — alert stays until the Core is >3.0 for **2 consecutive
+  days** (today it clears after 1); multi-Core alert copy + [Emergency Simplification Mode] 🔒(rules);
+  gauge colors green ≥4 / yellow 3–3.9 / red <3; Balance % in the stats box; Balance Bonus 🔒(days/amount).
+- [ ] **#19 Trophy Room completion** (spec §8) — AI validation before "formed"; 30/60/90-day review
+  prompts; un-form path ("adaptation, not failure"); formation celebration + identity copy; **Habit
+  Formation Goals** (default 1 habit/14 days, adjustable 7–21, progress bar, "closest habit to forming",
+  at-risk alert, goal-crushed celebration + next goal).
+**P1 — Phase 2 experience the PRD/Sequence mark MVP**
+- [ ] **#20 Rocket Dashboard completion** — streak bar across the top (+ days to next milestone), stats
+  box (planet · Momentum Score · Balance %), 4 tip-of-rocket icons (🎯 Command Center · ⏰ Routines ·
+  ∞ All Habits · ☑️ Non-Routines), locked Cores grey + "Fuel this Core" link, zoom-out→zoom-in on each
+  login, check-in ≤2 taps. Verify on **web** (primary surface) as well as mobile.
+- [ ] **#21 Habit views** (PRD 11) — ∞ All Habits Quick View (By Time / By Core toggle); Full Routines List
+  with 6-color system, status counter ("8 🔴 · 12 🟠 · 15 🟢"), day counts ("Day 8/14"), yellow notes;
+  Non-Routines List per Core with Mantra + Gratitude locked at #1/#2, drag-to-prioritize, IF-THEN shown;
+  non-routine "N/A — not triggered" scoring option.
+- [ ] **#22 Detailed Habit View = living master document** (PRD 8.C/12.C) — Golden Habit output format
+  (type/where/when/what, anchor reminder, IF-THEN obstacle plan, why-this-works), MBMs, Triple-Check,
+  origin 🔴/⚫, formation progress, active 🧪 experiment, Captain's Log excerpts, edit/delete, ⚠️ flag.
+- [ ] **#23 Experiment lifecycle + real AI resolution paths** (PRD 13.C, Sequence Day-5) — ⚠️ Flag button
+  in every habit view; Quick Suggestion = Claude call over Momentum Lists + Captain's Log (today a
+  placeholder); Go Deeper → HHS/MBS with context pre-loaded (routing exists); Manual Edit → #22; every
+  change = 🧪 experiment with a 3-day check-in → convert or retire (retired ones never re-suggested).
+- [ ] **#24 Today's Focus (AI) + score validation** — 3–5 bullets generated from *this* session's scores,
+  log, flags and experiments; private nudge when Captain's Log tone contradicts the score. Needs #15.
+- [ ] **#25 Phase 2 first-time launch** (Sequence §0) — "Phase 1 complete → mission begins" transition +
+  90-second cockpit tour with Next/Back, ending on the Daily Check-In button.
+- [ ] **#26 First-time vs returning routing** (PRD 4, calls 7/22) — "Press Start to Begin" intro → welcome
+  screens for new players; returning players skip intro and resume where they left off; post-refinement
+  re-entry shows what changed + 🧪 tag.
+- [ ] **#27 Progress Summary polish** (PRD 12.C, Sequence) — one-by-one stat reveal, planet progress bar
+  "% to next planet", ship-status teaser, first-mission challenge card, quick actions (Trophy · Command
+  Center · Cantina · All Habits).
+- [ ] **#28 Daily reset + weekend rules** — configurable "yesterday" boundary (default 4 AM); weekend
+  check-ins show only Cores with "Daily (7 days)" habits.
+- [ ] **#29 Manual habit creation guardrails** (PRD 7/12.C) — `add_habit_page.dart` exists; verify it
+  suggests Triple-Check + MBMs, classifies routine/non-routine and time block, flags new habits for 14 days.
+**P1 — Phase 1**
+- [ ] **#30 Phase 1 reward beats** — verify Stage 1 checkpoints award 10/15/20/25/40 MP (Truth Seeker →
+  Core Confirmed → Principle Decoder → Keystone Forger → Golden Habit Architect) and Stage 2 10/15/25
+  (Friction Hunter → Method Master → Implementation Wizard) with the lock→✅ progress bar; Core icon unlock
+  animation on first habit in a Core.
+- [ ] **#31 Command Center MVP rules** (PRD 10.C) — locked lists shown greyed with unlock hint; each entry
+  shows its source (Phase 1 / manual / AI / quest); archive instead of delete; search across lists;
+  celebratory first reveal; One-Time Actions list with done/pending.
+- [ ] **#32 Returning-player HHS/MBS flows** (Sequence) — voluntary new habit / guided gamified / flag-
+  triggered, each with context pre-loaded; MBS shortcuts: Quick Add from Ideas Well + manual MBM entry;
+  MBM version history. (Absorbs BG-F8.)
+**P2 — data, AI safety, admin (Will's "never cut" list + call asks)**
+- [ ] **#33 Behavioral data capture + aggregates** (AI-First Implementation Guide M1/M4, "NEVER CUT") —
+  `sessions` (timing, skips, backtracks, exit point), `/aggregates/` (pain-point patterns, habit success
+  rates), `onGoldenHabitCreated` aggregation. Merge with #B33 event ledger + BG-F57.
+- [ ] **#34 AI recommendation review queue** (PRD 13.D3) — confidence score on every recommendation;
+  low-confidence ones held for Will in the admin panel (Months 1–6 = 100% review). Pairs with #B14.
+- [ ] **#35 Anti-exploitation checks (MVP subset)** (PRD 13.D6) — compulsive app-checking and over-ambition
+  (8+ new habits/week) → gentle message; flags to `safety_flags/` for review.
+- [ ] **#36 Notification controls** (PRD 17.2) — per-category toggles, quiet hours, max 3/day, push deep-
+  links straight into Step 1. Merge with #B29–#B32.
+- [ ] **#37 Momentum Lists analytics — finish Will's 9/9 ask** — "initiated" + drill-down exist; still
+  missing "completed" and completion rate per list (blocked on #A5.2 prompt-schema decision).
+- [x] **#38 Reddit bridge decision** — RESOLVED by Will 2026-09-25: MVP keeps the native in-app Cantina;
+  a "Share to Reddit" button is post-MVP.
+- [ ] **#39 Galaxy progression schema (design only)** (call 9/9) — journey must be endless (Milky Way →
+  next galaxy); make planets/galaxies data-driven in `config/journey` so new sets are art-only.
+- [ ] **#40 Codario seed data + asset reuse** (calls 8/13, 7/22) — pull planet days/momentum thresholds,
+  initial habits and mantra from the old Django back office / RDS snapshot (tested numbers for 13c);
+  inventory the 14 Lottie + ~15 MP4 animations before rebuilding any animation.
 
 ---
 

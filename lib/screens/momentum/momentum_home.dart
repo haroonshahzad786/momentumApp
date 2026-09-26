@@ -33,6 +33,7 @@ import 'sub_screens.dart';
 import 'summary_page.dart';
 import 'web_cockpit.dart';
 import 'web_screens.dart';
+import '../../services/journey_config_service.dart';
 
 /// Post-auth shell. Owns the active screen, menu drawer, and routing
 /// between Dashboard / Check-in / Summary / sub-screens / chat.
@@ -120,6 +121,10 @@ class _MomentumHomeState extends State<MomentumHome> {
   void initState() {
     super.initState();
     _fetchProfile();
+    // Admin-controlled planet route (config/journey, #42) — rebuild the app
+    // chrome when an admin publishes a new set of planets.
+    JourneyConfigService.ensureLoaded();
+    JourneyConfigService.listenable.addListener(_onRouteChanged);
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null && uid.isNotEmpty) {
       NotificationService.instance.saveTokenForUser(uid);
@@ -148,6 +153,7 @@ class _MomentumHomeState extends State<MomentumHome> {
     _profileService.dispose();
     _onboarding.dispose();
     _points.dispose();
+    JourneyConfigService.listenable.removeListener(_onRouteChanged);
     super.dispose();
   }
 
@@ -597,6 +603,10 @@ class _MomentumHomeState extends State<MomentumHome> {
       offline: _offline,
       onRefreshOffline: _fetchProfile,
     );
+  }
+
+  void _onRouteChanged() {
+    if (mounted) setState(() {});
   }
 
   @override

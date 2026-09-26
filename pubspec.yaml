@@ -46,6 +46,7 @@ dependencies:
   # 1-bit transparency, which speckles the soft edges of a glow badly on a dark
   # background, and weigh ~20x more.
   lottie: ^3.1.2
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

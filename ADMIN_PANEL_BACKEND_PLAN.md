@@ -199,6 +199,13 @@ This is `BACKEND_PLAN.md` **#B37 + #B38**, restated as the literal requirement d
   real phone number to enroll a second factor; deliberately NOT built as "required" without an
   enrollment flow existing first, since that would lock out the only admin account. IP allowlist
   remains 🔒 lower priority — only one admin exists today.
+  **2FA PARKED 🔒 (2026-09-25, client decision: no new paid services right now).** Code is written but
+  inert: TOTP (authenticator app, no SMS) enforcement in `requireAdmin` behind `ADMIN_REQUIRE_2FA = false`
+  (not deployed), and `AdminGate` enrollment/re-verify screens (`admin_service.dart` `mfaState()`/TOTP
+  helpers, `qr_flutter`) behind `kAdminRequire2fa = false`. **To resume:** (1) upgrade the project to
+  Identity Platform and enable the TOTP provider; (2) make the login screen (`auth_service.dart`) handle
+  `FirebaseAuthMultiFactorException` — otherwise an enrolled admin can't sign in; (3) flip the client flag,
+  enroll in the browser; (4) flip the server flag and redeploy only `requireAdmin`'s functions.
 
 **Acceptance for this whole section:** a non-admin, fully-authenticated app user who navigates to
 `/admin` or calls an admin endpoint directly gets nothing — not a read, not a write, not a friendlier

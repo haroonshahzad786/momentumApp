@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/checkin_service.dart';
+import '../../services/economy_config_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/celebration_host.dart';
 import '../../widgets/momentum/confetti_overlay.dart';
@@ -61,6 +62,9 @@ class SummaryPage extends StatefulWidget {
 class _SummaryPageState extends State<SummaryPage> {
   final _checkin = CheckinService();
 
+  /// Streak milestones from config/streaks (#A7.2); defaults until loaded.
+  List<int> _milestones = EconomyConfigService.defaultStreakMilestones;
+
   /// shortCoreId → rolling 7-day average score (1–5).
   Map<String, double> _balance = const {};
   int _balanceDays = 0;
@@ -76,6 +80,9 @@ class _SummaryPageState extends State<SummaryPage> {
     super.initState();
     _celebrate = (widget.earnedToday ?? 0) > 0 && CelebrationBus.claim();
     _loadBalance();
+    EconomyConfigService().streakMilestones().then((m) {
+      if (mounted) setState(() => _milestones = m);
+    });
   }
 
   /// Builds the 5-Core Balance Meter from the last 7 days of real check-ins.
@@ -223,6 +230,7 @@ class _SummaryPageState extends State<SummaryPage> {
                         _StreakCallout(
                             days: widget.streak,
                             milestone: widget.streakMilestone,
+                            milestones: _milestones,
                             delay: 550),
                         // Space Credits balance (#13a — ledger live; per-trigger
                         // earning amounts wire in as they're specified).
@@ -491,18 +499,24 @@ class _CountUpState extends State<_CountUp>
 
 class _StreakCallout extends StatelessWidget {
   const _StreakCallout(
-      {required this.days, required this.delay, this.milestone});
+      {required this.days,
+      required this.delay,
+      required this.milestones,
+      this.milestone});
   final int days;
   final int delay;
+
+  /// Ascending streak milestones (config/streaks).
+  final List<int> milestones;
 
   /// A streak milestone reached this check-in (#10) — celebrate it.
   final int? milestone;
 
   int _nextMilestone(int d) {
-    for (final m in const [3, 7, 14, 30, 60, 90, 180, 365]) {
+    for (final m in milestones) {
       if (d < m) return m;
     }
-    return 365;
+    return milestones.last;
   }
 
   @override

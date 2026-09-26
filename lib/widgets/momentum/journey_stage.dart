@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart' show ValueListenable;
+import 'package:flutter/foundation.dart' show ValueListenable, listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:lottie/lottie.dart';
@@ -57,9 +57,15 @@ class JourneyStop {
   Offset get seat => Offset(x, seatY);
 }
 
-/// Earth → Pluto are the six planets the game progresses through
-/// ([MM.planets]); the Station is the route's destination — drawn, never docked.
-const List<JourneyStop> kJourneyStops = <JourneyStop>[
+/// The stops actually flown: the enabled planets from `config/journey`
+/// ([MM.planets], Earth first) plus the Station as the route's destination —
+/// drawn, never docked. Indexes line up with [MM.planets].
+List<JourneyStop> get kJourneyStops => journeyStopsFor(
+    [for (final p in MM.planets) p['id'] as String]);
+
+/// The default 5-destination route, laid out by hand to the handoff geometry.
+/// Returned verbatim whenever the admin keeps the default planet set.
+const List<JourneyStop> _kDefaultStops = <JourneyStop>[
   JourneyStop(
       'earth', 'Earth', 'planet-earth.png', 5400, 0, 360, 595 / 594, 0.50),
   JourneyStop(
@@ -75,6 +81,45 @@ const List<JourneyStop> kJourneyStops = <JourneyStop>[
   JourneyStop(
       'station', 'Station', 'station3.png', 950, 0, 330, 712 / 581, 0.42),
 ];
+
+/// Art + size for every catalogue stop (y/dx are placed by [journeyStopsFor]).
+/// Uranus, Neptune and the Space Station art come from the original Codario
+/// build (design/ref/old_app_source/graphics/journey/planets).
+final Map<String, JourneyStop> _kStopArt = {
+  for (final s in _kDefaultStops) s.id: s,
+  'spacestation': const JourneyStop('spacestation', 'Space Station',
+      'planet-spacestation.png', 0, 0, 230, 501 / 695, 0.42),
+  'uranus': const JourneyStop(
+      'uranus', 'Uranus', 'planet-uranus.png', 0, 0, 520, 869 / 607, 0.45),
+  'neptune': const JourneyStop(
+      'neptune', 'Neptune', 'planet-neptune.png', 0, 0, 300, 598 / 603, 0.50),
+};
+
+final Map<String, List<JourneyStop>> _stopsCache = {};
+
+/// Stops for a route of planet ids (Earth first). The default set returns the
+/// hand-tuned [_kDefaultStops]; any other set is spread evenly between Earth
+/// and the Station, staggering left/right so every leg still reads as an arc.
+List<JourneyStop> journeyStopsFor(List<String> ids) {
+  final key = ids.join(',');
+  return _stopsCache.putIfAbsent(key, () {
+    final defaultIds = [for (final s in _kDefaultStops) s.id]..remove('station');
+    if (listEquals(ids, defaultIds)) return _kDefaultStops;
+    const top = 950.0, bottom = 5400.0;
+    final all = [...ids, 'station'];
+    final step = (bottom - top) / (all.length - 1);
+    return [
+      for (var i = 0; i < all.length; i++)
+        () {
+          final art = _kStopArt[all[i]] ?? _kStopArt['moon']!;
+          final centred = i == 0 || i == all.length - 1;
+          final dx = centred ? 0.0 : (i.isOdd ? 360.0 : -340.0);
+          return JourneyStop(art.id == all[i] ? art.id : all[i], art.name,
+              art.asset, bottom - step * i, dx, art.w, art.ar, art.seatF);
+        }(),
+    ];
+  });
+}
 
 /// One leg of the route: a quadratic bezier from [a]'s seat to [b]'s seat whose
 /// control point bows [kBow] to one side, alternating by leg index.
