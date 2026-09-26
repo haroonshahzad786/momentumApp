@@ -14,6 +14,8 @@ class WebCockpit extends StatelessWidget {
     super.key,
     required this.name,
     required this.streak,
+    this.streakState = 'ok',
+    this.streakProtection,
     required this.planet,
     required this.activeCores,
     required this.atRiskCores,
@@ -28,6 +30,12 @@ class WebCockpit extends StatelessWidget {
 
   final String name;
   final int streak;
+
+  /// #17 — 'ok' · 'warning' · 'protected' · 'vacation' · 'broken'.
+  final String streakState;
+
+  /// Streak Savers + Vacation Mode card, shown under the flight data.
+  final Widget? streakProtection;
   final String planet;
   final List<String> activeCores;
   final Set<String> atRiskCores;
@@ -79,6 +87,8 @@ class WebCockpit extends StatelessWidget {
         );
         final right = _FlightData(
           streak: streak,
+          streakState: streakState,
+          streakProtection: streakProtection,
           balance: balance,
           momentumScore: momentumScore,
           spaceCredits: spaceCredits,
@@ -403,6 +413,8 @@ class _RocketStageState extends State<_RocketStage> {
 class _FlightData extends StatelessWidget {
   const _FlightData({
     required this.streak,
+    required this.streakState,
+    required this.streakProtection,
     required this.balance,
     required this.momentumScore,
     required this.spaceCredits,
@@ -410,6 +422,8 @@ class _FlightData extends StatelessWidget {
     required this.onNav,
   });
   final int streak;
+  final String streakState;
+  final Widget? streakProtection;
   final int balance;
   final int momentumScore;
   final int spaceCredits;
@@ -428,7 +442,17 @@ class _FlightData extends StatelessWidget {
           children: [
             Expanded(
                 child: _Stat(
-                    label: 'Streak', value: '${streak}d', accent: MM.red)),
+                    label: 'Streak',
+                    value: '${streak}d',
+                    accent: streakState == 'vacation' || streakState == 'protected'
+                        ? MM.teal
+                        : MM.red,
+                    sub: switch (streakState) {
+                      'vacation' => '🌴 Paused',
+                      'protected' => '🛡️ Saver covers gap',
+                      'warning' => '⚠ Check in today',
+                      _ => null,
+                    })),
             const SizedBox(width: 12),
             Expanded(
                 child: _Stat(
@@ -454,6 +478,10 @@ class _FlightData extends StatelessWidget {
         const SizedBox(height: 12),
         // active quest
         _QuestCard(streak: streak, onTap: () => onNav('trophy')),
+        if (streakProtection != null) ...[
+          const SizedBox(height: 12),
+          streakProtection!,
+        ],
       ],
     );
   }

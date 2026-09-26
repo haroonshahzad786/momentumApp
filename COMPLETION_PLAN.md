@@ -765,9 +765,20 @@ distances/momentum values (see #40).
   regression (no planet progress exists yet — 13c post-MVP), push-notification version of the warning
   (#B30/#B31), Emergency Simplification Mode (#18). Pending: see it on an account with a real gap
   (e.g. the test account, last check-in 21 Jul → long absence).
-- [ ] **#17 Streak protection** (spec §6) — Vacation Mode (PRD: ≤7 days; per-year limit 🔒), Streak Saver
+- [x] **#17 Streak protection** (spec §6) — Vacation Mode (PRD: ≤7 days; per-year limit 🔒), Streak Saver
   (earned at 30-day milestone, auto-applied on 1 missed weekday, "Streak Saver Available" badge; cap per
   conflicts table), both honored by the streak engine (ties to #B4).
+  **Built 26 Sep.** Server: `streakRules.js` (5 tests) — vacation weekdays never count as missed, savers
+  cover a gap of `gap − breakGap + 1` weekdays and are spent automatically on the next check-in, a saver
+  is earned when the streak hits `streakSaverMilestone` (capped at `maxStreakSavers`). New endpoint
+  `flutterSetVacationMode` (start/end; ≤ `vacationMaxDays`, no overlaps, optional `vacationsPerYear`).
+  Profile returns `streakState` `protected` / `vacation`, `missState` `vacation` (no warning, relaunch or
+  penalty during a vacation), saver counts and the active/upcoming vacation. All values live in
+  `config/streaks` and are edited on the admin Economy screen's **Streak rules** card. Client: Streak
+  Protection card on the web Cockpit (saver count, plan/end/cancel Vacation Mode dialog), streak stat
+  shows "Paused"/"Saver covers gap"; mobile streak shows 🌴/🛡️ and opens the card in a sheet. 4 widget
+  tests; deployed; browser-checked (dialog opened and dismissed — no vacation started on the real
+  account). Open 🔒: saver cap / milestone schedule, vacations-per-year (defaults 1 / 30 / no limit).
 - [ ] **#18 Core Balance completion** (spec §10) — alert stays until the Core is >3.0 for **2 consecutive
   days** (today it clears after 1); multi-Core alert copy + [Emergency Simplification Mode] 🔒(rules);
   gauge colors green ≥4 / yellow 3–3.9 / red <3; Balance % in the stats box; Balance Bonus 🔒(days/amount).

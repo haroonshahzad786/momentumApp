@@ -34,6 +34,7 @@ import 'summary_page.dart';
 import 'web_cockpit.dart';
 import 'web_screens.dart';
 import '../../widgets/momentum/ship_warning.dart';
+import '../../widgets/momentum/streak_protection.dart';
 import '../../services/journey_config_service.dart';
 
 /// Post-auth shell. Owns the active screen, menu drawer, and routing
@@ -264,6 +265,50 @@ class _MomentumHomeState extends State<MomentumHome> {
       onCantina:
           _phase1.stage2Completed ? () => then(() => _go('cantina')) : null,
       onClose: _closeRelaunch,
+    );
+  }
+
+  /// #17 Streak Savers + Vacation Mode. Refetches the profile after a change
+  /// so streak / miss state (and the warning/relaunch overlays) follow.
+  Widget _buildStreakProtection({VoidCallback? afterChange}) {
+    final p = _profile;
+    final uid = _uid;
+    if (p == null || uid == null) return const SizedBox.shrink();
+    Future<void> change(bool start, [DateTime? from, int days = 0]) async {
+      await _profileService.setVacationMode(uid,
+          start: start,
+          startDate: from == null ? null : ProfileService.localDateId(from),
+          days: days);
+      await _fetchProfile();
+      afterChange?.call();
+    }
+
+    return StreakProtectionCard(
+      streakSavers: p.streakSavers,
+      maxStreakSavers: p.maxStreakSavers,
+      streakSaverMilestone: p.streakSaverMilestone,
+      vacationMaxDays: p.vacationMaxDays,
+      activeVacation: p.activeVacation,
+      upcomingVacation: p.upcomingVacation,
+      onStartVacation: (d, n) => change(true, d, n),
+      onEndVacation: () => change(false),
+    );
+  }
+
+  void _openStreakSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: MM.navy,
+      isScrollControlled: true,
+      // The sheet is its own route, so it closes after a change rather than
+      // trying to rebuild from the refetched profile.
+      builder: (sheet) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: _buildStreakProtection(
+              afterChange: () => Navigator.of(sheet).maybePop()),
+        ),
+      ),
     );
   }
 
@@ -528,6 +573,8 @@ class _MomentumHomeState extends State<MomentumHome> {
       return DashboardPage(
         streak: _streakOverride ?? (p?.streak ?? 0),
         streakState: p?.streakState ?? 'ok',
+        streakSavers: p?.streakSavers ?? 0,
+        onStreakTap: _openStreakSheet,
         planet: p?.planet ?? 'earth',
         activeCores: activeCores,
         atRiskCores: _atRiskCores,
@@ -835,6 +882,8 @@ class _MomentumHomeState extends State<MomentumHome> {
         content = WebCockpit(
           name: name,
           streak: streak,
+          streakState: p?.streakState ?? 'ok',
+          streakProtection: _buildStreakProtection(),
           planet: p?.planet ?? 'earth',
           activeCores: activeCores,
           atRiskCores: _atRiskCores,

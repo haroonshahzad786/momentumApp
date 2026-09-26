@@ -18,6 +18,12 @@ class UserProfile {
     this.missPenaltyApplied = 0,
     this.lastCompletedCheckinDate = '',
     this.formedHabitsCount = 0,
+    this.streakSavers = 0,
+    this.maxStreakSavers = 1,
+    this.streakSaverMilestone = 30,
+    this.vacationMaxDays = 7,
+    this.activeVacation,
+    this.upcomingVacation,
     required this.planet,
     required this.level,
     required this.balance,
@@ -42,7 +48,9 @@ class UserProfile {
   final int streak;
   final int longestStreak;
 
-  /// 'ok' · 'warning' (1 weekday missed — grace active) · 'broken' (2+ missed).
+  /// 'ok' · 'warning' (1 weekday missed — grace active) · 'protected' (a
+  /// Streak Saver covers the gap; spent on the next check-in) · 'vacation'
+  /// (Vacation Mode on) · 'broken' (gap too big).
   final String streakState;
   final String lastCheckinDate;
 
@@ -59,6 +67,20 @@ class UserProfile {
 
   /// Habits moved to the Trophy Room (mirrored server-side).
   final int formedHabitsCount;
+
+  /// #17 Streak Savers held (earned at the [streakSaverMilestone]-day
+  /// milestone, capped at [maxStreakSavers]) — spent automatically.
+  final int streakSavers;
+  final int maxStreakSavers;
+  final int streakSaverMilestone;
+
+  /// #17 Vacation Mode — at most [vacationMaxDays] days; the vacation covering
+  /// today and the next planned one (either may be null).
+  final int vacationMaxDays;
+  final VacationRange? activeVacation;
+  final VacationRange? upcomingVacation;
+
+  bool get onVacation => activeVacation != null || missState == 'vacation';
 
   bool get needsRelaunch =>
       missState == 'relaunch' || missState == 'long_absence';
@@ -99,6 +121,13 @@ class UserProfile {
         lastCompletedCheckinDate:
             (json['lastCompletedCheckinDate'] ?? '').toString(),
         formedHabitsCount: (json['formedHabitsCount'] as num? ?? 0).toInt(),
+        streakSavers: (json['streakSavers'] as num? ?? 0).toInt(),
+        maxStreakSavers: (json['maxStreakSavers'] as num? ?? 1).toInt(),
+        streakSaverMilestone:
+            (json['streakSaverMilestone'] as num? ?? 30).toInt(),
+        vacationMaxDays: (json['vacationMaxDays'] as num? ?? 7).toInt(),
+        activeVacation: VacationRange.tryParse(json['activeVacation']),
+        upcomingVacation: VacationRange.tryParse(json['upcomingVacation']),
         planet: (json['planet'] ?? 'earth').toString(),
         level: (json['level'] ?? 'cadet').toString(),
         balance: (json['balance'] as num? ?? 0).toInt(),
@@ -111,4 +140,26 @@ class UserProfile {
         stage2Completed: json['stage2Completed'] == true,
         phase: (json['phase'] ?? 'build').toString(),
       );
+}
+
+/// An inclusive yyyy-MM-dd date range of Vacation Mode (#17).
+class VacationRange {
+  const VacationRange(this.start, this.end);
+
+  final String start;
+  final String end;
+
+  static final _id = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+
+  static VacationRange? tryParse(Object? raw) {
+    if (raw is! Map) return null;
+    final s = (raw['start'] ?? '').toString();
+    final e = (raw['end'] ?? '').toString();
+    if (!_id.hasMatch(s) || !_id.hasMatch(e)) return null;
+    return VacationRange(s, e);
+  }
+
+  /// Calendar days in the range (inclusive).
+  int get days =>
+      DateTime.parse(end).difference(DateTime.parse(start)).inDays + 1;
 }

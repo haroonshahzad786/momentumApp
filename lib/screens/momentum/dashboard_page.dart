@@ -22,6 +22,8 @@ class DashboardPage extends StatefulWidget {
     super.key,
     this.streak = 47,
     this.streakState = 'ok',
+    this.streakSavers = 0,
+    this.onStreakTap,
     this.planet = 'mars',
     this.activeCores = const ['mindset', 'career', 'physical'],
     this.atRiskCores = const <String>{},
@@ -43,6 +45,10 @@ class DashboardPage extends StatefulWidget {
 
   /// Streak health (#10): 'ok' · 'warning' (1 weekday missed) · 'broken'.
   final String streakState;
+
+  /// #17 — Streak Savers held; tapping the streak opens streak protection.
+  final int streakSavers;
+  final VoidCallback? onStreakTap;
   final String planet;
   final List<String> activeCores;
 
@@ -155,7 +161,10 @@ class _DashboardPageState extends State<DashboardPage> {
                         onTap: () => onNav('trophy'),
                       ),
                       const Spacer(),
-                      Padding(
+                      GestureDetector(
+                        onTap: widget.onStreakTap,
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
                         padding: const EdgeInsets.only(top: 2),
                         child: Row(
                           children: [
@@ -168,14 +177,24 @@ class _DashboardPageState extends State<DashboardPage> {
                                   Text('STREAK',
                                       style: MM.displayX(
                                           size: 11,
-                                          color: streakState == 'ok'
-                                              ? MM.yellow
-                                              : MM.red)),
+                                          color: switch (streakState) {
+                                            'ok' => MM.yellow,
+                                            'vacation' || 'protected' => MM.teal,
+                                            _ => MM.red,
+                                          })),
                                   if (streakState == 'warning') ...[
                                     const SizedBox(width: 4),
                                     const Text('⚠',
                                         style: TextStyle(
                                             fontSize: 10, color: MM.red)),
+                                  ],
+                                  if (streakState == 'vacation') ...[
+                                    const SizedBox(width: 4),
+                                    const Text('🌴', style: TextStyle(fontSize: 10)),
+                                  ] else if (streakState == 'protected' ||
+                                      widget.streakSavers > 0) ...[
+                                    const SizedBox(width: 4),
+                                    const Text('🛡️', style: TextStyle(fontSize: 10)),
                                   ],
                                 ]),
                                 const SizedBox(height: 2),
@@ -186,6 +205,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             ),
                           ],
                         ),
+                      ),
                       ),
                       const Spacer(),
                       GlassPanel(

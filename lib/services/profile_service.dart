@@ -103,5 +103,52 @@ class ProfileService {
     }
   }
 
+  /// #17 Vacation Mode. `start` begins [days] days from [start] (default
+  /// today); `end` stops the active vacation (today counts again) or cancels
+  /// the planned one. Throws with the server's message on a rule violation
+  /// (too long, overlapping, yearly limit).
+  Future<void> setVacationMode(
+    String userId, {
+    required bool start,
+    String? startDate,
+    int days = 7,
+  }) async {
+    final response = await _client.post(
+      Uri.parse('$_baseUrl/flutterSetVacationMode'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'secret': _secret,
+        'userId': userId,
+        'today': localDateId(DateTime.now()),
+        'action': start ? 'start' : 'end',
+        if (start) 'start': startDate ?? localDateId(DateTime.now()),
+        if (start) 'days': days,
+      }),
+    );
+    Object? decoded;
+    try {
+      decoded = jsonDecode(response.body);
+    } catch (_) {}
+    if (response.statusCode != 200 ||
+        decoded is! Map ||
+        decoded['ok'] != true) {
+      final msg = decoded is Map ? decoded['error'] : null;
+      throw VacationModeException(
+          (msg ?? 'Vacation Mode failed (${response.statusCode})').toString());
+    }
+  }
+
+  static String localDateId(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
   void dispose() => _client.close();
+}
+
+class VacationModeException implements Exception {
+  VacationModeException(this.message);
+  final String message;
+  @override
+  String toString() => message;
 }

@@ -535,6 +535,34 @@ always writes `"New"` itself.)
 
 ---
 
+## M7 — Accountability loop (from the MASTER docs review, Sep 2026)
+
+These three come straight from the Gamification Mechanics Specs Reference (§6 Streaks & missed check‑ins,
+§7 Captain's Log), the document the app is tested against.
+
+### #15 Captain's Log — Wins / Lessons per Core ✅
+- **Spec:** after scoring each Core, optional "🏆 Wins" and "📚 Lessons" prompts; entries archived and reviewable.
+- **Built:** the check‑in's per‑Core log is now two prompts, saved as structured `captainsLog` on the check‑in (older free‑text entries still read). A **Captain's Log · last 30 days** archive sits on the Lists screen (web + mobile).
+- **Verified:** 3 unit tests; browser‑checked without submitting a check‑in on the real account.
+
+### #16 Missed check‑ins — Ship Warning + Relaunch ✅
+- **Spec:** 1 missed weekday → supportive warning (1‑hour snooze); 2 consecutive → relaunch, "relaunching, not failing"; everything that matters is preserved; weekends never count.
+- **Built:** server tracks the last *completed* check‑in (any score) separately from the streak and returns `missState` (`ok` / `warning` / `relaunch` / `long_absence` 5+). Cockpit shows the **Ship Warning** banner; 2+ misses open the **Relaunch** sheet once per gap (quick one‑Core check‑in, full check‑in, Captain's Log, Nova, Cantina when unlocked). Optional Momentum Points penalty is an admin setting, default 0.
+- **Verified:** 7 server + 3 widget tests (with goldens); deployed.
+
+### #17 Streak protection — Vacation Mode + Streak Savers ✅
+- **Spec:** Vacation Mode pauses tracking (PRD: up to 7 days); a Streak Saver is earned at the 30‑day milestone and applied automatically to a missed weekday; "Streak Saver Available" shown to the player.
+- **Built:**
+  - Server rules (`streakRules.js`): vacation weekdays are never "missed"; a saver covers a gap that would otherwise break the streak and is spent on the next check‑in; a saver is earned when the streak reaches the milestone (capped).
+  - New endpoint `flutterSetVacationMode` (start / end / cancel; max length, no overlaps, optional yearly limit).
+  - Profile reports `streakState` `protected` / `vacation`; during a vacation there is no warning, relaunch or penalty.
+  - **Streak Protection** card on the web Cockpit (saver count, plan/end/cancel dialog); on mobile the streak shows 🌴 / 🛡️ and opens the same card.
+  - Every number is admin‑editable on Economy → **Streak rules** (`config/streaks`).
+- **Verified:** 5 server + 4 widget tests; deployed; browser‑checked (dialog opened and dismissed — no vacation started on the real account).
+- **Open for Will:** saver cap and milestone schedule, vacations per year (defaults 1 held / 30 days / no limit).
+
+---
+
 ## 3. Engineering notes (for your technical reviewer)
 
 - **Backend isolation:** all new cloud functions live in the **Flutter‑only** functions codebase (`vf-bridge/functions-flutter`), never in the FlutterFlow `index.js`. Cloud endpoints added across the build: `flutterSavePhase1State`, `flutterSaveMomentumMethods`, `flutterFlagGoldenHabit` (client wiring), `flutterAwardCheckinPoints` (points **and** streak **and** Space Credits in one transaction), `flutterSetHabitFormed` (formation + 25💎), plus read endpoints `flutterGetUserProfile` / `flutterGetGoldenHabits` / `flutterSyncOnboarding`.

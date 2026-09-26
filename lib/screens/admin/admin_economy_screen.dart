@@ -1176,50 +1176,83 @@ class _RelaunchPenaltyCard extends StatefulWidget {
 }
 
 class _RelaunchPenaltyCardState extends State<_RelaunchPenaltyCard> {
-  late final TextEditingController _pts = TextEditingController(
-      text: '${widget.data['missPenaltyPoints'] is num ? (widget.data['missPenaltyPoints'] as num).toInt() : 0}');
+  // (key, label, default, min, help) — defaults mirror economyConfig.js so a
+  // not-yet-seeded key shows what the server actually uses.
+  static const _rows = <(String, String, int, int, String)>[
+    ('missPenaltyPoints', 'Relaunch penalty (Momentum Points)', 0, 0,
+        'Removed once per gap after 2+ missed weekdays, never below 0. 0 = off. Trophy Room, credits, lists and level are never touched.'),
+    ('streakSaverMilestone', 'Streak Saver earned at (days)', 30, 0,
+        'Streak length that awards a Streak Saver. 0 = Savers off.'),
+    ('maxStreakSavers', 'Max Streak Savers held', 1, 0,
+        'Savers are spent automatically to cover missed weekdays.'),
+    ('vacationMaxDays', 'Vacation Mode max length (days)', 7, 1,
+        'PRD: up to 7 days. Vacation weekdays never count as missed.'),
+    ('vacationsPerYear', 'Vacations per year', 0, 0,
+        '0 = no limit (the spec leaves this open).'),
+  ];
+
+  late final Map<String, TextEditingController> _ctrl = {
+    for (final r in _rows) r.$1: TextEditingController(text: '${_published(r)}'),
+  };
   bool _busy = false;
+
+  int _published((String, String, int, int, String) r) {
+    final v = widget.data[r.$1];
+    return v is num ? v.toInt() : r.$3;
+  }
 
   @override
   void initState() {
     super.initState();
-    _pts.addListener(() => setState(() {}));
+    for (final c in _ctrl.values) {
+      c.addListener(() => setState(() {}));
+    }
   }
 
   @override
   void dispose() {
-    _pts.dispose();
+    for (final c in _ctrl.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final n = int.tryParse(_pts.text.trim());
-    final valid = n != null && n >= 0;
-    final dirty = valid && _canon(n) != _canon(_sanitize(widget.data['missPenaltyPoints']));
+    final changes = <String, Object?>{};
+    var valid = true;
+    for (final r in _rows) {
+      final n = int.tryParse(_ctrl[r.$1]!.text.trim());
+      if (n == null || n < r.$4) {
+        valid = false;
+      } else if (n != _published(r)) {
+        changes[r.$1] = n;
+      }
+    }
+    final dirty = valid && changes.isNotEmpty;
     return AdminPanel(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _cardHeader('RELAUNCH PENALTY', 'After 2+ missed weekday check-ins'),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-          child: Row(children: [
-            Text('Momentum Points removed', style: MM.body(size: 12.5, color: MM.white)),
-            const SizedBox(width: 12),
-            SizedBox(width: 90, child: TextField(controller: _pts, style: MM.mono(size: 12.5), decoration: _numDec())),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                  'Once per gap, never below 0. 0 = off (the spec leaves the amount open). Trophy Room, '
-                  'credits, lists and level are never touched.',
-                  style: MM.body(size: 11.5, color: Colors.white.withOpacity(0.5))),
-            ),
-          ]),
-        ),
+        _cardHeader('STREAK RULES', 'Relaunch penalty · Streak Savers · Vacation Mode'),
+        for (final r in _rows)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+            child: Row(children: [
+              SizedBox(width: 230, child: Text(r.$2, style: MM.body(size: 12.5, color: MM.white))),
+              const SizedBox(width: 12),
+              SizedBox(
+                  width: 90,
+                  child: TextField(controller: _ctrl[r.$1], style: MM.mono(size: 12.5), decoration: _numDec())),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(r.$5, style: MM.body(size: 11.5, color: Colors.white.withOpacity(0.5))),
+              ),
+            ]),
+          ),
         Padding(
           padding: const EdgeInsets.all(14),
           child: Row(children: [
             Text(
-              !valid ? 'Enter a whole number ≥ 0' : (dirty ? 'Unpublished change' : 'Matches what is live'),
+              !valid ? 'Enter whole numbers (vacation length ≥ 1)' : (dirty ? 'Unpublished change' : 'Matches what is live'),
               style: MM.body(size: 12, color: !valid ? MM.red : (dirty ? MM.yellow : Colors.white38)),
             ),
             const Spacer(),
@@ -1233,7 +1266,7 @@ class _RelaunchPenaltyCardState extends State<_RelaunchPenaltyCard> {
                           currentVersion: widget.currentVersion,
                           api: widget.api,
                           published: widget.data,
-                          changes: {'missPenaltyPoints': n});
+                          changes: changes);
                       if (!mounted) return;
                       setState(() => _busy = false);
                       if (ok) widget.onPublished();
