@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Persists and reads the Daily Check-In's per-Core scores, written directly to
@@ -186,5 +187,105 @@ int coreLowStreak(List<int> scores) {
 }
 
 /// A Core is "out of balance" once it's scored below 3.0 for 5+ consecutive
-/// days — the trigger for the red ⚠️ badge + iCore Alert.
-bool isCoreOutOfBalance(List<int> scores) => coreLowStreak(scores) >= 5;
+/// days — the trigger for the red ⚠️ badge + iCore Alert — and stays so until
+/// it scores above 3.0 on 2 consecutive days (Gamification spec §10, #18).
+bool isCoreOutOfBalance(List<int> scores) => coreAlertInfo(scores).active;
+
+/// Core Balance alert state for one Core (#18, Gamification spec §10).
+class CoreAlertInfo {
+  const CoreAlertInfo({
+    required this.active,
+    this.lowRunScores = const [],
+    this.recoveryDays = 0,
+  });
+
+  final bool active;
+
+  /// Scores of the below-3.0 run that raised the alert, most-recent-first.
+  final List<int> lowRunScores;
+
+  /// Consecutive above-3.0 days since that run (the alert clears at 2).
+  final int recoveryDays;
+
+  int get lowRunDays => lowRunScores.length;
+}
+
+/// Replays a Core's daily scores (most-recent-first, as stored) oldest → newest:
+///  * 5+ consecutive days below 3.0 raises the alert;
+///  * it clears only after 2 consecutive days ABOVE 3.0 — a 3 is neither low
+///    nor recovering, so it resets both counts;
+///  * a new low day while the alert is up keeps it up.
+CoreAlertInfo coreAlertInfo(List<int> scoresRecentFirst) {
+  var active = false;
+  var run = <int>[]; // current low run, oldest-first
+  var alertRun = <int>[];
+  var high = 0;
+  for (final s in scoresRecentFirst.reversed) {
+    if (s < 3) {
+      run.add(s);
+      high = 0;
+      if (run.length >= 5) {
+        active = true;
+        alertRun = List.of(run);
+      } else if (active) {
+        // Still struggling inside an open alert: the newest low run is the
+        // context worth showing once it's the longer story.
+        if (run.length >= alertRun.length) alertRun = List.of(run);
+      }
+    } else {
+      run = <int>[];
+      if (s > 3) {
+        high++;
+        if (active && high >= 2) {
+          active = false;
+          alertRun = <int>[];
+        }
+      } else {
+        high = 0;
+      }
+    }
+  }
+  return CoreAlertInfo(
+    active: active,
+    lowRunScores: active ? alertRun.reversed.toList() : const [],
+    recoveryDays: active ? high : 0,
+  );
+}
+
+/// Rolling per-Core averages over the most recent [days] check-in days
+/// (Balance Meter: "last 7 weekday check-ins, weekends excluded unless the
+/// player checked in" — i.e. the last 7 days that have a check-in).
+/// [recent] may be in any order; Cores are averaged over the days they were
+/// scored.
+Map<String, double> rollingCoreAverages(List<DailyCheckin> recent,
+    {int days = 7}) {
+  final byDate = <String, Map<String, int>>{};
+  for (final d in recent) {
+    if (d.scores.isNotEmpty) byDate[d.date] = {...?byDate[d.date], ...d.scores};
+  }
+  final window = (byDate.keys.toList()..sort((a, b) => b.compareTo(a))).take(days);
+  final sums = <String, int>{};
+  final counts = <String, int>{};
+  for (final dt in window) {
+    byDate[dt]!.forEach((core, sc) {
+      sums[core] = (sums[core] ?? 0) + sc;
+      counts[core] = (counts[core] ?? 0) + 1;
+    });
+  }
+  return {for (final c in sums.keys) c: sums[c]! / counts[c]!};
+}
+
+/// Balance % (PRD §14 "Balance Percentage"; Build Tracker C.10 — simple
+/// variance-based for MVP): 100% when every scored Core has the same 7-day
+/// average, falling as they spread apart. On the 1–5 scale the widest possible
+/// spread is a standard deviation of 2, which maps to 0%.
+/// Null until at least one Core has data.
+int? balancePercent(Map<String, double> averages) {
+  final v = averages.values.toList();
+  if (v.isEmpty) return null;
+  final mean = v.reduce((a, b) => a + b) / v.length;
+  final variance =
+      v.map((x) => (x - mean) * (x - mean)).reduce((a, b) => a + b) / v.length;
+  final sd = math.sqrt(variance);
+  return (100 * (1 - sd / 2)).clamp(0, 100).round();
+}

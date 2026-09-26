@@ -42,7 +42,7 @@ class WebCockpit extends StatelessWidget {
   final String level;
   final int momentumScore;
   final int spaceCredits;
-  final int balance;
+  final int? balance;
   final void Function(String key) onNav;
   final VoidCallback onCheckIn;
   final void Function(String coreId) onCoreAlert;
@@ -424,7 +424,7 @@ class _FlightData extends StatelessWidget {
   final int streak;
   final String streakState;
   final Widget? streakProtection;
-  final int balance;
+  final int? balance;
   final int momentumScore;
   final int spaceCredits;
   final int nextPlanetPts;
@@ -457,7 +457,7 @@ class _FlightData extends StatelessWidget {
             Expanded(
                 child: _Stat(
                     label: 'Balance',
-                    value: '$balance%',
+                    value: balance == null ? '—' : '$balance%',
                     accent: MM.teal)),
           ],
         ),

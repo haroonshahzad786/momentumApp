@@ -1082,6 +1082,7 @@ class _WebProfileState extends State<WebProfile> {
   final _checkin = CheckinService();
   UserProfile? _profile;
   List<int> _radar = const [0, 0, 0, 0, 0];
+  int? _balancePct; // #18
   bool _loading = true;
   String? _error;
 
@@ -1128,6 +1129,7 @@ class _WebProfileState extends State<WebProfile> {
       setState(() {
         _profile = res.data;
         _radar = _computeRadar(checkins);
+        _balancePct = balancePercent(rollingCoreAverages(checkins));
         _loading = false;
       });
     } catch (e) {
@@ -1270,7 +1272,9 @@ class _WebProfileState extends State<WebProfile> {
                   letterSpacing: 1.6,
                   color: Colors.white)),
           const SizedBox(height: 6),
-          Text('Your momentum across the 5 Cores (last 7 check-ins)',
+          Text(
+              'Your momentum across the 5 Cores (last 7 check-ins)'
+              '${_balancePct == null ? '' : ' · Balance $_balancePct%'}',
               style: MM.body(size: 12, color: Colors.white.withOpacity(0.55))),
           const SizedBox(height: 16),
           LayoutBuilder(builder: (context, c) {

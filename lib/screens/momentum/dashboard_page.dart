@@ -30,7 +30,7 @@ class DashboardPage extends StatefulWidget {
     this.level = 'navigator',
     this.momentumScore = 8420,
     this.spaceCredits = 0,
-    this.balance = 78,
+    this.balance,
     this.phase1State,
     required this.onCheckIn,
     required this.onMenu,
@@ -59,7 +59,8 @@ class DashboardPage extends StatefulWidget {
 
   /// Space Credits balance (#13g — reward currency, shown in the top status bar).
   final int spaceCredits;
-  final int balance;
+  /// #18 Balance % (7-day, variance-based); null until there are check-ins.
+  final int? balance;
   final Phase1State? phase1State;
   final VoidCallback onCheckIn;
   final VoidCallback onMenu;
@@ -228,7 +229,7 @@ class _DashboardPageState extends State<DashboardPage> {
                               _Stat('CREDITS', '${_fmt(spaceCredits)} 💎',
                                   MM.yellow),
                               const SizedBox(height: 3),
-                              _Stat('BALANCE', '$balance%', MM.teal),
+                              _Stat('BALANCE', balance == null ? '—' : '$balance%', MM.teal),
                             ],
                           ),
                         ),

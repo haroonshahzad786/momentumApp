@@ -68,6 +68,8 @@ class _SummaryPageState extends State<SummaryPage> {
   /// shortCoreId → rolling 7-day average score (1–5).
   Map<String, double> _balance = const {};
   int _balanceDays = 0;
+  int? _balancePct;
+  Set<String> _alertCores = const {};
   bool _balanceLoading = true;
 
   /// Celebrate the day's award — confetti + a "+N MP" pop. Decided once on
@@ -92,7 +94,9 @@ class _SummaryPageState extends State<SummaryPage> {
     final byDate = <String, Map<String, int>>{};
     if (widget.userId.isNotEmpty) {
       try {
-        final recent = await _checkin.getRecent(widget.userId, limit: 7);
+        // 30 days: the meter uses the latest 7, the #18 alert rule needs the
+        // longer history (5-day low runs + 2-day recovery).
+        final recent = await _checkin.getRecent(widget.userId, limit: 30);
         for (final d in recent) {
           byDate[d.date] = d.scores;
         }
@@ -106,32 +110,28 @@ class _SummaryPageState extends State<SummaryPage> {
       final todayId = CheckinService.dayId(DateTime.now());
       byDate[todayId] = {...?byDate[todayId], ...widget.todayScores};
     }
-
-    // Most-recent 7 distinct days = the rolling window.
-    final window = (byDate.keys.toList()..sort((a, b) => b.compareTo(a)))
-        .take(7)
-        .toList();
-    final sums = <String, int>{};
-    final counts = <String, int>{};
-    for (final dt in window) {
-      byDate[dt]!.forEach((core, sc) {
-        sums[core] = (sums[core] ?? 0) + sc;
-        counts[core] = (counts[core] ?? 0) + 1;
-      });
+    final days = [
+      for (final e in byDate.entries) DailyCheckin(date: e.key, scores: e.value)
+    ]..sort((a, b) => b.date.compareTo(a.date));
+    final avg = rollingCoreAverages(days);
+    final perCore = <String, List<int>>{};
+    for (final d in days) {
+      d.scores.forEach((core, sc) => (perCore[core] ??= <int>[]).add(sc));
     }
-    final avg = <String, double>{};
-    sums.forEach((core, s) {
-      final c = counts[core] ?? 0;
-      if (c > 0) avg[core] = s / c;
-    });
 
     if (!mounted) return;
     setState(() {
       _balance = avg;
-      _balanceDays = window.length;
+      _balanceDays = days.take(7).length;
+      _balancePct = balancePercent(avg);
+      _alertCores = {
+        for (final e in perCore.entries)
+          if (isCoreOutOfBalance(e.value)) e.key
+      };
       _balanceLoading = false;
     });
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -243,6 +243,8 @@ class _SummaryPageState extends State<SummaryPage> {
                         ),
                         _BalanceMeter(
                           balance: _balance,
+                          balancePct: _balancePct,
+                          alertCores: _alertCores,
                           activeCores: widget.activeCores,
                           loading: _balanceLoading,
                           days: _balanceDays,
@@ -578,16 +580,29 @@ class _StreakCallout extends StatelessWidget {
 class _BalanceMeter extends StatelessWidget {
   const _BalanceMeter({
     required this.balance,
+    required this.balancePct,
+    required this.alertCores,
     required this.activeCores,
     required this.loading,
     required this.days,
     required this.delay,
   });
   final Map<String, double> balance;
+
+  /// #18 — variance-based Balance % (null = no data).
+  final int? balancePct;
+
+  /// Cores with an open Core Balance alert (5+ days < 3.0, not yet recovered).
+  final Set<String> alertCores;
   final List<String> activeCores;
   final bool loading;
   final int days;
   final int delay;
+
+  /// Gauge colour by 7-day average (PRD §14): green 4.0+, yellow 3.0–3.9,
+  /// red below 3.0.
+  static Color gaugeColor(double avg) =>
+      avg >= 4 ? MM.teal : (avg >= 3 ? MM.yellow : MM.red);
 
   static const _cores = [
     {'id': 'mindset', 'name': 'Mind', 'color': MM.blue},
@@ -615,7 +630,9 @@ class _BalanceMeter extends StatelessWidget {
                         size: 10, color: Colors.white.withOpacity(0.55))),
                 if (!loading)
                   Text(
-                    days == 0 ? 'NO DATA YET' : '$days DAY${days == 1 ? '' : 'S'}',
+                    days == 0
+                        ? 'NO DATA YET'
+                        : '${balancePct == null ? '' : 'BALANCE $balancePct% · '}$days DAY${days == 1 ? '' : 'S'}',
                     style: MM.display(
                         size: 9, color: Colors.white.withOpacity(0.4)),
                   ),
@@ -641,7 +658,8 @@ class _BalanceMeter extends StatelessWidget {
                 final avg = balance[id];
                 final hasData = avg != null;
                 final pct = (active && hasData) ? (avg / 5).clamp(0.0, 1.0) : 0.0;
-                final color = c['color'] as Color;
+                final color = hasData ? gaugeColor(avg) : c['color'] as Color;
+                final alert = active && (alertCores.contains(id) || (hasData && avg < 3));
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(children: [
@@ -695,10 +713,12 @@ class _BalanceMeter extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     SizedBox(
-                      width: 30,
+                      width: 62,
                       child: Text(
                         active
-                            ? (hasData ? avg.toStringAsFixed(1) : '–')
+                            ? (hasData
+                                ? '${avg.toStringAsFixed(1)} / 5${alert ? ' ⚠️' : ''}'
+                                : '–')
                             : '—',
                         textAlign: TextAlign.right,
                         maxLines: 1,
@@ -713,6 +733,14 @@ class _BalanceMeter extends StatelessWidget {
                   ]),
                 );
               }),
+            if (!loading && alertCores.intersection(activeCores.toSet()).isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                '⚠️ ${[for (final c in _cores) if (alertCores.contains(c['id']) && activeCores.contains(c['id'])) c['name']].join(', ')} '
+                '${alertCores.intersection(activeCores.toSet()).length == 1 ? 'needs' : 'need'} attention — tap the ⚠️ on your rocket for help.',
+                style: MM.body(size: 11.5, color: MM.red, height: 1.4),
+              ),
+            ],
           ],
         ),
       ),

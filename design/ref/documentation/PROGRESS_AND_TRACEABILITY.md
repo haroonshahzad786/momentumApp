@@ -561,6 +561,16 @@ These three come straight from the Gamification Mechanics Specs Reference (§6 S
 - **Verified:** 5 server + 4 widget tests; deployed; browser‑checked (dialog opened and dismissed — no vacation started on the real account).
 - **Open for Will:** saver cap and milestone schedule, vacations per year (defaults 1 held / 30 days / no limit).
 
+### #18 Core Balance completion ✅
+- **Spec (§10):** the ⚠️ stays until the Core scores above 3.0 for 2 consecutive days; multi-Core alert copy + [Emergency Simplification Mode]; [Get AI Help]; Balance Meter gauges green 4.0+ / yellow 3.0–3.9 / red below 3.0; Balance % in the stats box.
+- **Built:**
+  - Alert rule replayed from each Core's scores (a score of exactly 3 neither counts as low nor as recovering).
+  - iCore Alert shows the low run, recovery progress, **Get AI Help** (Nova with a pre-filled, editable message) and, for 2+ struggling Cores, the combined message with **Emergency Simplification Mode** (opens Nova to choose what to keep).
+  - **Balance %** — variance-based (PRD §14, Build Tracker C.10): 100% when all Cores' 7-day averages are equal, 0% at the widest possible spread. Shown on the Cockpit, mobile dashboard and web Profile; "—" before the first check-in.
+  - Progress Summary meter: coloured gauges, "x.x / 5" with ⚠️, Balance %, and a line naming Cores that need attention.
+- **Verified:** 7 tests (incl. golden of the multi-Core alert); browser-checked the Cockpit stat.
+- **Open for Will:** Balance Bonus (days + credits), Emergency Simplification pause/exit rules.
+
 ---
 
 ## 3. Engineering notes (for your technical reviewer)

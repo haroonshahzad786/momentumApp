@@ -29,7 +29,11 @@ class CopilotConsolePage extends StatefulWidget {
     super.key,
     this.previewMessages,
     this.previewAnimation,
+    this.draft,
   });
+
+  /// Pre-filled (unsent) message, e.g. "Get AI Help" from the iCore Alert.
+  final String? draft;
 
   /// TEMP preview seed — remove.
   final List<ChatMessage>? previewMessages;
@@ -259,6 +263,7 @@ class _CopilotConsolePageState extends State<CopilotConsolePage> {
               _ConsoleInputBar(
                 enabled: !_waitingForReply && !_loadingInitial,
                 onSend: _onSend,
+                initialText: widget.draft,
               ),
             ],
           ),
@@ -610,17 +615,19 @@ class _ThinkingLine extends StatelessWidget {
 /// Dark console pill under the monitor. Deliberately local to this page so the
 /// original Co-Pilot keeps its own (light) `ChatInputBar` untouched.
 class _ConsoleInputBar extends StatefulWidget {
-  const _ConsoleInputBar({required this.onSend, this.enabled = true});
+  const _ConsoleInputBar(
+      {required this.onSend, this.enabled = true, this.initialText});
 
   final ValueChanged<String> onSend;
   final bool enabled;
+  final String? initialText;
 
   @override
   State<_ConsoleInputBar> createState() => _ConsoleInputBarState();
 }
 
 class _ConsoleInputBarState extends State<_ConsoleInputBar> {
-  final _ctrl = TextEditingController();
+  late final _ctrl = TextEditingController(text: widget.initialText ?? '');
 
   void _submit() {
     final text = _ctrl.text.trim();

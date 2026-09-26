@@ -779,9 +779,20 @@ distances/momentum values (see #40).
   shows "Paused"/"Saver covers gap"; mobile streak shows 🌴/🛡️ and opens the card in a sheet. 4 widget
   tests; deployed; browser-checked (dialog opened and dismissed — no vacation started on the real
   account). Open 🔒: saver cap / milestone schedule, vacations-per-year (defaults 1 / 30 / no limit).
-- [ ] **#18 Core Balance completion** (spec §10) — alert stays until the Core is >3.0 for **2 consecutive
+- [x] **#18 Core Balance completion** (spec §10) — alert stays until the Core is >3.0 for **2 consecutive
   days** (today it clears after 1); multi-Core alert copy + [Emergency Simplification Mode] 🔒(rules);
   gauge colors green ≥4 / yellow 3–3.9 / red <3; Balance % in the stats box; Balance Bonus 🔒(days/amount).
+  **Built 26 Sep (client only, no deploy needed).** `coreAlertInfo` replays each Core's scores: 5+ days
+  below 3.0 raises the ⚠️, it clears only after 2 consecutive days above 3.0 (a 3 resets the count).
+  iCore Alert shows the low run, "1 day above 3.0 — one more clears this alert", **[Get AI Help]** (opens
+  Nova with an editable pre-filled message), and — when 2+ Cores are flagged — the spec's multi-Core copy
+  plus **[Emergency Simplification Mode]**, which for now opens Nova with "Let's simplify to keep my
+  momentum alive…" (pause rules are still 🔒). **Balance %** = variance-based per PRD §14 / Build Tracker
+  C.10: `100 × (1 − SD/2)` of the 7-day Core averages (100% = all equal); shown in the web + mobile stats
+  box ("—" until the first check-in; was a hard-coded 0/78 before) and on the web Profile balance card.
+  Progress Summary meter: green/yellow/red gauges, "x.x / 5" with ⚠️, "Balance n%", and an alert line.
+  7 tests (1 golden). **Not built (🔒):** Balance Bonus (days/amount; PRD tiers conflict with spec
+  placeholder) and the pause/exit rules of Emergency Simplification Mode.
 - [ ] **#19 Trophy Room completion** (spec §8) — AI validation before "formed"; 30/60/90-day review
   prompts; un-form path ("adaptation, not failure"); formation celebration + identity copy; **Habit
   Formation Goals** (default 1 habit/14 days, adjustable 7–21, progress bar, "closest habit to forming",

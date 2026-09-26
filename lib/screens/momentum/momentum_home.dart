@@ -113,6 +113,9 @@ class _MomentumHomeState extends State<MomentumHome> {
   // consecutive days). Feeds the red ⚠️ badge + iCore Alert on dashboard +
   // check-in. `_coreAlertCore` is the Core whose iCore Alert overlay is open.
   Map<String, List<int>> _coreScores = const {};
+
+  /// #18 Balance % — variance of the 7-day Core averages; null = no data yet.
+  int? _balancePct;
   Set<String> _atRiskCores = const {};
   String? _coreAlertCore;
 
@@ -382,10 +385,12 @@ class _MomentumHomeState extends State<MomentumHome> {
       scores.forEach((core, list) {
         if (isCoreOutOfBalance(list)) atRisk.add(core);
       });
+      final pct = balancePercent(rollingCoreAverages(recent));
       if (mounted) {
         setState(() {
           _coreScores = scores;
           _atRiskCores = atRisk;
+          _balancePct = pct;
         });
       }
     }).catchError((_) {});
@@ -440,9 +445,11 @@ class _MomentumHomeState extends State<MomentumHome> {
     }
   }
 
-  void _openChat() {
+  /// [draft] pre-fills Nova's input (e.g. from the iCore Alert) — the player
+  /// still chooses to send it.
+  void _openChat({String? draft}) {
     Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => const CopilotConsolePage(),
+      builder: (_) => CopilotConsolePage(draft: draft),
     ));
   }
 
@@ -581,7 +588,7 @@ class _MomentumHomeState extends State<MomentumHome> {
         level: p?.level ?? 'cadet',
         momentumScore: _momentumOverride ?? (p?.momentumScore ?? 0),
         spaceCredits: _creditsOverride ?? (p?.spaceCredits ?? 0),
-        balance: p?.balance ?? 0,
+        balance: _balancePct,
         phase1State: _phase1,
         onCheckIn: _startCheckin,
         onMenu: () => setState(() => _menuOpen = true),
@@ -890,7 +897,7 @@ class _MomentumHomeState extends State<MomentumHome> {
           level: level,
           momentumScore: _momentumOverride ?? (p?.momentumScore ?? 0),
           spaceCredits: _creditsOverride ?? (p?.spaceCredits ?? 0),
-          balance: p?.balance ?? 0,
+          balance: _balancePct,
           onNav: _go,
           onCheckIn: _startCheckin,
           onCoreAlert: _showCoreAlert,
@@ -1006,20 +1013,20 @@ class _MomentumHomeState extends State<MomentumHome> {
   Widget _buildCoreAlert() {
     final coreId = _coreAlertCore!;
     final meta = _coreMeta[coreId] ?? ('This Core', MM.red);
-    final scores = _coreScores[coreId] ?? const <int>[];
-    final lows = <int>[];
-    for (final s in scores) {
-      if (s < 3) {
-        lows.add(s);
-      } else {
-        break;
-      }
+    final info = coreAlertInfo(_coreScores[coreId] ?? const <int>[]);
+    final others = _atRiskCores.where((c) => c != coreId).toList();
+    void chat(String draft) {
+      _dismissCoreAlert();
+      _openChat(draft: draft);
     }
+
     return CoreAlertSheet(
       coreName: meta.$1,
       coreColor: meta.$2,
-      lowScores: lows,
-      streakDays: lows.length,
+      lowScores: info.lowRunScores,
+      streakDays: info.lowRunDays,
+      recoveryDays: info.recoveryDays,
+      otherStrugglingCores: [for (final c in others) (_coreMeta[c] ?? (c, MM.red)).$1],
       onReviewHabits: () {
         _dismissCoreAlert();
         _go('habits');
@@ -1028,9 +1035,18 @@ class _MomentumHomeState extends State<MomentumHome> {
         _dismissCoreAlert();
         _returnToPhase1(null);
       },
+      onGetAiHelp: () => chat(
+          'My ${meta.$1} Core has been below 3.0 for ${info.lowRunDays} days in a row. '
+          "Can you help me figure out which habits aren't landing and what to change?"),
+      onSimplify: others.isEmpty
+          ? null
+          : () => chat(
+              "Multiple Cores are struggling (${[meta.$1, ...[for (final c in others) (_coreMeta[c] ?? (c, MM.red)).$1]].join(', ')}). "
+              "Let's simplify to keep my momentum alive — which habits should I keep active and which can I pause for now?"),
       onDone: _dismissCoreAlert,
     );
   }
+
 }
 
 /// Shown when the player taps the Cantina tab before completing Phase 1

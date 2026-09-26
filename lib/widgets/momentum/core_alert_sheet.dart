@@ -15,8 +15,12 @@ class CoreAlertSheet extends StatelessWidget {
     required this.coreColor,
     required this.lowScores,
     required this.streakDays,
+    this.recoveryDays = 0,
+    this.otherStrugglingCores = const [],
     required this.onReviewHabits,
     required this.onReturnToPhase1,
+    this.onGetAiHelp,
+    this.onSimplify,
     required this.onDone,
   });
 
@@ -29,8 +33,20 @@ class CoreAlertSheet extends StatelessWidget {
   /// Consecutive days below 3.0.
   final int streakDays;
 
+  /// Consecutive days above 3.0 since the low run (#18 — the alert clears at 2).
+  final int recoveryDays;
+
+  /// Names of the other Cores with an open alert (#18 multi-Core alert).
+  final List<String> otherStrugglingCores;
+
   final VoidCallback onReviewHabits;
   final VoidCallback onReturnToPhase1;
+
+  /// [Get AI Help] — targeted Nova session (spec §10 AI Dependency).
+  final VoidCallback? onGetAiHelp;
+
+  /// [Emergency Simplification Mode] — offered only in the multi-Core alert.
+  final VoidCallback? onSimplify;
   final VoidCallback onDone;
 
   static const _red = MM.red;
@@ -53,8 +69,10 @@ class CoreAlertSheet extends StatelessWidget {
           ),
         ),
         Center(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(22),
+            child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
             child: Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
@@ -134,6 +152,55 @@ class CoreAlertSheet extends StatelessWidget {
                         size: 12.5,
                         height: 1.5),
                   ),
+                  if (recoveryDays > 0) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      '$recoveryDays day${recoveryDays == 1 ? '' : 's'} above 3.0 — '
+                      '${recoveryDays >= 2 ? 'alert clears' : 'one more clears this alert'}.',
+                      style: MM.body(color: MM.teal, size: 12.5, height: 1.4),
+                    ),
+                  ],
+                  if (otherStrugglingCores.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _red.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: _red.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'ALSO STRUGGLING · ${otherStrugglingCores.join(' · ').toUpperCase()}',
+                            style: MM.displayX(size: 9, color: _red),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Multiple Cores are struggling. This might indicate broader '
+                            'life stress. Consider simplifying or getting support.',
+                            style: MM.body(color: Colors.white, size: 13, height: 1.45),
+                          ),
+                          if (onSimplify != null) ...[
+                            const SizedBox(height: 10),
+                            MMGhostButton(
+                              label: 'Emergency Simplification Mode',
+                              expand: true,
+                              borderColor: MM.teal.withOpacity(0.6),
+                              padding: const EdgeInsets.symmetric(vertical: 11),
+                              onPressed: onSimplify,
+                            ),
+                            const SizedBox(height: 6),
+                            Text("Let's simplify to keep your momentum alive.",
+                                textAlign: TextAlign.center,
+                                style: MM.body(
+                                    color: Colors.white.withOpacity(0.6), size: 11.5)),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   // Links to detailed habit views / refinement.
                   Row(children: [
@@ -158,10 +225,21 @@ class CoreAlertSheet extends StatelessWidget {
                     ),
                   ]),
                   const SizedBox(height: 10),
+                  if (onGetAiHelp != null) ...[
+                    MMGhostButton(
+                      label: '🤖 Get AI Help',
+                      expand: true,
+                      borderColor: MM.blue.withOpacity(0.6),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      onPressed: onGetAiHelp,
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   MMPrimaryButton(label: 'Done', onPressed: onDone),
                 ],
               ),
             ),
+          ),
           ),
         ),
         ],
