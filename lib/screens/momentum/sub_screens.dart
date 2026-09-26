@@ -25,6 +25,7 @@ import '../../models/cantina_message.dart';
 import '../../services/cantina_service.dart';
 import 'add_habit_page.dart';
 import '../../services/leaderboard_score.dart';
+import '../../widgets/momentum/captains_log_archive.dart';
 
 // ─── LISTS ─────────────────────────────────────────────────
 class ListsScreen extends StatefulWidget {
@@ -423,6 +424,14 @@ class _ListsScreenState extends State<ListsScreen> {
             child: MMGhostButton(label: '+ New List', onPressed: _createList),
           ),
         ],
+        const SizedBox(height: 24),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text("CAPTAIN'S LOG",
+              style: MM.displayX(size: 11, color: Colors.white.withOpacity(0.7))),
+        ),
+        const SizedBox(height: 10),
+        const CaptainsLogArchive(),
         if (_saving)
           const Padding(
             padding: EdgeInsets.only(top: 12),

@@ -28,6 +28,7 @@ import '../../services/tribes_service.dart';
 import '../../services/accountability_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../services/leaderboard_score.dart';
+import '../../widgets/momentum/captains_log_archive.dart';
 
 const Map<String, String> kCoreIcon = {
   'mindset': '🧠',
@@ -310,7 +311,8 @@ class _WebListsState extends State<WebLists> {
       loading: _loading,
       error: _error,
       onRetry: _load,
-      child: WebSection(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+       WebSection(
         title: 'MANIFEST',
         meta: '${_lists.length} LISTS',
         accent: MM.blue,
@@ -387,7 +389,15 @@ class _WebListsState extends State<WebLists> {
                   );
                 }).toList(),
               ),
-      ),
+       ),
+       const SizedBox(height: 28),
+       const WebSection(
+         title: "CAPTAIN'S LOG",
+         meta: 'LAST 30 DAYS',
+         accent: MM.teal,
+         child: CaptainsLogArchive(),
+       ),
+      ]),
     );
   }
 }

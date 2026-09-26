@@ -368,11 +368,12 @@ class _MomentumHomeState extends State<MomentumHome> {
   /// is derived from), then advances to the summary. Save failures don't block
   /// the player from finishing their check-in.
   Future<void> _saveCheckin(
-      Map<String, int> scores, Map<String, String> logs) async {
+      Map<String, int> scores, Map<String, CaptainsLogEntry> captainsLog) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null && uid.isNotEmpty) {
       try {
-        await _checkin.saveCheckin(uid: uid, scores: scores, logs: logs);
+        await _checkin.saveCheckin(
+            uid: uid, scores: scores, captainsLog: captainsLog);
       } catch (_) {
         // Non-fatal: the check-in still completes locally.
       }

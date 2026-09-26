@@ -25,17 +25,26 @@ class CheckinService {
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
 
+  /// [captainsLog] is the per-Core Captain's Log (🏆 wins / 📚 lessons,
+  /// PRD 12.C). Empty entries aren't stored. `logs` keeps the older one-string
+  /// shape (wins + lessons joined) for readers that predate the split — the
+  /// admin Client Detail endpoint returns it.
   Future<void> saveCheckin({
     required String uid,
     required Map<String, int> scores,
-    Map<String, String> logs = const {},
+    Map<String, CaptainsLogEntry> captainsLog = const {},
     DateTime? date,
   }) async {
     final d = date ?? DateTime.now();
+    final entries = {
+      for (final e in captainsLog.entries)
+        if (!e.value.isEmpty) e.key: e.value,
+    };
     await _col(uid).doc(dayId(d)).set({
       'date': dayId(d),
       'scores': scores,
-      'logs': logs,
+      'captainsLog': {for (final e in entries.entries) e.key: e.value.toMap()},
+      'logs': {for (final e in entries.entries) e.key: e.value.asText},
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
@@ -52,11 +61,47 @@ class CheckinService {
   }
 }
 
+/// One Core's Captain's Log entry for a day: what went well, what didn't.
+class CaptainsLogEntry {
+  const CaptainsLogEntry({this.wins = '', this.lessons = ''});
+
+  final String wins;
+  final String lessons;
+
+  bool get isEmpty => wins.trim().isEmpty && lessons.trim().isEmpty;
+
+  Map<String, String> toMap() => {
+        if (wins.trim().isNotEmpty) 'wins': wins.trim(),
+        if (lessons.trim().isNotEmpty) 'lessons': lessons.trim(),
+      };
+
+  /// One-string form for older readers.
+  String get asText => [
+        if (wins.trim().isNotEmpty) 'Wins: ${wins.trim()}',
+        if (lessons.trim().isNotEmpty) 'Lessons: ${lessons.trim()}',
+      ].join(' · ');
+
+  /// From a stored `captainsLog.{core}` map, or an older single-box `logs`
+  /// string (kept as a win — it was an open "what's the data?" note).
+  static CaptainsLogEntry from(Object? v) {
+    if (v is Map) {
+      return CaptainsLogEntry(
+          wins: '${v['wins'] ?? ''}', lessons: '${v['lessons'] ?? ''}');
+    }
+    if (v is String) return CaptainsLogEntry(wins: v);
+    return const CaptainsLogEntry();
+  }
+}
+
 /// One day's check-in: per-Core 1–5 scores keyed by SHORT core id.
 class DailyCheckin {
-  const DailyCheckin({required this.date, required this.scores});
+  const DailyCheckin(
+      {required this.date, required this.scores, this.captainsLog = const {}});
   final String date; // yyyy-MM-dd
   final Map<String, int> scores; // shortCoreId → 1..5
+
+  /// shortCoreId → that day's Captain's Log (non-empty entries only).
+  final Map<String, CaptainsLogEntry> captainsLog;
 
   factory DailyCheckin.fromDoc(String id, Map<String, dynamic> data) {
     final raw = data['scores'];
@@ -67,9 +112,25 @@ class DailyCheckin {
         if (n != null) scores['$k'] = n;
       });
     }
+    final log = <String, CaptainsLogEntry>{};
+    final legacy = data['logs'];
+    if (legacy is Map) {
+      legacy.forEach((k, v) {
+        final e = CaptainsLogEntry.from(v);
+        if (!e.isEmpty) log['$k'] = e;
+      });
+    }
+    final structured = data['captainsLog'];
+    if (structured is Map) {
+      structured.forEach((k, v) {
+        final e = CaptainsLogEntry.from(v);
+        if (!e.isEmpty) log['$k'] = e;
+      });
+    }
     return DailyCheckin(
       date: (data['date'] ?? id).toString(),
       scores: scores,
+      captainsLog: log,
     );
   }
 }

@@ -4,6 +4,7 @@ import '../../services/onboarding_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 import '../../widgets/momentum/starfield.dart';
+import '../../services/checkin_service.dart';
 
 /// Daily Check-In: Score Your 5 Cores (Screen 3.3)
 /// One core at a time, slider 1-5 with labels, captain's log textarea,
@@ -38,7 +39,8 @@ class CheckInPage extends StatefulWidget {
   final Map<String, GoldenHabitRef> habitByCore;
 
   final VoidCallback onClose;
-  final void Function(Map<String, int> scores, Map<String, String> logs)
+  final void Function(
+          Map<String, int> scores, Map<String, CaptainsLogEntry> captainsLog)
       onComplete;
 
   /// Persists a manual flag / experiment onto a Core's Golden Habit.
@@ -106,7 +108,7 @@ class _CheckInPageState extends State<CheckInPage> {
 
   int _idx = 0;
   final Map<String, int> _scores = {};
-  final Map<String, String> _logs = {};
+  final Map<String, CaptainsLogEntry> _logs = {};
 
   // Mission Control intervention: the Core whose intervention is open, plus a
   // transient experiment toast after a path is picked.
@@ -231,7 +233,7 @@ class _CheckInPageState extends State<CheckInPage> {
                           score: score,
                           onScore: (v) =>
                               setState(() => _scores[core.id] = v),
-                          log: _logs[core.id] ?? '',
+                          log: _logs[core.id] ?? const CaptainsLogEntry(),
                           onLog: (v) =>
                               setState(() => _logs[core.id] = v),
                           stageDefs: _stageDefs,
@@ -465,8 +467,8 @@ class _ActiveView extends StatelessWidget {
   final _Core core;
   final int score;
   final ValueChanged<int> onScore;
-  final String log;
-  final ValueChanged<String> onLog;
+  final CaptainsLogEntry log;
+  final ValueChanged<CaptainsLogEntry> onLog;
   final Map<String, _StageDef> stageDefs;
   final List<String> scoreLabels;
 
@@ -776,53 +778,11 @@ class _ActiveView extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("CAPTAIN'S LOG",
-                  style: MM.displayX(
-                      size: 10, color: Colors.white.withOpacity(0.55))),
-              if (log.isNotEmpty)
-                Text('✓ Logged',
-                    style: MM.display(
-                        size: 10, color: MM.teal, weight: FontWeight.w600)),
-            ],
-          ),
-          const SizedBox(height: 6),
-          TextField(
-            controller: TextEditingController(text: log)
-              ..selection =
-                  TextSelection.collapsed(offset: log.length),
+          _CaptainsLogFields(
+            key: ValueKey('log-${core.id}'),
+            color: core.color,
+            initial: log,
             onChanged: onLog,
-            maxLines: 3,
-            style: MM.body(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: "What's the data? (optional)",
-              hintStyle: MM.body(color: Colors.white.withOpacity(0.4)),
-              filled: true,
-              fillColor: Colors.white.withOpacity(0.04),
-              contentPadding: const EdgeInsets.all(12),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(
-                  color: log.isNotEmpty
-                      ? core.color.withOpacity(0.33)
-                      : Colors.white.withOpacity(0.1),
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(
-                  color: log.isNotEmpty
-                      ? core.color.withOpacity(0.33)
-                      : Colors.white.withOpacity(0.1),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(6),
-                borderSide: BorderSide(color: core.color),
-              ),
-            ),
           ),
         ],
       ),
@@ -1201,5 +1161,93 @@ class _MissionControlInterventionState
         );
       }),
     ];
+  }
+}
+
+/// Captain's Log for one Core (PRD 12.C / Gamification spec §7): two short,
+/// optional prompts — what went well, what didn't. Owns its controllers so the
+/// cursor never jumps while typing; keyed per Core so switching Cores reloads.
+class _CaptainsLogFields extends StatefulWidget {
+  const _CaptainsLogFields({
+    super.key,
+    required this.color,
+    required this.initial,
+    required this.onChanged,
+  });
+  final Color color;
+  final CaptainsLogEntry initial;
+  final ValueChanged<CaptainsLogEntry> onChanged;
+
+  @override
+  State<_CaptainsLogFields> createState() => _CaptainsLogFieldsState();
+}
+
+class _CaptainsLogFieldsState extends State<_CaptainsLogFields> {
+  late final TextEditingController _wins =
+      TextEditingController(text: widget.initial.wins);
+  late final TextEditingController _lessons =
+      TextEditingController(text: widget.initial.lessons);
+
+  @override
+  void dispose() {
+    _wins.dispose();
+    _lessons.dispose();
+    super.dispose();
+  }
+
+  void _emit() => widget.onChanged(
+      CaptainsLogEntry(wins: _wins.text, lessons: _lessons.text));
+
+  Widget _field(TextEditingController c, String label, String hint) {
+    final filled = c.text.trim().isNotEmpty;
+    OutlineInputBorder b(Color col) => OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6),
+          borderSide: BorderSide(color: col),
+        );
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label,
+          style: MM.body(size: 12, color: Colors.white.withOpacity(0.75))),
+      const SizedBox(height: 4),
+      TextField(
+        controller: c,
+        onChanged: (_) => _emit(),
+        minLines: 1,
+        maxLines: 3,
+        style: MM.body(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: MM.body(color: Colors.white.withOpacity(0.4)),
+          filled: true,
+          fillColor: Colors.white.withOpacity(0.04),
+          contentPadding: const EdgeInsets.all(12),
+          border: b(Colors.white.withOpacity(0.1)),
+          enabledBorder: b(filled
+              ? widget.color.withOpacity(0.33)
+              : Colors.white.withOpacity(0.1)),
+          focusedBorder: b(widget.color),
+        ),
+      ),
+    ]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final logged = _wins.text.trim().isNotEmpty || _lessons.text.trim().isNotEmpty;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text("CAPTAIN'S LOG · OPTIONAL",
+              style: MM.displayX(size: 10, color: Colors.white.withOpacity(0.55))),
+          if (logged)
+            Text('✓ Logged',
+                style: MM.display(size: 10, color: MM.teal, weight: FontWeight.w600)),
+        ],
+      ),
+      const SizedBox(height: 8),
+      _field(_wins, '🏆 Wins', 'What went well? What are you proud of?'),
+      const SizedBox(height: 10),
+      _field(_lessons, '📚 Lessons', "What didn't work? What can you learn?"),
+    ]);
   }
 }

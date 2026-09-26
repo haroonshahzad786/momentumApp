@@ -743,9 +743,14 @@ distances/momentum values (see #40).
 
 ### New / newly-scoped MVP tasks (priority order)
 **P0 — core-loop gaps you'll hit when testing against the Gamification spec**
-- [ ] **#15 Captain's Log** (spec §6/§7, PRD 12.C) — per-Core 🏆 Wins / 📚 Lessons in every check-in,
-  optional; archive = Momentum List #15; feeds auto-flag, score validation, Mystery Box anti-gaming.
-  **Not built anywhere** (supersedes BG-F28). Highest priority.
+- [~] **#15 Captain's Log** (spec §6/§7, PRD 12.C) — **BUILT 2026-09-26.** Correction to the review: a single
+  optional "What's the data?" box per Core already existed and was saved (`checkins/{day}.logs`) but never
+  read back. Now: two optional prompts per Core (🏆 Wins / 📚 Lessons) → `captainsLog.{core}.{wins,lessons}`
+  (+ a combined `logs` string kept for the admin Client Detail); `DailyCheckin.captainsLog` reads both new
+  and old entries; "CAPTAIN'S LOG · LAST 30 DAYS" archive on web + mobile Lists. Fixed the text box
+  recreating its controller every rebuild. 3 unit tests; browser-checked (fields, Back/Next keeps text,
+  archive empty state) **without submitting**. Pending: one real check-in with a log to confirm the save
+  → archive round-trip. Consumers (auto-flag on log themes, score validation, Mystery Box) = #23/#24/13e.
 - [ ] **#16 Ship Warnings / miss sequence** (spec §6, Sequence P2 pathway 2) — miss 1 weekday: supportive
   warning + 1-hour defer; miss 2: checkpoint regression + MP reduction 🔒(amount) + [Get Support] options
   (Captain's Log review · Emergency Simplification · Cantina · AI coaching · pause); 5+ days: "Welcome back,
