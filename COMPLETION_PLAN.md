@@ -751,11 +751,20 @@ distances/momentum values (see #40).
   recreating its controller every rebuild. 3 unit tests; browser-checked (fields, Back/Next keeps text,
   archive empty state) **without submitting**. Pending: one real check-in with a log to confirm the save
   → archive round-trip. Consumers (auto-flag on log themes, score validation, Mystery Box) = #23/#24/13e.
-- [ ] **#16 Ship Warnings / miss sequence** (spec §6, Sequence P2 pathway 2) — miss 1 weekday: supportive
-  warning + 1-hour defer; miss 2: checkpoint regression + MP reduction 🔒(amount) + [Get Support] options
-  (Captain's Log review · Emergency Simplification · Cantina · AI coaching · pause); 5+ days: "Welcome back,
-  Captain — let's relaunch" screen listing what's preserved + minimal one-Core check-in. Server already
-  computes warning/broken; UI + regression missing.
+- [~] **#16 Ship Warnings / miss sequence** — **BUILT + DEPLOYED 2026-09-26.** Server: new pure module
+  `missedCheckins.js` (weekdaysBetween moved there; `missStateFor` → none/ok/warning/relaunch/long_absence,
+  7 tests); award fn records `lastCompletedCheckinDate` on every completed weekday check-in (any score —
+  the streak's `lastCheckinDate` only moves on 4.0+ days); profile returns `missedWeekdays`/`missState`,
+  backfills the date once from the latest weekday check-in, and applies `config/streaks.missPenaltyPoints`
+  once per gap (**default 0 = off**, amount is spec [PLACEHOLDER]; admin "Relaunch penalty" card).
+  App: 1 miss → Ship Warning banner on the Cockpit/dashboard (Check in now · Remind me in 1 hour);
+  2+ → Relaunch sheet once per gap ("You're back… Let's relaunch" / 5+: "Welcome back, Captain"),
+  preserved items (Trophy Room, credits, lists, level), quick one-Core check-in (`checkin_quick`), full
+  check-in, Get Support (Captain's Log, Nova, Cantina when unlocked). 3 widget tests. Live check: the admin
+  account has never completed a Phase 2 check-in → correctly shows nothing. Not done: planet checkpoint
+  regression (no planet progress exists yet — 13c post-MVP), push-notification version of the warning
+  (#B30/#B31), Emergency Simplification Mode (#18). Pending: see it on an account with a real gap
+  (e.g. the test account, last check-in 21 Jul → long absence).
 - [ ] **#17 Streak protection** (spec §6) — Vacation Mode (PRD: ≤7 days; per-year limit 🔒), Streak Saver
   (earned at 30-day milestone, auto-applied on 1 missed weekday, "Streak Saver Available" badge; cap per
   conflicts table), both honored by the streak engine (ties to #B4).

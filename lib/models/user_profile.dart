@@ -13,6 +13,11 @@ class UserProfile {
     this.longestStreak = 0,
     this.streakState = 'ok',
     this.lastCheckinDate = '',
+    this.missedWeekdays = 0,
+    this.missState = 'none',
+    this.missPenaltyApplied = 0,
+    this.lastCompletedCheckinDate = '',
+    this.formedHabitsCount = 0,
     required this.planet,
     required this.level,
     required this.balance,
@@ -40,6 +45,24 @@ class UserProfile {
   /// 'ok' · 'warning' (1 weekday missed — grace active) · 'broken' (2+ missed).
   final String streakState;
   final String lastCheckinDate;
+
+  /// #16 missed check-ins — weekdays missed since the last *completed*
+  /// check-in (any score). 'none' (never checked in) · 'ok' · 'warning'
+  /// (1 missed) · 'relaunch' (2+) · 'long_absence' (5+).
+  final int missedWeekdays;
+  final String missState;
+
+  /// Momentum Points removed by this profile load's relaunch penalty (0 unless
+  /// an admin configured `config/streaks.missPenaltyPoints`).
+  final int missPenaltyApplied;
+  final String lastCompletedCheckinDate;
+
+  /// Habits moved to the Trophy Room (mirrored server-side).
+  final int formedHabitsCount;
+
+  bool get needsRelaunch =>
+      missState == 'relaunch' || missState == 'long_absence';
+
   final String planet;
   final String level;
   final int balance;
@@ -70,6 +93,12 @@ class UserProfile {
         longestStreak: (json['longestStreak'] as num? ?? 0).toInt(),
         streakState: (json['streakState'] ?? 'ok').toString(),
         lastCheckinDate: (json['lastCheckinDate'] ?? '').toString(),
+        missedWeekdays: (json['missedWeekdays'] as num? ?? 0).toInt(),
+        missState: (json['missState'] ?? 'none').toString(),
+        missPenaltyApplied: (json['missPenaltyApplied'] as num? ?? 0).toInt(),
+        lastCompletedCheckinDate:
+            (json['lastCompletedCheckinDate'] ?? '').toString(),
+        formedHabitsCount: (json['formedHabitsCount'] as num? ?? 0).toInt(),
         planet: (json['planet'] ?? 'earth').toString(),
         level: (json['level'] ?? 'cadet').toString(),
         balance: (json['balance'] as num? ?? 0).toInt(),

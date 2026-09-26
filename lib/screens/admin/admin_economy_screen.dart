@@ -221,6 +221,13 @@ class _AdminEconomyScreenState extends State<AdminEconomyScreen> {
                   api: _api,
                   onPublished: _loadHistory,
                 ),
+              'streaks' => _RelaunchPenaltyCard(
+                  key: ValueKey('penalty|${data['updatedAt']}'),
+                  data: data,
+                  currentVersion: version,
+                  api: _api,
+                  onPublished: _loadHistory,
+                ),
               'journey' => _PlanetsCard(
                   key: ValueKey('planets|${data['updatedAt']}'),
                   data: data,
@@ -1138,6 +1145,99 @@ class _PlanetsCardState extends State<_PlanetsCard> {
             const Spacer(),
             ElevatedButton(
               onPressed: _busy || !_valid || !_dirty ? null : _publish,
+              style: ElevatedButton.styleFrom(backgroundColor: MM.blue),
+              child: Text('Publish v${widget.currentVersion + 1}'),
+            ),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+/// #16 — Momentum Points removed when a player misses enough weekdays for a
+/// relaunch (spec §6 "Momentum Points reduced", amount [PLACEHOLDER]). 0 = off.
+/// Applied once per gap by `flutterGetUserProfile`.
+class _RelaunchPenaltyCard extends StatefulWidget {
+  const _RelaunchPenaltyCard({
+    super.key,
+    required this.data,
+    required this.currentVersion,
+    required this.api,
+    required this.onPublished,
+  });
+  final Map<String, dynamic> data;
+  final int currentVersion;
+  final AdminApiService api;
+  final VoidCallback onPublished;
+
+  @override
+  State<_RelaunchPenaltyCard> createState() => _RelaunchPenaltyCardState();
+}
+
+class _RelaunchPenaltyCardState extends State<_RelaunchPenaltyCard> {
+  late final TextEditingController _pts = TextEditingController(
+      text: '${widget.data['missPenaltyPoints'] is num ? (widget.data['missPenaltyPoints'] as num).toInt() : 0}');
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pts.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _pts.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final n = int.tryParse(_pts.text.trim());
+    final valid = n != null && n >= 0;
+    final dirty = valid && _canon(n) != _canon(_sanitize(widget.data['missPenaltyPoints']));
+    return AdminPanel(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _cardHeader('RELAUNCH PENALTY', 'After 2+ missed weekday check-ins'),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+          child: Row(children: [
+            Text('Momentum Points removed', style: MM.body(size: 12.5, color: MM.white)),
+            const SizedBox(width: 12),
+            SizedBox(width: 90, child: TextField(controller: _pts, style: MM.mono(size: 12.5), decoration: _numDec())),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                  'Once per gap, never below 0. 0 = off (the spec leaves the amount open). Trophy Room, '
+                  'credits, lists and level are never touched.',
+                  style: MM.body(size: 11.5, color: Colors.white.withOpacity(0.5))),
+            ),
+          ]),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(children: [
+            Text(
+              !valid ? 'Enter a whole number ≥ 0' : (dirty ? 'Unpublished change' : 'Matches what is live'),
+              style: MM.body(size: 12, color: !valid ? MM.red : (dirty ? MM.yellow : Colors.white38)),
+            ),
+            const Spacer(),
+            ElevatedButton(
+              onPressed: _busy || !dirty
+                  ? null
+                  : () async {
+                      setState(() => _busy = true);
+                      final ok = await _publishCard(context,
+                          path: 'streaks',
+                          currentVersion: widget.currentVersion,
+                          api: widget.api,
+                          published: widget.data,
+                          changes: {'missPenaltyPoints': n});
+                      if (!mounted) return;
+                      setState(() => _busy = false);
+                      if (ok) widget.onPublished();
+                    },
               style: ElevatedButton.styleFrom(backgroundColor: MM.blue),
               child: Text('Publish v${widget.currentVersion + 1}'),
             ),

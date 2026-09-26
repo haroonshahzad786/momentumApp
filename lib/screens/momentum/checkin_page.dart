@@ -21,9 +21,15 @@ class CheckInPage extends StatefulWidget {
     required this.onFlagHabit,
     required this.onReturnToPhase1,
     this.onCoreAlert,
+    this.singleCore = false,
   });
 
   final List<String> activeCores;
+
+  /// Quick relaunch check-in after missed days (#16, Sequence Phase 2
+  /// pathway 2): score just the first active Core. It still counts as a
+  /// completed check-in, so it restarts the rhythm with minimal effort.
+  final bool singleCore;
 
   /// Cores out of balance (5+ days below 3.0) — show the red ⚠️ badge that
   /// opens the iCore Alert.
@@ -182,16 +188,21 @@ class _CheckInPageState extends State<CheckInPage> {
     super.dispose();
   }
 
-  List<_Core> get _displayed => _cores
-      .map((c) => _Core(
-            c.id,
-            c.name,
-            c.color,
-            c.vision,
-            c.habits,
-            locked: !widget.activeCores.contains(c.id),
-          ))
-      .toList();
+  List<_Core> get _displayed {
+    final all = _cores
+        .map((c) => _Core(
+              c.id,
+              c.name,
+              c.color,
+              c.vision,
+              c.habits,
+              locked: !widget.activeCores.contains(c.id),
+            ))
+        .toList();
+    if (!widget.singleCore) return all;
+    final first = all.where((c) => !c.locked).take(1).toList();
+    return first.isEmpty ? all : first;
+  }
 
   void _advance() {
     final cores = _displayed;

@@ -33,6 +33,7 @@ import 'sub_screens.dart';
 import 'summary_page.dart';
 import 'web_cockpit.dart';
 import 'web_screens.dart';
+import '../../widgets/momentum/ship_warning.dart';
 import '../../services/journey_config_service.dart';
 
 /// Post-auth shell. Owns the active screen, menu drawer, and routing
@@ -56,6 +57,12 @@ class _MomentumHomeState extends State<MomentumHome> {
   final _points = PointsService();
 
   UserProfile? _profile;
+
+  // #16 missed check-ins: relaunch screen (2+ missed weekdays, once per gap)
+  // and the 1-miss Ship Warning banner (snoozable for an hour).
+  bool _relaunchOpen = false;
+  bool _warnSnoozed = false;
+  bool _checkedInThisSession = false;
   bool _loading = true;
   bool _offline = false;
   bool _errorOffline = false;
@@ -186,6 +193,7 @@ class _MomentumHomeState extends State<MomentumHome> {
       });
       // Compute the Core Balance 5-day alert badges (#8) from real check-ins.
       _loadCoreBalance();
+      _evaluateMissState(result.data);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -195,6 +203,74 @@ class _MomentumHomeState extends State<MomentumHome> {
       });
     }
   }
+
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+  String _relaunchSeenKey(UserProfile p) =>
+      'relaunch:seen:$_uid:${p.lastCompletedCheckinDate}';
+  String get _warnSnoozeKey => 'shipwarn:snooze:$_uid';
+
+  /// Decides whether to open the relaunch screen (#16) — once per gap, keyed to
+  /// the last completed check-in — and whether the 1-miss banner is snoozed.
+  Future<void> _evaluateMissState(UserProfile p) async {
+    if (_uid == null || _checkedInThisSession) return;
+    if (p.needsRelaunch) {
+      final seen = await LocalCache.getJson(_relaunchSeenKey(p));
+      if (mounted && seen != true) setState(() => _relaunchOpen = true);
+    } else if (p.missState == 'warning') {
+      final until = await LocalCache.getJson(_warnSnoozeKey);
+      final snoozed = until is num &&
+          DateTime.now().millisecondsSinceEpoch < until.toInt();
+      if (mounted) setState(() => _warnSnoozed = snoozed);
+    }
+  }
+
+  void _closeRelaunch() {
+    final p = _profile;
+    if (p != null) LocalCache.putJson(_relaunchSeenKey(p), true);
+    setState(() => _relaunchOpen = false);
+  }
+
+  void _snoozeShipWarning() {
+    LocalCache.putJson(_warnSnoozeKey,
+        DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch);
+    setState(() => _warnSnoozed = true);
+  }
+
+  bool get _showShipWarning =>
+      _screen == 'dashboard' &&
+      !_relaunchOpen &&
+      !_warnSnoozed &&
+      !_checkedInThisSession &&
+      _profile?.missState == 'warning';
+
+  Widget _buildRelaunch() {
+    final p = _profile!;
+    void then(VoidCallback f) {
+      _closeRelaunch();
+      f();
+    }
+
+    return RelaunchSheet(
+      missedWeekdays: p.missedWeekdays,
+      longAbsence: p.missState == 'long_absence',
+      pointsRemoved: p.missPenaltyApplied,
+      formedHabits: p.formedHabitsCount,
+      spaceCredits: _creditsOverride ?? p.spaceCredits,
+      level: p.level,
+      onQuickCheckIn: () => then(() => _go('checkin_quick')),
+      onFullCheckIn: () => then(_startCheckin),
+      onCaptainsLog: () => then(() => _go('lists')),
+      onTalkToNova: () => then(_openChat),
+      onCantina:
+          _phase1.stage2Completed ? () => then(() => _go('cantina')) : null,
+      onClose: _closeRelaunch,
+    );
+  }
+
+  Widget _buildShipWarning() => ShipWarningBanner(
+        onCheckIn: _startCheckin,
+        onSnooze: _snoozeShipWarning,
+      );
 
   void _go(String key) => setState(() {
         // The desktop Cockpit already IS the journey stage — no separate map.
@@ -401,6 +477,9 @@ class _MomentumHomeState extends State<MomentumHome> {
       // dashboard + summary (base + high-score earned this check-in).
       if (award.spaceCredits != null) _creditsOverride = award.spaceCredits;
     }
+    // A completed check-in ends any missed-check-in warning (#16).
+    _checkedInThisSession = true;
+    _relaunchOpen = false;
     // Stash for the summary's Balance Meter so today's scores fold into the
     // rolling 7-day average immediately, without waiting on the read.
     _lastCheckinScores = scores;
@@ -498,8 +577,9 @@ class _MomentumHomeState extends State<MomentumHome> {
         onClose: () => _go('dashboard'),
       );
     }
-    if (_screen == 'checkin') {
+    if (_screen == 'checkin' || _screen == 'checkin_quick') {
       return CheckInPage(
+        singleCore: _screen == 'checkin_quick',
         activeCores: activeCores,
         atRiskCores: _atRiskCores,
         coreHistory: _checkinCoreHistory,
@@ -687,8 +767,11 @@ class _MomentumHomeState extends State<MomentumHome> {
               isAdmin: _isAdmin,
             ),
           ),
+        if (_showShipWarning)
+          Positioned(top: 0, left: 0, right: 0, child: SafeArea(child: _buildShipWarning())),
         // iCore Alert (#8) — opened by tapping a Core's red ⚠️ badge.
         if (_coreAlertCore != null) Positioned.fill(child: _buildCoreAlert()),
+        if (_relaunchOpen && _profile != null) Positioned.fill(child: _buildRelaunch()),
       ],
     );
   }
@@ -863,7 +946,10 @@ class _MomentumHomeState extends State<MomentumHome> {
               isAdmin: _isAdmin,
             ),
           ),
+        if (_showShipWarning)
+          Positioned(top: 76, left: 232, right: 16, child: _buildShipWarning()),
         if (_coreAlertCore != null) Positioned.fill(child: _buildCoreAlert()),
+        if (_relaunchOpen && _profile != null) Positioned.fill(child: _buildRelaunch()),
       ],
     );
   }
