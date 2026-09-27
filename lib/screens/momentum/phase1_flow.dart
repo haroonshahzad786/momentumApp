@@ -54,6 +54,7 @@ class Phase1Flow extends StatefulWidget {
     required this.onExitToCockpit,
     this.entryStage,
     this.entryHabitId,
+    this.entryDraft,
   });
 
   final Phase1State state;
@@ -69,6 +70,10 @@ class Phase1Flow extends StatefulWidget {
   /// Golden Habit id to pre-load when re-entering via "Go Deeper" (#7) — Stage 2
   /// momentifies this specific flagged habit instead of the newest.
   final String? entryHabitId;
+
+  /// Pre-filled (unsent) opener for the HHS chat — "Fuel this Core" (#20)
+  /// names the locked Core the player tapped.
+  final String? entryDraft;
 
   @override
   State<Phase1Flow> createState() => _Phase1FlowState();
@@ -134,6 +139,7 @@ class _Phase1FlowState extends State<Phase1Flow> {
         final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
         return HhsChatView(
           userId: uid,
+          initialDraft: widget.entryDraft,
           onProgress: _onHhsProgress,
           onComplete: _onHhsComplete,
           onBack: () => _go('hub'),

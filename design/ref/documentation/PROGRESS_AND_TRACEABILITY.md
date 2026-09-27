@@ -8,7 +8,7 @@
 
 **Prepared for:** Will Moore (client)
 **App:** Moore Momentum (plain‑Flutter rebuild)
-**Last updated:** 2026‑08‑03
+**Last updated:** 2026‑09‑27
 
 This document maps **every feature built so far** back to **your original specification documents**, quotes the exact passage each feature was built from, and shows a **screenshot of the working app**. The goal is a single place where you can see *what was built*, *why* (which of your docs drove it), and *that it works*.
 
@@ -61,6 +61,7 @@ All features are traced to the four specification files you provided in
 | **Web** | Desktop web shell + Cockpit + secondary screens | ✅ Done |
 | **Mobile** | Journey stage on mobile (planet states at parity with desktop) | ✅ Done |
 | **Co‑Pilot** | Console layout — text on the cockpit screen, images play as a take‑over | ✅ Done (parallel page, awaiting your pick) |
+| **M8 Phase 2** | #20 Rocket Dashboard completion (streak bar, stats box, nose icons, Fuel this Core, daily zoom) | ✅ Done |
 
 The canonical living backlog is `COMPLETION_PLAN.md` in the project root.
 
@@ -581,6 +582,28 @@ These three come straight from the Gamification Mechanics Specs Reference (§6 S
   - One shared Trophy Room implementation for web and mobile.
 - **Verified:** 5 server + 5 client tests (incl. golden of the celebration); deployed; browser-checked the web Trophy Room on real data.
 - **Note:** a habit meeting the rule now shows "Ready to form" until confirmed, instead of counting as formed automatically.
+
+## M8 — Phase 2 experience (from the MASTER docs review, Sep 2026)
+
+### #20 Rocket Dashboard completion ✅
+- **Spec (PRD §12.10 "Rocket Dashboard (Default View)"):** "Across top: Current Streak with consecutive days and days until reward"; "Top right: Stats box — Current Planet, Momentum Score, Balance %"; tip of rocket — "Left (clock): Full Routines List", "Center (∞): ALL HABITS QUICK VIEW", "Right (checklist): Non-Routines reference"; "Only unlocked Cores shown in color; others display lock icons"; "Cores unlock when player creates first habit in that Core". Gamification §6: "Current streak count is displayed permanently at the top of the rocket dashboard". Call notes (Will): "show the zoomed-out journey view on each daily return to the app, then zoom into the rocket dashboard".
+- **Built:**
+  - **Streak bar** across the top of the web Cockpit (and a compact version in the phone top bar): current streak, a progress bar to the next milestone and "N days to X-day reward". Milestones come from the admin-editable `config/streaks` (default 3/7/14/30/60/90/180/365, per the Gamification spec). Replaces the old "Active Quest" card, whose 50-day target was invented.
+  - **Stats box:** Planet (with the next stop), Momentum Score, Balance %, Space Credits. The old "Next planet in N pts" line used a made-up 12,000-point step; planet thresholds are still a placeholder (13c), so only the next planet's *name* is shown.
+  - **Tip-of-rocket icons** now match the PRD: clock → Routines, centre → All Habits, checklist → Non-Routines (opens the Routines view with Non-Routines first until #21 builds the dedicated views). The Command Center stays in the ☰ menu / sidebar, as the PRD places it.
+  - **Cores are tappable:** an active Core opens Habits filtered to that Core; a locked Core ("DORMANT · FUEL THIS CORE →") opens Stage 1 HHS with Nova, with "I want to fuel my … Core" typed into the box but not sent. A Core only lights up with its first Golden Habit, so HHS is the one path that actually unlocks it.
+  - **Daily zoom:** the first dashboard view each day opens on the whole planet route, holds ~1.4s, then flies in to the rocket (skipped under reduced motion, when an arrival cinematic plays, or if the player grabs the zoom control).
+  - **Check-in in ≤2 taps:** Daily Check-in → (first time each day) Step 0 "Continue" → scoring.
+- **Fixed while verifying:** leaving the Cockpit could throw "Looking up a deactivated widget's ancestor" (the flight animation controller was created lazily inside `dispose`). Both controllers are now created up front.
+- **Also fixed:** the web Routines screen couldn't load (the old FlutterFlow list endpoints block browser requests). The app now uses browser-compatible copies of those endpoints in the Flutter backend, with the same data.
+- **Verified:** 12 new tests (milestone maths, streak bar states, daily zoom timeline); full suite 64/64; browser-checked on web (1440px) and phone width (412px), including Fuel this Core → HHS with no console exceptions.
+- **Open for Will:** the exact login zoom timing (Issues doc §7.3 asks "duration, zoom speed, when does auto-zoom stop?"; we used a 1.4s hold + 2.2s fly-in). The ∞ icon uses the existing rocket art (a habits glyph); a true ∞ asset is needed if you want the literal symbol.
+
+![Web Cockpit — streak bar, stats box, Fuel this Core](images/23-web-cockpit-streak-bar.png)
+
+![Phone dashboard — streak with days to next reward](images/24-mobile-dashboard-streak.png)
+
+![Fuel this Core → Stage 1 HHS with the draft ready](images/25-fuel-this-core.png)
 
 ---
 

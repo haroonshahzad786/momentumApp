@@ -13,10 +13,11 @@ class RoutineData {
   final List<CoreList> nonRoutine;
 }
 
-/// Reads the user's per-core lists via the existing `fetchAllCoreListItems`
-/// endpoint in the default codebase (the one the HHS / `saveCoreListItems`
-/// flow writes to). Read-only reuse from Flutter is fine per the backend
-/// isolation rule — no new endpoint needed.
+/// Reads/writes the user's per-core lists (`/users/{uid}/core/...`) via the
+/// flutter-codebase `flutterFetchAllCoreListItems` / `flutterSaveCoreListItems`.
+/// They mirror FlutterFlow's `fetchAllCoreListItems` / `saveCoreListItems`
+/// (same storage + response shape) but allow CORS — the FlutterFlow ones 401
+/// the browser preflight, so Routines never loaded on web.
 class CoreListsService {
   CoreListsService({http.Client? client}) : _client = client ?? http.Client();
 
@@ -31,22 +32,22 @@ class CoreListsService {
   /// The raw `cores` array straight from the endpoint (before flattening).
   Future<List<dynamic>> _fetchCoresRaw(String userId) async {
     final response = await _client.post(
-      Uri.parse('$_baseUrl/fetchAllCoreListItems'),
+      Uri.parse('$_baseUrl/flutterFetchAllCoreListItems'),
       headers: const {'Content-Type': 'application/json'},
       body: jsonEncode({'secret': _secret, 'userId': userId}),
     );
     if (response.statusCode != 200) {
       throw Exception(
-        'fetchAllCoreListItems failed (${response.statusCode}): ${response.body}',
+        'flutterFetchAllCoreListItems failed (${response.statusCode}): ${response.body}',
       );
     }
     final decoded = jsonDecode(response.body);
     if (decoded is! Map<String, dynamic>) {
-      throw Exception('fetchAllCoreListItems returned non-JSON-object');
+      throw Exception('flutterFetchAllCoreListItems returned non-JSON-object');
     }
     if (decoded['ok'] != true) {
       throw Exception(
-        'fetchAllCoreListItems error: ${decoded['error'] ?? 'unknown'}',
+        'flutterFetchAllCoreListItems error: ${decoded['error'] ?? 'unknown'}',
       );
     }
     return decoded['cores'] as List? ?? const [];
@@ -103,14 +104,14 @@ class CoreListsService {
 
   /// Appends a single habit line to the user's per-core list and persists it,
   /// so the new routine is trackable in future sessions (and by the Routines
-  /// screen's stage pipeline). Writes via the existing `saveCoreListItems`
+  /// screen's stage pipeline). Writes via `flutterSaveCoreListItems`
   /// endpoint — the same per-core path the Claude HHS agent writes to:
   ///   /users/{uid}/core/{coreId}/golden_habit/{listName}
   ///
   ///   • isRoutine == true  → list "Routines List"
   ///   • isRoutine == false → list "Non-Routine"
   ///
-  /// `saveCoreListItems` does `set({items}, {merge:true})`, which REPLACES the
+  /// `flutterSaveCoreListItems` does `set({items}, {merge:true})`, which REPLACES the
   /// items array — so we first read the current items for the target list and
   /// send the full list back with [itemLine] appended. The exact stored list
   /// name is reused when one already exists (avoids creating a parallel doc
@@ -144,7 +145,7 @@ class CoreListsService {
     }
 
     final response = await _client.post(
-      Uri.parse('$_baseUrl/saveCoreListItems'),
+      Uri.parse('$_baseUrl/flutterSaveCoreListItems'),
       headers: const {'Content-Type': 'application/json'},
       body: jsonEncode({
         'secret': _secret,
@@ -157,13 +158,13 @@ class CoreListsService {
     );
     if (response.statusCode != 200) {
       throw Exception(
-        'saveCoreListItems failed (${response.statusCode}): ${response.body}',
+        'flutterSaveCoreListItems failed (${response.statusCode}): ${response.body}',
       );
     }
     final decoded = jsonDecode(response.body);
     if (decoded is! Map<String, dynamic> || decoded['ok'] != true) {
       throw Exception(
-        'saveCoreListItems error: '
+        'flutterSaveCoreListItems error: '
         '${decoded is Map ? decoded['error'] ?? 'unknown' : 'bad response'}',
       );
     }

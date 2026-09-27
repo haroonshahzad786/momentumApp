@@ -814,10 +814,23 @@ distances/momentum values (see #40).
   Not built: ship-upgrade progress / achievement from formation (post-MVP systems); formation bonus
   amount stays the admin `formationCredits` (spec placeholder).
 **P1 — Phase 2 experience the PRD/Sequence mark MVP**
-- [ ] **#20 Rocket Dashboard completion** — streak bar across the top (+ days to next milestone), stats
-  box (planet · Momentum Score · Balance %), 4 tip-of-rocket icons (🎯 Command Center · ⏰ Routines ·
-  ∞ All Habits · ☑️ Non-Routines), locked Cores grey + "Fuel this Core" link, zoom-out→zoom-in on each
-  login, check-in ≤2 taps. Verify on **web** (primary surface) as well as mobile.
+- [x] **#20 Rocket Dashboard completion** — **DONE 2026-09-27** (web + phone, browser-verified; 12 new tests,
+  64 total). `StreakBar` (`widgets/momentum/streak_bar.dart`): streak + bar to next `config/streaks`
+  milestone + "N days to X-day reward", full-width on the Cockpit, compact in the phone top bar; replaced
+  the invented 50-day Active Quest card. Stats box: Planet (+ next stop name; the fake 12,000-pt "next
+  planet" number removed — 13c placeholder) · Momentum Score · Balance % · Credits. Nose icons per PRD 12.10
+  (3, not 4 — Command Center stays in ☰ per the PRD): clock → `routines`, centre → `habits`, checklist →
+  `nonroutines` (Routines view with Non-Routine first until #21). Core taps: active → `habits:<core>`
+  (filtered Habits, web + mobile); locked → `fuel:<core>` → Stage 1 HHS with an unsent draft naming the
+  Core (manual add writes core lists, not Golden Habits, so it would NOT unlock the Core). Daily zoom:
+  `JourneyStage(dailyIntro:)` — route view, 1.4s hold, 2.2s fly-in, once/day (`mm.journey.intro_day`),
+  cancelled by manual zoom, skipped on reduced motion / arrival cinematic. Check-in ≤2 taps confirmed
+  (button → Step 0 Continue). Fixed: lazy `_flight` controller created in `dispose()` threw "deactivated
+  widget's ancestor" when leaving the Cockpit. Open: login zoom timing (Issues §7.3), literal ∞ icon art.
+  Also fixed (27 Sep): web Routines couldn't load — FlutterFlow's `fetchAllCoreListItems` /
+  `saveCoreListItems` have no CORS (preflight → 401). New CORS twins `flutterFetchAllCoreListItems` /
+  `flutterSaveCoreListItems` (functions-flutter/coreLists.js, same storage + shapes, 4 node tests), deployed;
+  `CoreListsService` now calls them. FlutterFlow endpoints untouched.
 - [ ] **#21 Habit views** (PRD 11) — ∞ All Habits Quick View (By Time / By Core toggle); Full Routines List
   with 6-color system, status counter ("8 🔴 · 12 🟠 · 15 🟢"), day counts ("Day 8/14"), yellow notes;
   Non-Routines List per Core with Mantra + Gratitude locked at #1/#2, drag-to-prioritize, IF-THEN shown;

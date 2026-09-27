@@ -269,7 +269,14 @@ class JourneyStage extends StatefulWidget {
     this.onDockedChanged,
     this.zoomController,
     this.controlsOnLeft = false,
+    this.dailyIntro = false,
   });
+
+  /// First view of the day opens on the whole route, holds, then flies in to
+  /// the cockpit (Will, call 9/9: "zoomed-out journey view on each daily
+  /// return, then zoom into the rocket dashboard"). Skipped when an arrival
+  /// cinematic plays instead, and under reduced motion.
+  final bool dailyIntro;
 
   /// Star-drift speed this stage publishes for a [MovingStarfield] behind the
   /// whole panel: idle drift when parked, full warp during a leg.
@@ -313,6 +320,22 @@ class JourneyStage extends StatefulWidget {
 class _JourneyStageState extends State<JourneyStage>
     with TickerProviderStateMixin {
   static const String _seenKey = 'mm.journey.seen_planet';
+  static const String _introKey = 'mm.journey.intro_day';
+
+  /// Daily zoom-out → zoom-in. Drives [_localZoom] 0 → 1; any manual zoom
+  /// (bar, pinch) cancels it.
+  late final AnimationController _intro = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 2200))
+    ..addListener(() {
+      if (!mounted) return;
+      final t = Curves.easeInOutCubic.transform(_intro.value);
+      final c = widget.zoomController;
+      if (c != null) {
+        c.value = t;
+      } else {
+        setState(() => _localZoom = t);
+      }
+    });
 
   late final AnimationController _flight =
       AnimationController(vsync: this, duration: const Duration(seconds: 5))
@@ -334,6 +357,7 @@ class _JourneyStageState extends State<JourneyStage>
   double get _zoom => widget.zoomController?.value ?? _localZoom;
 
   void _setZoom(double v) {
+    _intro.stop();
     final z = v.clamp(0.0, 1.0);
     final c = widget.zoomController;
     if (c != null) {
@@ -377,6 +401,10 @@ class _JourneyStageState extends State<JourneyStage>
   @override
   void initState() {
     super.initState();
+    // Create the lazy controllers now: first touched in dispose() they would
+    // look up TickerMode on a deactivated element and throw.
+    _flight;
+    _intro;
     _docked = widget.planetIdx;
     _from = _docked;
     _to = _docked;
@@ -417,6 +445,7 @@ class _JourneyStageState extends State<JourneyStage>
   void dispose() {
     widget.zoomController?.removeListener(_onZoomChanged);
     _flight.dispose();
+    _intro.dispose();
     super.dispose();
   }
 
@@ -431,6 +460,7 @@ class _JourneyStageState extends State<JourneyStage>
     if (last == null || target <= last) {
       await LocalCache.putJson(_seenKey, math.max(last ?? target, target));
       if (mounted) setState(() => _docked = target);
+      await _maybeDailyIntro();
       return;
     }
     await LocalCache.putJson(_seenKey, target);
@@ -441,6 +471,24 @@ class _JourneyStageState extends State<JourneyStage>
       return;
     }
     _flyTo(target, from: last);
+  }
+
+  /// Once per calendar day: snap to the whole route, hold so the player takes
+  /// in where they are, then fly the camera in to the cockpit.
+  Future<void> _maybeDailyIntro() async {
+    if (!widget.dailyIntro || !mounted || _mode != _Mode.dashboard) return;
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) return;
+    final now = DateTime.now();
+    final today =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    if (await LocalCache.getJson(_introKey) == today || !mounted) return;
+    await LocalCache.putJson(_introKey, today);
+    if (!mounted) return;
+    _intro.value = 0; // listener snaps the camera out
+    await Future<void>.delayed(const Duration(milliseconds: 1400));
+    // A zoom-bar drag or pinch during the hold means the player took over.
+    if (!mounted || _mode != _Mode.dashboard || _zoom > 0.001) return;
+    _intro.forward(from: 0);
   }
 
   int? _notifiedStop;

@@ -728,7 +728,16 @@ class _RoutineHabit {
 }
 
 class RoutinesScreen extends StatefulWidget {
-  const RoutinesScreen({super.key, this.onBack, this.onChat, this.onNav});
+  const RoutinesScreen({
+    super.key,
+    this.onBack,
+    this.onChat,
+    this.onNav,
+    this.nonRoutinesFirst = false,
+  });
+
+  /// Opened from the rocket's Non-Routines icon (#20) — lead with that list.
+  final bool nonRoutinesFirst;
   final VoidCallback? onBack;
   final VoidCallback? onChat;
   final void Function(String key)? onNav;
@@ -886,6 +895,44 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
         ),
       );
     }
+    final routine = <Widget>[
+        // ── ROUTINE section ──
+        _sectionHeader(
+          'ROUTINE',
+          _hasStageData
+              ? '${_routine.where((h) => h.stage == 'formed').length}/${_routine.length} GREEN'
+              : '${_routine.length} HABITS',
+          MM.teal,
+        ),
+        const SizedBox(height: 10),
+        if (_routine.isEmpty)
+          _emptyNote('No scheduled routines yet.')
+        else
+          ..._buildRoutineGroups(),
+
+    ];
+    final nonRoutine = <Widget>[
+        // ── NON-ROUTINE section ──
+        _sectionHeader('NON-ROUTINE', 'IDENTITY HABITS', null),
+        const SizedBox(height: 6),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: Text(
+            'Active in your daily check-in. When formed (14d · 80%) they '
+            'graduate to the Trophy Room.',
+            style: MM.body(color: Colors.white.withOpacity(0.6), size: 11),
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (_nonRoutine.isEmpty)
+          _emptyNote('No identity habits yet.')
+        else
+          ..._nonRoutine.map((h) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: _RoutineRow(habit: h, onTap: () => _edit(h)),
+              )),
+
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -936,40 +983,16 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
         ),
         const SizedBox(height: 16),
 
-        // ── ROUTINE section ──
-        _sectionHeader(
-          'ROUTINE',
-          _hasStageData
-              ? '${_routine.where((h) => h.stage == 'formed').length}/${_routine.length} GREEN'
-              : '${_routine.length} HABITS',
-          MM.teal,
-        ),
-        const SizedBox(height: 10),
-        if (_routine.isEmpty)
-          _emptyNote('No scheduled routines yet.')
-        else
-          ..._buildRoutineGroups(),
-
-        // ── NON-ROUTINE section ──
-        const SizedBox(height: 22),
-        _sectionHeader('NON-ROUTINE', 'IDENTITY HABITS', null),
-        const SizedBox(height: 6),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2),
-          child: Text(
-            'Active in your daily check-in. When formed (14d · 80%) they '
-            'graduate to the Trophy Room.',
-            style: MM.body(color: Colors.white.withOpacity(0.6), size: 11),
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (_nonRoutine.isEmpty)
-          _emptyNote('No identity habits yet.')
-        else
-          ..._nonRoutine.map((h) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: _RoutineRow(habit: h, onTap: () => _edit(h)),
-              )),
+        // The rocket's Non-Routines icon (#20) leads with that section.
+        if (widget.nonRoutinesFirst) ...[
+          ...nonRoutine,
+          const SizedBox(height: 22),
+          ...routine,
+        ] else ...[
+          ...routine,
+          const SizedBox(height: 22),
+          ...nonRoutine,
+        ],
 
         // Trophy Room link.
         const SizedBox(height: 10),
@@ -1528,7 +1551,18 @@ class _Stage {
 // HabitsService); they used to be a hardcoded _mockHabits list here.
 
 class HabitsScreen extends StatefulWidget {
-  const HabitsScreen({super.key, this.onBack, this.onChat, this.onNav});
+  const HabitsScreen({
+    super.key,
+    this.onBack,
+    this.onChat,
+    this.onNav,
+    this.coreFilter,
+    this.onClearFilter,
+  });
+
+  /// Short Core id ('physical', …) — a Core tapped on the rocket (#20).
+  final String? coreFilter;
+  final VoidCallback? onClearFilter;
   final VoidCallback? onBack;
   final VoidCallback? onChat;
   final void Function(String key)? onNav;
@@ -1612,8 +1646,10 @@ class _HabitsScreenState extends State<HabitsScreen> {
       );
     }
     return ScreenShell(
-      title: 'Habits',
-      subtitle: 'GOLDEN HABITS · ${_habits.length}',
+      title: widget.coreFilter == null
+          ? 'Habits'
+          : (_coreShort[_coreLongId(widget.coreFilter!)] ?? 'Habits'),
+      subtitle: 'GOLDEN HABITS · ${_shown.length}',
       accent: MM.magenta,
       onBack: widget.onBack,
       onChat: widget.onChat,
@@ -1621,6 +1657,20 @@ class _HabitsScreenState extends State<HabitsScreen> {
       child: _body(),
     );
   }
+
+  List<GoldenHabit> get _shown {
+    final f = widget.coreFilter;
+    if (f == null) return _habits;
+    return [
+      for (final h in _habits)
+        if (GoldenHabitRef.shortCore(h.coreId) == f) h
+    ];
+  }
+
+  static String _coreLongId(String short) => _coreShortId.entries
+      .firstWhere((e) => e.value == short,
+          orElse: () => MapEntry(short, short))
+      .key;
 
   Widget _body() {
     if (_loading) {
@@ -1657,7 +1707,20 @@ class _HabitsScreenState extends State<HabitsScreen> {
     return Column(
       children: [
         if (_offline) OfflineBanner(onRefresh: _fetch),
-        if (_habits.isEmpty)
+        if (widget.coreFilter != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: MMGhostButton(
+                label: 'Show all Cores ✕',
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                onPressed: widget.onClearFilter,
+              ),
+            ),
+          ),
+        if (_shown.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 48),
             child: Column(
@@ -1685,7 +1748,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
             ),
           )
         else
-          ..._habits.map((h) => Padding(
+          ..._shown.map((h) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: _HabitCard(
                   h: h,

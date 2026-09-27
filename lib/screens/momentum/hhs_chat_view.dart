@@ -26,9 +26,14 @@ class HhsChatView extends StatefulWidget {
     required this.onProgress,
     required this.onComplete,
     required this.onBack,
+    this.initialDraft,
   });
 
   final String userId;
+
+  /// Put in the input box (not sent) when the chat opens — the player reviews
+  /// it and sends it themselves.
+  final String? initialDraft;
 
   /// Called with the number of completed sections (0–5) whenever it advances,
   /// so the parent can persist `stage1Progress`.
@@ -91,6 +96,8 @@ class _HhsChatViewState extends State<HhsChatView> {
   @override
   void initState() {
     super.initState();
+    final draft = widget.initialDraft;
+    if (draft != null && draft.isNotEmpty) _input.text = draft;
     _boot();
   }
 

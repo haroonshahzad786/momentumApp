@@ -73,13 +73,27 @@ class _RocketWidgetState extends State<RocketWidget>
         Offset(0.65, 0.69), _panelWWing, 0),
   ];
 
+  // Tip of the rocket (PRD 12.10): left clock → Full Routines List, centre →
+  // All Habits Quick View, right checklist → Non-Routines. The Command Center
+  // lives in the ☰ menu per the PRD, not on the nose.
   static const _noseIcons = <_NoseIcon>[
-    _NoseIcon('habits', 'icon-habits.png', Offset(0.505, 0.13), 0.155),
-    _NoseIcon('lists', 'icon-lists.png', Offset(0.39, 0.22), 0.11),
-    _NoseIcon('routines', 'icon-routines.png', Offset(0.62, 0.22), 0.11),
+    _NoseIcon('habits', 'icon-habits.png', Offset(0.505, 0.13), 0.155,
+        'All Habits'),
+    _NoseIcon('routines', 'icon-routines.png', Offset(0.39, 0.22), 0.11,
+        'Routines'),
+    _NoseIcon('nonroutines', 'icon-lists.png', Offset(0.62, 0.22), 0.11,
+        'Non-Routines'),
   ];
 
   static const double _badgeW = 0.22;
+
+  static const _coreName = {
+    'mindset': 'Mindset',
+    'emotional': 'Emotional & Mental',
+    'relationships': 'Relationships',
+    'physical': 'Physical Health',
+    'career': 'Career & Finances',
+  };
 
   @override
   void dispose() {
@@ -192,11 +206,21 @@ class _RocketWidgetState extends State<RocketWidget>
               top: h * n.center.dy - (w * n.w) / 2,
               width: w * n.w,
               height: w * n.w,
-              child: GestureDetector(
-                onTap: () => widget.onNav?.call(n.kind),
-                child: Image.asset(
-                  'assets/momentum/${n.src}',
-                  fit: BoxFit.contain,
+              child: Tooltip(
+                message: n.label,
+                child: Semantics(
+                  button: true,
+                  label: n.label,
+                  child: GestureDetector(
+                    onTap: () => widget.onNav?.call(n.kind),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: Image.asset(
+                        'assets/momentum/${n.src}',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -286,6 +310,29 @@ class _RocketWidgetState extends State<RocketWidget>
           ),
         ),
       ),
+      // Tap the Core: active → that Core's habits; locked → "Fuel this Core"
+      // (the first habit there is what unlocks it).
+      Positioned(
+        left: ix - iconW * 0.65,
+        top: iy - iconW * 0.65,
+        width: iconW * 1.3,
+        height: iconW * 1.3,
+        child: Tooltip(
+          message: active ? _coreName[c.id]! : 'Fuel this Core',
+          child: Semantics(
+            button: true,
+            label: active
+                ? '${_coreName[c.id]} habits'
+                : '${_coreName[c.id]} locked. Fuel this Core',
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () =>
+                  widget.onNav?.call(active ? 'habits:${c.id}' : 'fuel:${c.id}'),
+              child: const MouseRegion(cursor: SystemMouseCursors.click),
+            ),
+          ),
+        ),
+      ),
       // Red ⚠️ Core Balance badge (5+ days below 3.0), tappable → iCore Alert.
       // Drawn last so it sits above the panel/icon; only active Cores qualify.
       if (active && widget.atRiskCores.contains(c.id))
@@ -338,8 +385,9 @@ class _CoreDef {
 }
 
 class _NoseIcon {
-  const _NoseIcon(this.kind, this.src, this.center, this.w);
+  const _NoseIcon(this.kind, this.src, this.center, this.w, this.label);
   final String kind;
+  final String label;
   final String src;
   final Offset center;
   final double w;

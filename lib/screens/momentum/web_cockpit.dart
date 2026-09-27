@@ -5,6 +5,7 @@ import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/journey_stage.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 import '../../widgets/momentum/starfield.dart';
+import '../../widgets/momentum/streak_bar.dart';
 
 /// Desktop flagship: the 3-column Cockpit (5 Cores · rocket stage · flight
 /// data), wired to the real profile data MomentumHome already holds. Mirrors
@@ -16,6 +17,8 @@ class WebCockpit extends StatelessWidget {
     required this.streak,
     this.streakState = 'ok',
     this.streakProtection,
+    this.streakSavers = 0,
+    this.onStreakTap,
     required this.planet,
     required this.activeCores,
     required this.atRiskCores,
@@ -36,6 +39,8 @@ class WebCockpit extends StatelessWidget {
 
   /// Streak Savers + Vacation Mode card, shown under the flight data.
   final Widget? streakProtection;
+  final int streakSavers;
+  final VoidCallback? onStreakTap;
   final String planet;
   final List<String> activeCores;
   final Set<String> atRiskCores;
@@ -60,10 +65,11 @@ class WebCockpit extends StatelessWidget {
     return i < 0 ? 0 : i;
   }
 
-  // Next-planet momentum threshold used for the "Next planet in …" readout.
-  int get _nextPlanetPts {
-    const step = 12000;
-    return ((momentumScore ~/ step) + 1) * step;
+  /// Next stop on the route. Its Momentum threshold is still a spec
+  /// placeholder (13c), so only the name is shown — never an invented number.
+  String? get _nextPlanetName {
+    final i = _planetIdx + 1;
+    return i < MM.planets.length ? MM.planets[i]['name'] as String : null;
   }
 
   @override
@@ -86,19 +92,31 @@ class WebCockpit extends StatelessWidget {
           onCoreAlert: onCoreAlert,
         );
         final right = _FlightData(
-          streak: streak,
-          streakState: streakState,
+          planet: MM.planets[_planetIdx],
           streakProtection: streakProtection,
           balance: balance,
           momentumScore: momentumScore,
           spaceCredits: spaceCredits,
-          nextPlanetPts: _nextPlanetPts,
+          nextPlanetName: _nextPlanetName,
           onNav: onNav,
+        );
+        // PRD 12.10 "Across top: Current Streak with consecutive days and
+        // days until reward".
+        final streakBar = StreakBar(
+          streak: streak,
+          streakState: streakState,
+          streakSavers: streakSavers,
+          onTap: onStreakTap,
         );
 
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(40, 4, 40, 56),
-          child: wide
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              streakBar,
+              const SizedBox(height: 20),
+              wide
               ? Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -123,6 +141,8 @@ class WebCockpit extends StatelessWidget {
                     ),
                   ],
                 ),
+            ],
+          ),
         );
       },
     );
@@ -131,10 +151,9 @@ class WebCockpit extends StatelessWidget {
 
 // ── shared glass panel base (mm-panel) ──
 class _Panel extends StatelessWidget {
-  const _Panel({required this.child, this.padding, this.borderColor});
+  const _Panel({required this.child, this.padding});
   final Widget child;
   final EdgeInsetsGeometry? padding;
-  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -143,8 +162,7 @@ class _Panel extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF111C4E).withOpacity(0.55),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-            color: borderColor ?? Colors.white.withOpacity(0.10)),
+        border: Border.all(color: Colors.white.withOpacity(0.10)),
       ),
       child: child,
     );
@@ -184,6 +202,10 @@ class _CoresColumn extends StatelessWidget {
             label: core.$2,
             icon: core.$3,
             active: activeCores.contains(core.$1),
+            // Active → that Core's habits; dormant → fuel it via HHS.
+            onTap: () => onNav(activeCores.contains(core.$1)
+                ? 'habits:${core.$1}'
+                : 'fuel:${core.$1}'),
           ),
           const SizedBox(height: 12),
         ],
@@ -199,17 +221,23 @@ class _CoreCard extends StatelessWidget {
       {required this.id,
       required this.label,
       required this.icon,
-      required this.active});
+      required this.active,
+      required this.onTap});
   final String id;
   final String label;
   final String icon;
   final bool active;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final hex = MM.coreColor[id] ?? MM.blue;
-    return Opacity(
-      opacity: active ? 1 : 0.58,
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
@@ -252,17 +280,17 @@ class _CoreCard extends StatelessWidget {
                   Text(label,
                       style: MM.body(
                           size: 13.5,
-                          color: Colors.white,
+                          color: active
+                              ? Colors.white
+                              : Colors.white.withOpacity(0.55),
                           weight: FontWeight.w600)),
                   const SizedBox(height: 3),
-                  Text(active ? 'ACTIVE' : 'DORMANT',
+                  Text(active ? 'ACTIVE' : 'DORMANT · FUEL THIS CORE →',
                       style: GoogleFonts.orbitron(
                           fontSize: 8,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 1.2,
-                          color: active
-                              ? hex
-                              : Colors.white.withOpacity(0.4))),
+                          color: active ? hex : MM.yellow.withOpacity(0.8))),
                 ],
               ),
             ),
@@ -277,6 +305,7 @@ class _CoreCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -385,6 +414,7 @@ class _RocketStageState extends State<_RocketStage> {
                   height: 500,
                   rocketWidth: 260,
                   warpSpeed: _warp,
+                  dailyIntro: true,
                   onNav: widget.onNav,
                   onCoreAlert: widget.onCoreAlert,
                 ),
@@ -412,27 +442,25 @@ class _RocketStageState extends State<_RocketStage> {
 // ═══════════════════════════════════════════════════════════════
 class _FlightData extends StatelessWidget {
   const _FlightData({
-    required this.streak,
-    required this.streakState,
+    required this.planet,
     required this.streakProtection,
     required this.balance,
     required this.momentumScore,
     required this.spaceCredits,
-    required this.nextPlanetPts,
+    required this.nextPlanetName,
     required this.onNav,
   });
-  final int streak;
-  final String streakState;
+  final Map<String, dynamic> planet;
   final Widget? streakProtection;
   final int? balance;
   final int momentumScore;
   final int spaceCredits;
-  final int nextPlanetPts;
+  final String? nextPlanetName;
   final void Function(String key) onNav;
 
   @override
   Widget build(BuildContext context) {
-    final toNext = (nextPlanetPts - momentumScore).clamp(0, nextPlanetPts);
+    // PRD 12.10 stats box: Current Planet · Momentum Score · Balance %.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -442,23 +470,20 @@ class _FlightData extends StatelessWidget {
           children: [
             Expanded(
                 child: _Stat(
-                    label: 'Streak',
-                    value: '${streak}d',
-                    accent: streakState == 'vacation' || streakState == 'protected'
-                        ? MM.teal
-                        : MM.red,
-                    sub: switch (streakState) {
-                      'vacation' => '🌴 Paused',
-                      'protected' => '🛡️ Saver covers gap',
-                      'warning' => '⚠ Check in today',
-                      _ => null,
-                    })),
+                    label: 'Planet',
+                    value: (planet['name'] as String).toUpperCase(),
+                    valueSize: 20,
+                    accent: planet['color'] as Color,
+                    sub: nextPlanetName == null
+                        ? 'Final stop'
+                        : 'Next: $nextPlanetName')),
             const SizedBox(width: 12),
             Expanded(
                 child: _Stat(
                     label: 'Balance',
                     value: balance == null ? '—' : '$balance%',
-                    accent: MM.teal)),
+                    accent: MM.teal,
+                    sub: '5-Core, 7 days')),
           ],
         ),
         const SizedBox(height: 12),
@@ -466,7 +491,7 @@ class _FlightData extends StatelessWidget {
           label: 'Momentum Score',
           value: _fmt(momentumScore),
           accent: MM.yellow,
-          sub: 'Next planet in ${_fmt(toNext)} pts',
+          sub: 'Propels the rocket forward',
         ),
         const SizedBox(height: 12),
         _Stat(
@@ -475,9 +500,6 @@ class _FlightData extends StatelessWidget {
           accent: MM.yellow,
           sub: 'Spend in the Cantina',
         ),
-        const SizedBox(height: 12),
-        // active quest
-        _QuestCard(streak: streak, onTap: () => onNav('trophy')),
         if (streakProtection != null) ...[
           const SizedBox(height: 12),
           streakProtection!,
@@ -502,11 +524,13 @@ class _Stat extends StatelessWidget {
       {required this.label,
       required this.value,
       required this.accent,
-      this.sub});
+      this.sub,
+      this.valueSize = 28});
   final String label;
   final String value;
   final Color accent;
   final String? sub;
+  final double valueSize;
 
   @override
   Widget build(BuildContext context) {
@@ -524,76 +548,15 @@ class _Stat extends StatelessWidget {
                   color: Colors.white.withOpacity(0.5))),
           const SizedBox(height: 6),
           Text(value,
-              style: MM.display(size: 28, color: accent, height: 1)),
+              style: MM.display(size: valueSize, color: accent, height: 1),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
           if (sub != null) ...[
             const SizedBox(height: 5),
             Text(sub!,
                 style: MM.body(size: 11, color: Colors.white.withOpacity(0.5))),
           ],
         ],
-      ),
-    );
-  }
-}
-
-class _QuestCard extends StatelessWidget {
-  const _QuestCard({required this.streak, required this.onTap});
-  final int streak;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    // Next milestone at the coming multiple of 50 days.
-    final target = ((streak ~/ 50) + 1) * 50;
-    final pct = (streak / target).clamp(0.0, 1.0);
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: _Panel(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          borderColor: MM.yellow.withOpacity(0.35),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  const Text('🎯', style: TextStyle(fontSize: 16)),
-                  const SizedBox(width: 8),
-                  Text('ACTIVE QUEST',
-                      style: GoogleFonts.orbitron(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.5,
-                          color: MM.yellow)),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text('Reach a $target-day streak',
-                  style: MM.body(
-                      size: 13.5,
-                      color: Colors.white,
-                      weight: FontWeight.w600)),
-              const SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(3),
-                child: LinearProgressIndicator(
-                  value: pct,
-                  minHeight: 5,
-                  backgroundColor: Colors.white.withOpacity(0.1),
-                  valueColor: const AlwaysStoppedAnimation(MM.yellow),
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text('$streak/$target days',
-                  style: MM.body(
-                      size: 10.5, color: Colors.white.withOpacity(0.5))),
-            ],
-          ),
-        ),
       ),
     );
   }

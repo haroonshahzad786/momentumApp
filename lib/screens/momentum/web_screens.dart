@@ -30,6 +30,7 @@ import '../../theme/momentum_tokens.dart';
 import '../../services/leaderboard_score.dart';
 import '../../widgets/momentum/captains_log_archive.dart';
 import '../../widgets/momentum/formation_room.dart';
+import '../../widgets/momentum/mm_buttons.dart';
 
 const Map<String, String> kCoreIcon = {
   'mindset': '🧠',
@@ -37,6 +38,14 @@ const Map<String, String> kCoreIcon = {
   'relationships': '👥',
   'physical': '💪',
   'emotional': '🧘',
+};
+
+const Map<String, String> kCoreLabel = {
+  'mindset': 'Mindset',
+  'career': 'Career & Finances',
+  'relationships': 'Relationships',
+  'physical': 'Physical Health',
+  'emotional': 'Emotional & Mental',
 };
 
 Color coreHex(String id) => MM.coreColor[id] ?? MM.blue;
@@ -535,7 +544,11 @@ class _WebTasksState extends State<WebTasks> {
 // HABITS — real Golden Habits in a lifecycle grid (read-focused)
 // ═══════════════════════════════════════════════════════════════
 class WebHabits extends StatefulWidget {
-  const WebHabits({super.key});
+  const WebHabits({super.key, this.coreFilter, this.onClearFilter});
+
+  /// Short Core id ('physical', …) — a Core tapped on the rocket (#20).
+  final String? coreFilter;
+  final VoidCallback? onClearFilter;
   @override
   State<WebHabits> createState() => _WebHabitsState();
 }
@@ -591,20 +604,36 @@ class _WebHabitsState extends State<WebHabits> {
 
   @override
   Widget build(BuildContext context) {
+    final filter = widget.coreFilter;
+    final shown = filter == null
+        ? _habits
+        : [
+            for (final h in _habits)
+              if (GoldenHabitRef.shortCore(h.coreId) == filter) h
+          ];
     return _ScreenScaffold(
       loading: _loading,
       error: _error,
       onRetry: _load,
       child: WebSection(
-        title: 'GOLDEN HABITS',
-        meta: '${_habits.length} IN FORGE',
-        accent: MM.magenta,
-        child: _habits.isEmpty
-            ? _empty('No golden habits yet',
+        title: filter == null
+            ? 'GOLDEN HABITS'
+            : '${kCoreLabel[filter]?.toUpperCase() ?? filter.toUpperCase()} HABITS',
+        meta: '${shown.length} IN FORGE',
+        accent: filter == null ? MM.magenta : (MM.coreColor[filter] ?? MM.magenta),
+        action: filter == null
+            ? null
+            : MMGhostButton(
+                label: 'Show all Cores ✕', onPressed: widget.onClearFilter),
+        child: shown.isEmpty
+            ? _empty(
+                filter == null
+                    ? 'No golden habits yet'
+                    : 'No habits in this Core yet',
                 'Forge one in Phase 1 to start building momentum.')
             : _Grid(
                 minTileWidth: 300,
-                children: _habits.map((h) {
+                children: shown.map((h) {
                   final st = _stage[h.stage] ?? _stage['forming']!;
                   final hex = coreHex(h.coreId);
                   final note = h.displayText.trim().isNotEmpty
@@ -811,7 +840,10 @@ class _Formed {
 // ROUTINES — real routine / non-routine core lists
 // ═══════════════════════════════════════════════════════════════
 class WebRoutines extends StatefulWidget {
-  const WebRoutines({super.key});
+  const WebRoutines({super.key, this.nonRoutinesFirst = false});
+
+  /// Opened from the rocket's Non-Routines icon (#20) — lead with that list.
+  final bool nonRoutinesFirst;
   @override
   State<WebRoutines> createState() => _WebRoutinesState();
 }
@@ -922,14 +954,22 @@ class _WebRoutinesState extends State<WebRoutines> {
 
   @override
   Widget build(BuildContext context) {
+    final routine = _routineSection;
+    final nonRoutine = _nonRoutineSection;
     return _ScreenScaffold(
       loading: _loading,
       error: _error,
       onRetry: _load,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          WebSection(
+        children: widget.nonRoutinesFirst
+            ? [nonRoutine, const SizedBox(height: 30), routine]
+            : [routine, const SizedBox(height: 30), nonRoutine],
+      ),
+    );
+  }
+
+  Widget get _routineSection => WebSection(
             title: 'ROUTINE',
             meta: 'DAILY ORBIT · THE SEA OF GREEN',
             accent: MM.teal,
@@ -939,9 +979,9 @@ class _WebRoutinesState extends State<WebRoutines> {
                 : _Grid(
                     minTileWidth: 300,
                     children: _routine.map(_coreListCard).toList()),
-          ),
-          const SizedBox(height: 30),
-          WebSection(
+          );
+
+  Widget get _nonRoutineSection => WebSection(
             title: 'NON-ROUTINE',
             meta: 'IDENTITY HABITS → TROPHY ROOM',
             accent: MM.yellow,
@@ -951,11 +991,7 @@ class _WebRoutinesState extends State<WebRoutines> {
                 : _Grid(
                     minTileWidth: 300,
                     children: _nonRoutine.map(_coreListCard).toList()),
-          ),
-        ],
-      ),
-    );
-  }
+          );
 }
 
 // ═══════════════════════════════════════════════════════════════

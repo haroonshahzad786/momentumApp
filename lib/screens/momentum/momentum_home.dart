@@ -48,6 +48,17 @@ class MomentumHome extends StatefulWidget {
 
 class _MomentumHomeState extends State<MomentumHome> {
   String _screen = 'dashboard';
+
+  /// Short Core id the Habits screen is filtered to (a Core tapped on the
+  /// rocket, #20); null shows every Core.
+  String? _habitsCore;
+
+  /// The rocket's right-nose "Non-Routines" icon opens the Routines screen
+  /// with its Non-Routine section first (#21 splits it into its own view).
+  bool _nonRoutinesFirst = false;
+
+  /// Locked Core the player chose to fuel — pre-drafts the HHS opener.
+  String? _fuelCore;
   bool _menuOpen = false;
   final _auth = AuthService();
   final _adminService = AdminService();
@@ -326,11 +337,27 @@ class _MomentumHomeState extends State<MomentumHome> {
             MediaQuery.of(context).size.width >= kWebBreakpoint) {
           key = 'dashboard';
         }
-        _screen = key;
-        _menuOpen = false;
         // Normal navigation always lands Phase 1 on its hub.
         _phase1Entry = null;
         _phase1EntryHabitId = null;
+        _fuelCore = null;
+        _habitsCore = null;
+        _nonRoutinesFirst = false;
+        if (key.startsWith('habits:')) {
+          _habitsCore = key.substring(7);
+          key = 'habits';
+        } else if (key == 'nonroutines') {
+          _nonRoutinesFirst = true;
+          key = 'routines';
+        } else if (key.startsWith('fuel:')) {
+          // A locked Core lights up with its first Golden Habit, which only
+          // the HHS forges — so fuelling one re-enters Stage 1 (§4C bridge).
+          _fuelCore = key.substring(5);
+          _phase1Entry = 'hhs';
+          key = 'phase1';
+        }
+        _screen = key;
+        _menuOpen = false;
       });
 
   /// Phase 1 Re-Entry Bridge (§4C). Routes the player back into Phase 1 from the
@@ -618,6 +645,9 @@ class _MomentumHomeState extends State<MomentumHome> {
         state: _phase1,
         entryStage: _phase1Entry,
         entryHabitId: _phase1EntryHabitId,
+        entryDraft: _fuelCore == null
+            ? null
+            : "I want to fuel my ${_coreMeta[_fuelCore]?.$1 ?? _fuelCore} Core — let's build its first habit.",
         onStateChange: _persistPhase1,
         onBack: () => _go('dashboard'),
         onExitToCockpit: () => _go('dashboard'),
@@ -667,6 +697,7 @@ class _MomentumHomeState extends State<MomentumHome> {
     }
     if (_screen == 'routines') {
       return RoutinesScreen(
+        nonRoutinesFirst: _nonRoutinesFirst,
         onBack: () => _go('dashboard'),
         onChat: _openChat,
         onNav: _go,
@@ -674,6 +705,8 @@ class _MomentumHomeState extends State<MomentumHome> {
     }
     if (_screen == 'habits') {
       return HabitsScreen(
+        coreFilter: _habitsCore,
+        onClearFilter: () => _go('habits'),
         onBack: () => _go('dashboard'),
         onChat: _openChat,
         onNav: _go,
@@ -891,6 +924,8 @@ class _MomentumHomeState extends State<MomentumHome> {
           streak: streak,
           streakState: p?.streakState ?? 'ok',
           streakProtection: _buildStreakProtection(),
+          streakSavers: p?.streakSavers ?? 0,
+          onStreakTap: _openStreakSheet,
           planet: p?.planet ?? 'earth',
           activeCores: activeCores,
           atRiskCores: _atRiskCores,
@@ -907,13 +942,18 @@ class _MomentumHomeState extends State<MomentumHome> {
         title = 'Routines';
         subtitle = 'Daily Orbit';
         accent = MM.teal;
-        content = const WebRoutines();
+        content = WebRoutines(
+            key: ValueKey(_nonRoutinesFirst),
+            nonRoutinesFirst: _nonRoutinesFirst);
         break;
       case 'habits':
         title = 'Habits';
         subtitle = 'Golden Habits';
         accent = MM.magenta;
-        content = const WebHabits();
+        content = WebHabits(
+            key: ValueKey(_habitsCore),
+            coreFilter: _habitsCore,
+            onClearFilter: () => _go('habits'));
         break;
       case 'tasks':
         title = 'Tasks';

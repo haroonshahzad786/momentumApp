@@ -8,7 +8,7 @@ import '../../widgets/momentum/journey_stage.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 import '../../widgets/momentum/offline_banner.dart';
 import '../../widgets/momentum/starfield.dart';
-import '../../widgets/momentum/streak_flame.dart';
+import '../../widgets/momentum/streak_bar.dart';
 
 /// Default Rocket Dashboard (Screen 3.1) — the cockpit / home screen.
 ///
@@ -162,51 +162,13 @@ class _DashboardPageState extends State<DashboardPage> {
                         onTap: () => onNav('trophy'),
                       ),
                       const Spacer(),
-                      GestureDetector(
+                      // Streak + days to the next milestone reward (#20).
+                      StreakBar(
+                        compact: true,
+                        streak: streak,
+                        streakState: streakState,
+                        streakSavers: widget.streakSavers,
                         onTap: widget.onStreakTap,
-                        behavior: HitTestBehavior.opaque,
-                        child: Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Row(
-                          children: [
-                            StreakFlame(days: streak),
-                            const SizedBox(width: 8),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(mainAxisSize: MainAxisSize.min, children: [
-                                  Text('STREAK',
-                                      style: MM.displayX(
-                                          size: 11,
-                                          color: switch (streakState) {
-                                            'ok' => MM.yellow,
-                                            'vacation' || 'protected' => MM.teal,
-                                            _ => MM.red,
-                                          })),
-                                  if (streakState == 'warning') ...[
-                                    const SizedBox(width: 4),
-                                    const Text('⚠',
-                                        style: TextStyle(
-                                            fontSize: 10, color: MM.red)),
-                                  ],
-                                  if (streakState == 'vacation') ...[
-                                    const SizedBox(width: 4),
-                                    const Text('🌴', style: TextStyle(fontSize: 10)),
-                                  ] else if (streakState == 'protected' ||
-                                      widget.streakSavers > 0) ...[
-                                    const SizedBox(width: 4),
-                                    const Text('🛡️', style: TextStyle(fontSize: 10)),
-                                  ],
-                                ]),
-                                const SizedBox(height: 2),
-                                Text('DAY $streak',
-                                    style: MM.display(
-                                        size: 18, color: Colors.white)),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
                       ),
                       const Spacer(),
                       GlassPanel(
@@ -306,6 +268,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         rocketWidth:
                             math.min(c.maxWidth * 0.72, 250).toDouble(),
                         warpSpeed: _warp,
+                        dailyIntro: true,
                         compact: true,
                         controlsOnLeft: true,
                         onNav: onNav,
