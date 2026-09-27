@@ -170,5 +170,32 @@ class CoreListsService {
     }
   }
 
+  /// Saves (or clears, with null) one line's PRD §11 colour.
+  Future<void> setItemColor({
+    required String userId,
+    required CoreList list,
+    required String item,
+    required String? color,
+  }) async {
+    final response = await _client.post(
+      Uri.parse('$_baseUrl/flutterSetCoreListItemColor'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'secret': _secret,
+        'userId': userId,
+        'core': list.coreId,
+        'categoryId': list.categoryId,
+        'listName': list.name,
+        'item': item,
+        'color': color ?? '',
+      }),
+    );
+    final decoded = jsonDecode(response.body);
+    if (response.statusCode != 200 || decoded is! Map || decoded['ok'] != true) {
+      throw Exception('flutterSetCoreListItemColor failed '
+          '(${response.statusCode}): ${decoded is Map ? decoded['error'] : response.body}');
+    }
+  }
+
   void dispose() => _client.close();
 }

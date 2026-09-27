@@ -1,6 +1,6 @@
 import '../models/core_list.dart';
 import '../models/golden_habit.dart';
-import 'checkin_service.dart';
+import 'checkin_service.dart' show DailyCheckin;
 import 'formation.dart';
 import 'onboarding_service.dart';
 
@@ -9,6 +9,52 @@ import 'onboarding_service.dart';
 //   • per-core "Routines List" / "Non-Routine" line items — the schedule.
 // Adding a habit from Routines writes both, HHS may write only one, so the
 // view merges them and drops duplicates (same Core + same name).
+
+/// PRD §11 colour key. Golden Habits are coloured automatically (🟠 forming,
+/// 🟢 formed); every other line carries the colour the player tagged it with.
+enum HabitColor {
+  red('🔴', 'Bad habit', 'Eliminate or replace'),
+  orange('🟠', 'Forming', 'Golden Habit being formed — score daily'),
+  black('⚫', 'Neutral', 'Candidate for a future upgrade'),
+  green('🟢', 'Healthy', 'Established — maintain and reinforce'),
+  blue('🔵', 'MBM', 'Momentum-Boosting Method attached to a Golden Habit'),
+  note('🌟', 'Note', 'Observation for future action');
+
+  const HabitColor(this.emoji, this.label, this.meaning);
+  final String emoji;
+  final String label;
+  final String meaning;
+
+  static HabitColor? parse(String? id) {
+    for (final c in values) {
+      if (c.name == id) return c;
+    }
+    return null;
+  }
+}
+
+/// Map key for one stored line — mirrors `itemKey` in functions-flutter/
+/// coreLists.js, which stores the colours under it.
+String itemKey(String item) {
+  var k = item
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+      .replaceAll(RegExp(r'^_+|_+$'), '');
+  if (k.length > 150) k = k.substring(0, 150);
+  return k;
+}
+
+/// 🔴 / 🟠 / 🟢 tallies for the PRD §11 status counter.
+({int red, int orange, int green}) statusCounts(Iterable<HabitColor?> colors) {
+  var r = 0, o = 0, g = 0;
+  for (final c in colors) {
+    if (c == HabitColor.red) r++;
+    if (c == HabitColor.orange) o++;
+    if (c == HabitColor.green) g++;
+  }
+  return (red: r, orange: o, green: g);
+}
 
 /// Where a habit sits in the day. Routines land in a time block; non-routines
 /// are triggered by situations, so they go in "Throughout Day" (PRD §11).
@@ -108,7 +154,7 @@ class AllHabit {
     required this.core,
     required this.isRoutine,
     required this.slot,
-    required this.status,
+    required this.color,
     this.progress,
     this.habitId,
     this.flagged = false,
@@ -121,8 +167,8 @@ class AllHabit {
   final bool isRoutine;
   final HabitSlot slot;
 
-  /// 'formed' 🟢 · 'forming' 🟠 · 'bad' 🔴 · 'none' (no check-in data yet).
-  final String status;
+  /// Null for a line the player hasn't tagged yet.
+  final HabitColor? color;
 
   /// Formation progress for a Golden Habit still forming (Day X/14).
   final FormationProgress? progress;
@@ -137,9 +183,43 @@ class AllHabit {
 String _key(String core, String name) =>
     '$core|${name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim()}';
 
+/// Golden Habits keyed by Core + name, for matching them to list lines.
+Map<String, GoldenHabit> goldenIndex(List<GoldenHabit> golden) => {
+      for (final g in golden)
+        _key(GoldenHabitRef.shortCore(g.coreId), _goldenName(g)): g,
+    };
+
+String _goldenName(GoldenHabit g) => g.habitName.trim().isNotEmpty
+    ? g.habitName.trim()
+    : (g.displayText.trim().isNotEmpty ? g.displayText.trim() : 'Golden Habit');
+
+HabitColor _goldenColor(GoldenHabit g) =>
+    g.formed ? HabitColor.green : HabitColor.orange;
+
+/// How one stored line shows in every view: a matching Golden Habit's
+/// automatic colour + formation progress, else the player's tagged colour.
+({HabitColor? color, FormationProgress? progress, GoldenHabit? golden})
+    lineStatus(CoreList list, String raw, Map<String, GoldenHabit> goldenByKey,
+        Map<String, List<int>> coreScores) {
+  final core = GoldenHabitRef.shortCore(list.coreId);
+  final g = goldenByKey[_key(core, parseHabitLine(raw).name)];
+  if (g != null) {
+    return (
+      color: _goldenColor(g),
+      progress: g.formed ? null : formationProgress(coreScores[core] ?? const []),
+      golden: g,
+    );
+  }
+  return (
+    color: HabitColor.parse(list.colors[itemKey(raw)]),
+    progress: null,
+    golden: null,
+  );
+}
+
 /// Merges Golden Habits with the Routines / Non-Routine list lines.
-/// [coreScores] is short Core id → daily scores (newest first), the same
-/// source the Trophy Room and Routines screen derive status from.
+/// [coreScores] is short Core id → daily scores (newest first) — the Trophy
+/// Room's source for a Golden Habit's formation progress.
 List<AllHabit> mergeAllHabits({
   required List<GoldenHabit> golden,
   required List<CoreList> routineLists,
@@ -161,7 +241,7 @@ List<AllHabit> mergeAllHabits({
           core: core,
           isRoutine: isRoutine,
           slot: _slotFor(isRoutine, p.blockId),
-          status: deriveRoutineStage(coreScores[core] ?? const []) ?? 'none',
+          color: HabitColor.parse(l.colors[itemKey(raw)]),
         );
       }
     }
@@ -172,9 +252,7 @@ List<AllHabit> mergeAllHabits({
 
   final out = <AllHabit>[];
   for (final g in golden) {
-    final name = g.habitName.trim().isNotEmpty
-        ? g.habitName.trim()
-        : (g.displayText.trim().isNotEmpty ? g.displayText.trim() : 'Golden Habit');
+    final name = _goldenName(g);
     final core = GoldenHabitRef.shortCore(g.coreId);
     final line = lines.remove(_key(core, name));
     // Type comes from the Golden Habit; if it never said, trust the list.
@@ -198,7 +276,7 @@ List<AllHabit> mergeAllHabits({
       core: core,
       isRoutine: isRoutine,
       slot: _slotFor(isRoutine, blockId),
-      status: g.formed ? 'formed' : 'forming',
+      color: _goldenColor(g),
       progress: g.formed ? null : progress,
       habitId: g.habitId,
       flagged: g.flagged,

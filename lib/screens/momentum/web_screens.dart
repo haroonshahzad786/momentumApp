@@ -29,7 +29,10 @@ import '../../services/accountability_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../services/leaderboard_score.dart';
 import '../../widgets/momentum/captains_log_archive.dart';
+import '../../services/all_habits.dart';
+import '../../services/formation.dart' show FormationProgress;
 import '../../widgets/momentum/formation_room.dart';
+import '../../widgets/momentum/habit_color.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 
 const Map<String, String> kCoreIcon = {
@@ -850,10 +853,56 @@ class WebRoutines extends StatefulWidget {
 
 class _WebRoutinesState extends State<WebRoutines> {
   final _service = CoreListsService();
+  final _habits = HabitsService();
+  final _checkins = CheckinService();
   List<CoreList> _routine = const [];
   List<CoreList> _nonRoutine = const [];
+  Map<String, GoldenHabit> _golden = const {};
+  Map<String, List<int>> _coreScores = const {};
+
+  /// Colours tagged this session, over what the list was loaded with.
+  final Map<String, HabitColor?> _tagged = {};
   bool _loading = true;
   String? _error;
+
+  @override
+  void dispose() {
+    _service.dispose();
+    _habits.dispose();
+    super.dispose();
+  }
+
+  String _tagKey(CoreList l, String raw) =>
+      '${l.coreId}/${l.categoryId}/${l.name}|${itemKey(raw)}';
+
+  ({HabitColor? color, FormationProgress? progress, GoldenHabit? golden})
+      _status(CoreList l, String raw) {
+    final st = lineStatus(l, raw, _golden, _coreScores);
+    final k = _tagKey(l, raw);
+    return st.golden == null && _tagged.containsKey(k)
+        ? (color: _tagged[k], progress: null, golden: null)
+        : st;
+  }
+
+  Future<void> _tag(CoreList l, String raw) async {
+    final st = _status(l, raw);
+    if (st.golden != null) return; // 🟠/🟢 follow formation
+    final picked =
+        await pickHabitColor(context, st.color, habitName: parseHabitLine(raw).name);
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (picked == null || picked.color == st.color || uid.isEmpty || !mounted) return;
+    final k = _tagKey(l, raw);
+    setState(() => _tagged[k] = picked.color);
+    try {
+      await _service.setItemColor(
+          userId: uid, list: l, item: raw, color: picked.color?.name);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _tagged[k] = st.color);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't save the colour — try again.")));
+    }
+  }
 
   @override
   void initState() {
@@ -876,10 +925,22 @@ class _WebRoutinesState extends State<WebRoutines> {
     });
     try {
       final res = await _service.getRoutineData(uid);
+      // Golden Habits colour their own lines; check-ins give Day X/14.
+      List<GoldenHabit> golden = const [];
+      List<DailyCheckin> checkins = const [];
+      try {
+        golden = (await _habits.getGoldenHabits(uid)).data;
+      } catch (_) {}
+      try {
+        checkins = await _checkins.getRecent(uid, limit: 30);
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _routine = res.data.routine;
         _nonRoutine = res.data.nonRoutine;
+        _golden = goldenIndex(golden);
+        _coreScores = coreScoreSeries(checkins);
+        _tagged.clear();
         _loading = false;
       });
     } catch (e) {
@@ -892,7 +953,9 @@ class _WebRoutinesState extends State<WebRoutines> {
   }
 
   Widget _coreListCard(CoreList l) {
-    final hex = coreHex(l.coreId);
+    // Lists store the long Core id; the icon / colour maps are keyed short.
+    final core = GoldenHabitRef.shortCore(l.coreId);
+    final hex = coreHex(core);
     return WebPanel(
       padding: const EdgeInsets.all(18),
       leftAccent: hex,
@@ -902,7 +965,7 @@ class _WebRoutinesState extends State<WebRoutines> {
         children: [
           Row(
             children: [
-              Text(kCoreIcon[l.coreId] ?? '•',
+              Text(kCoreIcon[core] ?? '•',
                   style: const TextStyle(fontSize: 20)),
               const SizedBox(width: 10),
               Expanded(
@@ -918,29 +981,7 @@ class _WebRoutinesState extends State<WebRoutines> {
           ),
           if (l.items.isNotEmpty) ...[
             const SizedBox(height: 12),
-            for (final it in l.items)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 7),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 5, right: 9),
-                      child: Container(
-                          width: 7,
-                          height: 7,
-                          decoration:
-                              BoxDecoration(color: hex, shape: BoxShape.circle)),
-                    ),
-                    Expanded(
-                      child: Text(it,
-                          style: MM.body(
-                              size: 12.5,
-                              color: Colors.white.withOpacity(0.85))),
-                    ),
-                  ],
-                ),
-              ),
+            for (final it in l.items) _line(l, it),
           ] else ...[
             const SizedBox(height: 8),
             Text('No items yet',
@@ -948,6 +989,55 @@ class _WebRoutinesState extends State<WebRoutines> {
                     MM.body(size: 11, color: Colors.white.withOpacity(0.4))),
           ],
         ],
+      ),
+    );
+  }
+
+  /// One stored line: its colour dot, text, and Day X/14 for a Golden Habit.
+  /// Tapping a player's own line opens the colour picker.
+  Widget _line(CoreList l, String raw) {
+    final st = _status(l, raw);
+    final p = st.progress;
+    final sub = p != null
+        ? 'Day ${p.days.clamp(0, 14)}/14 · ${st.color!.label}'
+        : st.golden != null
+            ? st.color!.label
+            : (st.color?.label ?? 'Tap to tag');
+    return Tooltip(
+      message: st.golden != null
+          ? 'Golden Habit — colour follows formation'
+          : 'Tag with the colour key',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: st.golden != null ? null : () => _tag(l, raw),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 5, right: 9),
+                child: HabitColorDot(st.color),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(raw,
+                        style: MM.body(
+                            size: 12.5, color: Colors.white.withOpacity(0.85))),
+                    Text(sub,
+                        style: MM.body(
+                            size: 10.5,
+                            color: st.color == null
+                                ? Colors.white.withOpacity(0.35)
+                                : Colors.white.withOpacity(0.5))),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -962,9 +1052,20 @@ class _WebRoutinesState extends State<WebRoutines> {
       onRetry: _load,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: widget.nonRoutinesFirst
-            ? [nonRoutine, const SizedBox(height: 30), routine]
-            : [routine, const SizedBox(height: 30), nonRoutine],
+        children: [
+          // PRD §11 status counter — red / orange / green tallies.
+          Align(
+            alignment: Alignment.centerLeft,
+            child: HabitStatusCounter([
+              for (final l in [..._routine, ..._nonRoutine])
+                for (final it in l.items) _status(l, it).color,
+            ]),
+          ),
+          const SizedBox(height: 18),
+          ...(widget.nonRoutinesFirst
+              ? [nonRoutine, const SizedBox(height: 30), routine]
+              : [routine, const SizedBox(height: 30), nonRoutine]),
+        ],
       ),
     );
   }

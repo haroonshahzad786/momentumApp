@@ -8,6 +8,7 @@ import '../../services/core_lists_service.dart';
 import '../../services/habits_service.dart';
 import '../../services/offline.dart';
 import '../../theme/momentum_tokens.dart';
+import 'habit_color.dart';
 import 'mm_buttons.dart';
 import 'offline_banner.dart';
 
@@ -160,16 +161,6 @@ class _AllHabitsViewState extends State<AllHabitsView> {
   }
 
   Widget _header() {
-    int n(String s) => _all.where((h) => h.status == s).length;
-    final style = MM.body(size: 12, color: Colors.white.withOpacity(0.7));
-    Widget count(String status) => Padding(
-          padding: const EdgeInsets.only(left: 12),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            _dot(_statusColor(status)),
-            const SizedBox(width: 5),
-            Text('${n(status)}', style: style),
-          ]),
-        );
     return Wrap(
       alignment: WrapAlignment.spaceBetween,
       crossAxisAlignment: WrapCrossAlignment.center,
@@ -177,32 +168,13 @@ class _AllHabitsViewState extends State<AllHabitsView> {
       spacing: 12,
       children: [
         _Toggle(byCore: _byCore, onChanged: _setByCore),
-        Semantics(
-          label: '${_all.length} habits: ${n('formed')} formed, '
-              '${n('forming')} forming, ${n('bad')} need work',
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Text('${_all.length} ${_all.length == 1 ? 'HABIT' : 'HABITS'}',
-                style: style),
-            for (final s in const ['formed', 'forming', 'bad'])
-              if (n(s) > 0) count(s),
-          ]),
+        HabitStatusCounter(
+          [for (final h in _all) h.color],
+          leading: '${_all.length} ${_all.length == 1 ? 'HABIT' : 'HABITS'}',
         ),
       ],
     );
   }
-
-  static Color _statusColor(String status) => switch (status) {
-        'formed' => MM.teal,
-        'forming' => MM.yellow,
-        'bad' => MM.red,
-        _ => Colors.white.withOpacity(0.35),
-      };
-
-  static Widget _dot(Color c) => Container(
-        width: 9,
-        height: 9,
-        decoration: BoxDecoration(color: c, shape: BoxShape.circle),
-      );
 
   Widget _empty() => Padding(
         padding: const EdgeInsets.symmetric(vertical: 40),
@@ -286,13 +258,8 @@ class _AllHabitsViewState extends State<AllHabitsView> {
   }
 
   Widget _row(AllHabit h) {
-    final color = _statusColor(h.status);
-    final label = switch (h.status) {
-      'formed' => 'Formed',
-      'forming' => 'Forming',
-      'bad' => 'Needs work',
-      _ => 'No check-ins yet',
-    };
+    final color = habitColorValue(h.color);
+    final label = h.color?.label ?? 'Not tagged';
     final p = h.progress;
     // By Time rows name their Core; By Core rows name their time slot.
     final tag = _byCore
@@ -308,7 +275,7 @@ class _AllHabitsViewState extends State<AllHabitsView> {
           children: [
             Padding(
               padding: const EdgeInsets.only(top: 5, right: 10),
-              child: _dot(color),
+              child: HabitColorDot(h.color),
             ),
             Expanded(
               child: Column(

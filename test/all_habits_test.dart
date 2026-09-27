@@ -15,8 +15,15 @@ GoldenHabit gh(String id, String name, String core,
       'flagged': flagged,
     });
 
-CoreList list(String core, String name, List<String> items) => CoreList(
-    coreId: core, coreLabel: core, categoryId: 'golden_habit', name: name, items: items);
+CoreList list(String core, String name, List<String> items,
+        {Map<String, String> colors = const {}}) =>
+    CoreList(
+        coreId: core,
+        coreLabel: core,
+        categoryId: 'golden_habit',
+        name: name,
+        items: items,
+        colors: colors);
 
 void main() {
   group('parseHabitLine', () {
@@ -57,7 +64,7 @@ void main() {
       );
       expect(all.single.core, 'relationships');
       expect(all.single.slot, HabitSlot.throughout);
-      expect(all.single.status, 'forming');
+      expect(all.single.color, HabitColor.orange);
     });
 
     test('status: formed flag wins; forming carries Day X/14 progress', () {
@@ -72,33 +79,37 @@ void main() {
       );
       final a = all.firstWhere((h) => h.name == 'A');
       final b = all.firstWhere((h) => h.name == 'B');
-      expect(a.status, 'formed');
+      expect(a.color, HabitColor.green);
       expect(a.progress, isNull);
-      expect(b.status, 'forming');
+      expect(b.color, HabitColor.orange);
       expect(b.progress!.days, 8);
       expect(b.slot, HabitSlot.evening);
     });
 
-    test('list-only lines take their status from the Core\'s scores', () {
+    test('list-only lines use the colour the player tagged', () {
       final all = mergeAllHabits(
         golden: const [],
-        routineLists: [list('career_finance_core', 'Routines List', ['Inbox zero'])],
+        routineLists: [
+          list('career_finance_core', 'Routines List', ['Inbox zero'],
+              colors: {'inbox_zero': 'red'})
+        ],
         nonRoutineLists: const [],
-        coreScores: {'career': List.filled(5, 1)},
+        coreScores: {'career': List.filled(20, 5)},
       );
-      expect(all.single.status, 'bad');
+      expect(all.single.color, HabitColor.red,
+          reason: "the tag, not the Core's scores");
       expect(all.single.slot, HabitSlot.anytime);
       expect(all.single.isGolden, isFalse);
     });
 
-    test('no check-ins yet → neutral, not a made-up colour', () {
+    test('untagged line → no colour, not a made-up one', () {
       final all = mergeAllHabits(
         golden: const [],
         routineLists: const [],
         nonRoutineLists: [list('emotional_mental_core', 'Non-Routine', ['Breathe when anxious'])],
         coreScores: const {},
       );
-      expect(all.single.status, 'none');
+      expect(all.single.color, isNull);
     });
   });
 
@@ -126,6 +137,45 @@ void main() {
       expect([for (final x in s) x.id], ['mindset', 'relationships', 'physical']);
       expect([for (final h in s.first.habits) h.name], ['Plan the day', 'Gratitude note']);
       expect(s[1].title, 'relationships', reason: 'falls back to the id');
+    });
+  });
+
+  group('colour key', () {
+    test('itemKey matches functions-flutter/coreLists.js', () {
+      expect(itemKey('Morning · Journal 5 min'), 'morning_journal_5_min');
+      expect(itemKey('  Walk 20 min!! '), 'walk_20_min');
+      expect(itemKey('Café ☕ time'), 'caf_time');
+      expect(itemKey('x' * 400).length, 150);
+      expect(itemKey('···'), '');
+    });
+
+    test('lineStatus: Golden Habit auto colour + progress, else the tag', () {
+      final l = list('mindset_core', 'Routines List',
+          ['Morning · Journal 5 min', 'Scroll phone in bed', 'Coffee'],
+          colors: {'scroll_phone_in_bed': 'red', 'coffee': 'purple'});
+      final idx = goldenIndex([gh('h', 'Journal 5 min', 'mindset_core')]);
+      final scores = {'mindset': List.filled(6, 4)};
+      final a = lineStatus(l, 'Morning · Journal 5 min', idx, scores);
+      expect(a.color, HabitColor.orange);
+      expect(a.progress!.days, 6);
+      expect(a.golden, isNotNull);
+      expect(lineStatus(l, 'Scroll phone in bed', idx, scores).color,
+          HabitColor.red);
+      expect(lineStatus(l, 'Coffee', idx, scores).color, isNull,
+          reason: 'unknown colour ids are ignored');
+    });
+
+    test('status counter tallies only red / orange / green', () {
+      final n = statusCounts([
+        HabitColor.red,
+        HabitColor.orange,
+        HabitColor.orange,
+        HabitColor.green,
+        HabitColor.black,
+        HabitColor.note,
+        null,
+      ]);
+      expect((n.red, n.orange, n.green), (1, 2, 1));
     });
   });
 }

@@ -11,6 +11,7 @@ import '../../services/momentum_lists_service.dart';
 import '../../services/core_lists_service.dart';
 import '../../services/checkin_service.dart';
 import '../../services/all_habits.dart';
+import '../../services/formation.dart' show FormationProgress;
 import '../../services/onboarding_service.dart';
 import '../../services/task_service.dart';
 import '../../services/cantina_ideas_service.dart';
@@ -19,6 +20,7 @@ import '../../services/accountability_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/glass_panel.dart';
 import '../../widgets/momentum/formation_room.dart';
+import '../../widgets/momentum/habit_color.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 import '../../widgets/momentum/offline_banner.dart';
 import '../../widgets/momentum/screen_shell.dart';
@@ -606,19 +608,6 @@ const List<_TimeBlock> _timeBlocks = [
 const _TimeBlock _anytimeBlock =
     _TimeBlock('anytime', 'Unscheduled', 'ANYTIME', '');
 
-/// Lifecycle stage for a routine (color transformation — the sea of green).
-class _RoutineStage {
-  const _RoutineStage(this.id, this.color, this.label);
-  final String id;
-  final Color color;
-  final String label;
-}
-
-const Map<String, _RoutineStage> _routineStages = {
-  'bad': _RoutineStage('bad', MM.red, 'Bad'),
-  'forming': _RoutineStage('forming', MM.yellow, 'Forming'),
-  'formed': _RoutineStage('formed', MM.teal, 'Formed'),
-};
 
 const Map<String, String> _coreIcon = {
   'mindset_core': '🧠',
@@ -646,7 +635,8 @@ const Map<String, String> _coreShortId = {
 };
 
 /// A single habit parsed from a stored Routines List / Non-Routine line.
-/// `stage` is local-only (no backend source yet) and editable by the player.
+/// Its PRD §11 colour is saved on the server (`flutterSetCoreListItemColor`);
+/// a line matching a Golden Habit is coloured by formation instead.
 class _RoutineHabit {
   _RoutineHabit({
     required this.raw,
@@ -663,7 +653,13 @@ class _RoutineHabit {
   final String coreLabel;
   String? blockId; // null → Anytime
   String? cue;
-  String? stage; // null → neutral (no backend source yet; set in edit sheet)
+  /// The list this line is stored in (for saving its colour).
+  CoreList? list;
+  HabitColor? color;
+
+  /// Set when the line is a Golden Habit — its colour is automatic.
+  bool golden = false;
+  FormationProgress? progress;
 
   /// Splits a stored line into {block, cue, name} (shared with All Habits).
   static _RoutineHabit parse(String raw, String coreId, String coreLabel) {
@@ -709,7 +705,6 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
   bool _errorOffline = false;
   String? _error;
   String _view = 'time'; // time | core
-  bool _hasStageData = false;
 
   @override
   void initState() {
@@ -740,18 +735,22 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
     try {
       final result = await _service.getRoutineData(uid);
       final data = result.data;
-      // Real lifecycle source: recent per-Core check-in scores (Spec §8).
-      // A check-in fetch failure must not blank the list — fall back to neutral.
+      // Golden Habits colour their own lines (🟠 forming / 🟢 formed) and
+      // their Core's check-ins give Day X/14. Neither failing blanks the list.
       List<DailyCheckin> checkins = const [];
+      List<GoldenHabit> golden = const [];
       try {
         checkins = await _checkin.getRecent(uid, limit: 30);
       } catch (_) {}
-      final byCore = _coreScoreSeries(checkins);
+      try {
+        golden = (await _habitsSvc.getGoldenHabits(uid)).data;
+      } catch (_) {}
+      final byCore = coreScoreSeries(checkins);
+      final goldenByKey = goldenIndex(golden);
       if (!mounted) return;
       setState(() {
-        _routine = _expand(data.routine, byCore);
-        _nonRoutine = _expand(data.nonRoutine, byCore);
-        _hasStageData = byCore.isNotEmpty;
+        _routine = _expand(data.routine, byCore, goldenByKey);
+        _nonRoutine = _expand(data.nonRoutine, byCore, goldenByKey);
         _offline = result.fromCache;
         _loading = false;
       });
@@ -765,27 +764,21 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
     }
   }
 
-  /// Builds shortCoreId → daily scores (most-recent first) from check-ins,
-  /// which already arrive ordered newest→oldest.
-  Map<String, List<int>> _coreScoreSeries(List<DailyCheckin> checkins) {
-    final byCore = <String, List<int>>{};
-    for (final c in checkins) {
-      c.scores.forEach((coreShort, v) {
-        byCore.putIfAbsent(coreShort, () => []).add(v);
-      });
+  List<_RoutineHabit> _expand(List<CoreList> lists,
+      Map<String, List<int>> byCore, Map<String, GoldenHabit> goldenByKey) {
+    final out = <_RoutineHabit>[];
+    for (final l in lists) {
+      for (final item in l.items) {
+        final st = lineStatus(l, item, goldenByKey, byCore);
+        out.add(_RoutineHabit.parse(item, l.coreId, l.coreLabel)
+          ..list = l
+          ..color = st.color
+          ..golden = st.golden != null
+          ..progress = st.progress);
+      }
     }
-    return byCore;
+    return out;
   }
-
-  List<_RoutineHabit> _expand(
-          List<CoreList> lists, Map<String, List<int>> byCore) =>
-      [
-        for (final l in lists)
-          for (final item in l.items)
-            _RoutineHabit.parse(item, l.coreId, l.coreLabel)
-              ..stage = deriveRoutineStage(
-                  byCore[_coreShortId[l.coreId]] ?? const []),
-      ];
 
   int get _total => _routine.length + _nonRoutine.length;
 
@@ -849,13 +842,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
     }
     final routine = <Widget>[
         // ── ROUTINE section ──
-        _sectionHeader(
-          'ROUTINE',
-          _hasStageData
-              ? '${_routine.where((h) => h.stage == 'formed').length}/${_routine.length} GREEN'
-              : '${_routine.length} HABITS',
-          MM.teal,
-        ),
+        _sectionHeader('ROUTINE', '${_routine.length} HABITS', MM.teal),
         const SizedBox(height: 10),
         if (_routine.isEmpty)
           _emptyNote('No scheduled routines yet.')
@@ -933,6 +920,11 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
             ),
           ],
         ),
+        const SizedBox(height: 12),
+        // PRD §11 status counter — red / orange / green tallies.
+        HabitStatusCounter([
+          for (final h in [..._routine, ..._nonRoutine]) h.color,
+        ]),
         const SizedBox(height: 16),
 
         // The rocket's Non-Routines icon (#20) leads with that section.
@@ -988,7 +980,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
         const SizedBox(height: 16),
         Center(
           child: Text(
-            'TAP ANY HABIT TO EDIT · STAGE & TIME ARE YOURS TO SET',
+            'TAP ANY HABIT TO EDIT · TAG ITS COLOUR',
             textAlign: TextAlign.center,
             style: MM.displayX(size: 9, color: Colors.white.withOpacity(0.35)),
           ),
@@ -1153,13 +1145,32 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
   }
 
   Future<void> _edit(_RoutineHabit h) async {
+    final before = h.color;
     final changed = await showModalBottomSheet<bool>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (_) => _RoutineEditSheet(habit: h),
     );
-    if (changed == true && mounted) setState(() {});
+    if (changed != true || !mounted) return;
+    setState(() {});
+    // Only the colour is saved; a Golden Habit's colour is automatic.
+    final list = h.list;
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (h.color == before || h.golden || list == null || uid.isEmpty) return;
+    try {
+      await _service.setItemColor(
+          userId: uid, list: list, item: h.raw, color: h.color?.name);
+      if (mounted) {
+        _toast(h.color == null
+            ? 'Tag removed'
+            : 'Tagged ${h.color!.emoji} ${h.color!.label}');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => h.color = before);
+      _toast(friendlyError(e, action: 'save the colour'), error: true);
+    }
   }
 }
 
@@ -1222,15 +1233,19 @@ class _RoutineRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final core = _coreHex[habit.coreId] ?? MM.teal;
-    final stage = habit.stage == null ? null : _routineStages[habit.stage];
-    final formed = habit.stage == 'formed';
-    final dotColor = stage?.color ?? Colors.white.withOpacity(0.32);
+    final c = habit.color;
+    final formed = c == HabitColor.green;
+    final dotColor = habitColorValue(c);
     final icon = _coreIcon[habit.coreId] ?? '✦';
     final coreLabel = _coreShort[habit.coreId] ?? habit.coreLabel;
-    final sub = habit.cue ??
-        (stage != null
-            ? '${stage.label.toUpperCase()}${formed ? ' · GREEN' : ''}'
-            : null);
+    final p = habit.progress;
+    final sub = [
+      if (habit.cue != null) habit.cue!,
+      if (p != null)
+        'DAY ${p.days.clamp(0, 14)}/14'
+      else if (c != null)
+        c.label.toUpperCase(),
+    ].join(' · ');
 
     return InkWell(
       onTap: onTap,
@@ -1249,16 +1264,14 @@ class _RoutineRow extends StatelessWidget {
           ),
         ),
         child: Row(children: [
-          Container(
-            width: 11,
-            height: 11,
+          DecoratedBox(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: dotColor,
-              boxShadow: stage == null
+              boxShadow: c == null || c == HabitColor.black
                   ? null
                   : [BoxShadow(color: dotColor, blurRadius: 8)],
             ),
+            child: HabitColorDot(c, size: 11),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -1275,14 +1288,17 @@ class _RoutineRow extends StatelessWidget {
                     weight: formed ? FontWeight.w600 : FontWeight.w400,
                   ),
                 ),
-                if (sub != null) ...[
+                if (sub.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     sub,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: MM.displayX(
-                        size: 8.5, color: (stage?.color ?? MM.white60)),
+                        size: 8.5,
+                        color: c == null || c == HabitColor.black
+                            ? MM.white60
+                            : dotColor),
                   ),
                 ],
               ],
@@ -1309,9 +1325,9 @@ class _RoutineRow extends StatelessWidget {
   }
 }
 
-/// Bottom sheet to correct the parsed parts of a habit and set its stage.
-/// Edits are applied to the in-session model (the player can modify); they do
-/// not yet write back to Firestore (the onboarding agent owns the save path).
+/// Bottom sheet to correct the parsed parts of a habit and tag its colour.
+/// The colour is saved (by the Routines screen on close); name / time / cue
+/// edits still apply to this session only.
 class _RoutineEditSheet extends StatefulWidget {
   const _RoutineEditSheet({required this.habit});
   final _RoutineHabit habit;
@@ -1325,7 +1341,7 @@ class _RoutineEditSheetState extends State<_RoutineEditSheet> {
   late final TextEditingController _cue =
       TextEditingController(text: widget.habit.cue ?? '');
   late String? _blockId = widget.habit.blockId;
-  late String? _stage = widget.habit.stage;
+  late HabitColor? _color = widget.habit.color;
 
   @override
   void dispose() {
@@ -1339,7 +1355,7 @@ class _RoutineEditSheetState extends State<_RoutineEditSheet> {
     h.name = _name.text.trim().isEmpty ? h.name : _name.text.trim();
     h.cue = _cue.text.trim().isEmpty ? null : _cue.text.trim();
     h.blockId = _blockId;
-    h.stage = _stage;
+    h.color = _color;
     Navigator.of(context).pop(true);
   }
 
@@ -1385,14 +1401,21 @@ class _RoutineEditSheetState extends State<_RoutineEditSheet> {
                   () => setState(() => _blockId = null)),
             ]),
             const SizedBox(height: 12),
-            _fieldLabel('STAGE'),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final s in _routineStages.values)
-                _choiceChip(s.label.toUpperCase(), _stage == s.id, s.color,
-                    () => setState(() => _stage = s.id)),
-              _choiceChip('NONE', _stage == null, Colors.white54,
-                  () => setState(() => _stage = null)),
-            ]),
+            _fieldLabel('COLOUR'),
+            if (widget.habit.golden)
+              Text(
+                  '${_color?.emoji ?? ''} Golden Habit — ${_color == HabitColor.green ? 'formed' : 'forming'}. '
+                  'Its colour follows formation in the Trophy Room.',
+                  style: MM.body(size: 12, color: Colors.white.withOpacity(0.7)))
+            else
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final c in HabitColor.values)
+                  _choiceChip('${c.emoji} ${c.label.toUpperCase()}',
+                      _color == c, habitColorValue(c),
+                      () => setState(() => _color = c)),
+                _choiceChip('NONE', _color == null, Colors.white54,
+                    () => setState(() => _color = null)),
+              ]),
             const SizedBox(height: 12),
             _fieldLabel('CUE / ANCHOR (optional)'),
             _textField(_cue, hex, 'e.g. after coffee'),

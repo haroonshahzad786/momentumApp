@@ -11,6 +11,7 @@ class CoreList {
     required this.categoryId,
     required this.name,
     required this.items,
+    this.colors = const {},
   });
 
   final String coreId;
@@ -18,6 +19,10 @@ class CoreList {
   final String categoryId;
   final String name;
   final List<String> items;
+
+  /// PRD §11 colour per line: [itemKey] → red|orange|black|green|blue|note.
+  /// Kept beside the plain strings so FlutterFlow's reads are unchanged.
+  final Map<String, String> colors;
 
   int get count => items.length;
 
@@ -44,6 +49,12 @@ class CoreList {
                 .map((e) => e.toString())
                 .where((s) => s.isNotEmpty)
                 .toList(),
+            colors: l['colors'] is Map
+                ? {
+                    for (final e in (l['colors'] as Map).entries)
+                      '${e.key}': '${e.value}'
+                  }
+                : const {},
           ));
         }
       }

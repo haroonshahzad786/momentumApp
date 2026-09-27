@@ -609,7 +609,8 @@ These three come straight from the Gamification Mechanics Specs Reference (§6 S
 - **Spec (PRD §11 "ALL HABITS Quick View (Toggle)"):** "Two viewing modes accessible via center icon (∞) on rocket dashboard: By Time … By Core …"; "Both views show color-coded status and formation progress."
 - **Built:** the ∞ icon opens a view of every habit, whether it was forged with Nova or added to a Routines list (duplicates merged). **By Time:** Morning → Afternoon → Evening, non-routines in "Throughout Day" at the end. **By Core:** 🧠 → 💰 → 👥 → 💪 → 🧘. Each habit shows its status and "Day X/14" formation progress, from the same data as the Trophy Room.
 - **Verified:** 9 tests; browser-checked on your account (Deep Presence Practice under Relationships · Throughout Day) and at phone width.
-- **Still to come in #21:** the full 6-colour key saved per habit + status counter, the Non-Routines list (Mantra/Gratitude locked, drag to prioritise), and "N/A — not triggered" scoring (your Decision 6).
+- **Step 2 — colour key (built):** "Every habit in the Routines List is labeled using a color system" (PRD §11 Color Key). Each line can be tagged 🔴 / 🟠 / ⚫ / 🟢 / 🔵 / 🌟 and the tag is saved; Golden Habits colour themselves (🟠 forming with "Day X/14", 🟢 formed). Routines and All Habits show the "status counter at top showing red/orange/green tallies".
+- **Still to come in #21:** the Non-Routines list (Mantra/Gratitude locked, drag to prioritise), and "N/A — not triggered" scoring (your Decision 6).
 
 ---
 

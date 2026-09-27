@@ -838,7 +838,16 @@ distances/momentum values (see #40).
   Status = real formed flag / #19 formation progress (Day X/14 · %) / core-score stage for list-only lines;
   neutral when no check-ins (no invented colour). `widgets/momentum/all_habits_view.dart`, route `allhabits`
   from the ∞ nose icon + phone quick icon. Line parser moved out of the Routines screen (`parseHabitLine`).
-  Next: step 2 server-saved 6-colour status + counter; step 3 Non-Routines view; step 4 N/A (needs Will).
+  **Step 2 DONE 2026-09-27 (browser-verified on the dev account with 2 TEST lines in Mindset "Routines List": web picker → 🔴, phone edit sheet → 🟢, both saved + survive reload, All Habits + counters agree):** PRD §11 6-colour key
+  saved per line — `colors` map beside the plain `items` on each list doc (FlutterFlow unaffected); new
+  `flutterSetCoreListItemColor` (functions-flutter/coreLists.js, deployed; key = `itemKey(line)`, mirrored in
+  Dart); fetch returns `colors`. `HabitColor` + `lineStatus` in all_habits.dart: Golden Habit lines auto
+  🟠/🟢 + Day X/14, other lines the player's tag (untagged = hollow ring). Replaced the old per-Core
+  score colouring (`deriveRoutineStage` no longer used by Routines). Phone Routines: edit sheet colour
+  chips save (revert + toast on failure); web Routines: tap a line → colour picker; 🔴/🟠/🟢 counter on
+  Routines (both) + All Habits; forming is now true orange (was yellow = 🌟). Also fixed web Routines'
+  core icons/colours never showing (long vs short core id). 12 client + 8 backend tests.
+  Next: step 3 Non-Routines view; step 4 N/A (needs Will).
   Original scope: — ∞ All Habits Quick View (By Time / By Core toggle); Full Routines List
   with 6-color system, status counter ("8 🔴 · 12 🟠 · 15 🟢"), day counts ("Day 8/14"), yellow notes;
   Non-Routines List per Core with Mantra + Gratitude locked at #1/#2, drag-to-prioritize, IF-THEN shown;
