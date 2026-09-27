@@ -12,11 +12,13 @@ import '../../services/onboarding_service.dart';
 import '../../services/points_service.dart';
 import '../../services/profile_service.dart';
 import '../../theme/momentum_tokens.dart';
+import '../../widgets/momentum/all_habits_view.dart';
 import '../../widgets/momentum/celebration_host.dart';
 import '../../widgets/momentum/core_alert_sheet.dart';
 import '../../widgets/momentum/menu_drawer.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 import '../../widgets/momentum/offline_banner.dart';
+import '../../widgets/momentum/screen_shell.dart';
 import '../../widgets/momentum/starfield.dart';
 import '../../widgets/momentum/web_shell.dart';
 // Co-Pilot v2 (console layout). The original `ai_chat_page.dart` is still on
@@ -712,6 +714,18 @@ class _MomentumHomeState extends State<MomentumHome> {
         onNav: _go,
       );
     }
+    if (_screen == 'allhabits') {
+      // ∞ ALL HABITS Quick View (PRD §11, #21).
+      return ScreenShell(
+        title: 'All Habits',
+        subtitle: 'QUICK VIEW',
+        accent: MM.magenta,
+        onBack: () => _go('dashboard'),
+        onChat: _openChat,
+        onNav: _go,
+        child: AllHabitsView(onNav: _go),
+      );
+    }
     if (_screen == 'tasks') {
       return TasksScreen(
         onBack: () => _go('dashboard'),
@@ -870,6 +884,7 @@ class _MomentumHomeState extends State<MomentumHome> {
     'dashboard',
     'routines',
     'habits',
+    'allhabits',
     'tasks',
     'lists',
     'cantina',
@@ -954,6 +969,15 @@ class _MomentumHomeState extends State<MomentumHome> {
             key: ValueKey(_habitsCore),
             coreFilter: _habitsCore,
             onClearFilter: () => _go('habits'));
+        break;
+      case 'allhabits':
+        title = 'All Habits';
+        subtitle = 'Quick View';
+        accent = MM.magenta;
+        content = SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(40, 4, 40, 56),
+          child: AllHabitsView(onNav: _go, wide: true),
+        );
         break;
       case 'tasks':
         title = 'Tasks';

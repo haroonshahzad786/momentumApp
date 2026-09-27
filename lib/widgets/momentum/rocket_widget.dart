@@ -77,7 +77,7 @@ class _RocketWidgetState extends State<RocketWidget>
   // All Habits Quick View, right checklist → Non-Routines. The Command Center
   // lives in the ☰ menu per the PRD, not on the nose.
   static const _noseIcons = <_NoseIcon>[
-    _NoseIcon('habits', 'icon-habits.png', Offset(0.505, 0.13), 0.155,
+    _NoseIcon('allhabits', 'icon-habits.png', Offset(0.505, 0.13), 0.155,
         'All Habits'),
     _NoseIcon('routines', 'icon-routines.png', Offset(0.39, 0.22), 0.11,
         'Routines'),

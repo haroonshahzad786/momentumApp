@@ -831,7 +831,15 @@ distances/momentum values (see #40).
   `saveCoreListItems` have no CORS (preflight → 401). New CORS twins `flutterFetchAllCoreListItems` /
   `flutterSaveCoreListItems` (functions-flutter/coreLists.js, same storage + shapes, 4 node tests), deployed;
   `CoreListsService` now calls them. FlutterFlow endpoints untouched.
-- [ ] **#21 Habit views** (PRD 11) — ∞ All Habits Quick View (By Time / By Core toggle); Full Routines List
+- [~] **#21 Habit views** (PRD 11) — **step 1 DONE 2026-09-27: ∞ All Habits Quick View** (web + phone,
+  browser-verified on Will's account; 9 tests, 73 total). `services/all_habits.dart` merges Golden Habits with
+  the per-core Routines/Non-Routine lines (dedup by Core + name; HHS-only habits like Will's now show),
+  By Time (Morning/Afternoon/Evening/Anytime/Throughout Day) or By Core (PRD order), choice remembered.
+  Status = real formed flag / #19 formation progress (Day X/14 · %) / core-score stage for list-only lines;
+  neutral when no check-ins (no invented colour). `widgets/momentum/all_habits_view.dart`, route `allhabits`
+  from the ∞ nose icon + phone quick icon. Line parser moved out of the Routines screen (`parseHabitLine`).
+  Next: step 2 server-saved 6-colour status + counter; step 3 Non-Routines view; step 4 N/A (needs Will).
+  Original scope: — ∞ All Habits Quick View (By Time / By Core toggle); Full Routines List
   with 6-color system, status counter ("8 🔴 · 12 🟠 · 15 🟢"), day counts ("Day 8/14"), yellow notes;
   Non-Routines List per Core with Mantra + Gratitude locked at #1/#2, drag-to-prioritize, IF-THEN shown;
   non-routine "N/A — not triggered" scoring option.

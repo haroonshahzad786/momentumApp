@@ -238,8 +238,8 @@ class _DashboardPageState extends State<DashboardPage> {
                         _QuickIcon(
                             icon: Icons.all_inclusive,
                             color: MM.magenta,
-                            label: 'Habits',
-                            onTap: () => onNav('habits')),
+                            label: 'All Habits',
+                            onTap: () => onNav('allhabits')),
                         const SizedBox(width: 8),
                         _QuickIcon(
                             icon: Icons.check_box_outlined,

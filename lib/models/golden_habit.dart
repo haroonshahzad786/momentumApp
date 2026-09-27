@@ -34,6 +34,7 @@ class GoldenHabit {
     this.flagged = false,
     this.flagReason = '',
     this.flagNote = '',
+    this.formed = false,
   });
 
   final String habitId;
@@ -72,6 +73,9 @@ class GoldenHabit {
   final bool flagged;
   final String flagReason;
   final String flagNote;
+
+  /// Confirmed formed (#11/#19 — AI-validated, rule, or marked early).
+  final bool formed;
 
   static String _s(dynamic v) => v == null ? '' : v.toString().trim();
 
@@ -125,6 +129,7 @@ class GoldenHabit {
       flagged: j['flagged'] == true,
       flagReason: _s(j['flagReason']),
       flagNote: _s(j['flagNote']),
+      formed: j['formed'] == true,
     );
   }
 
@@ -173,6 +178,7 @@ class GoldenHabit {
       flagged: flagged ?? this.flagged,
       flagReason: flagReason ?? this.flagReason,
       flagNote: flagNote ?? this.flagNote,
+      formed: formed,
     );
   }
 }

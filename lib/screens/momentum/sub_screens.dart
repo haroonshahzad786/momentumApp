@@ -10,6 +10,7 @@ import '../../services/profile_service.dart';
 import '../../services/momentum_lists_service.dart';
 import '../../services/core_lists_service.dart';
 import '../../services/checkin_service.dart';
+import '../../services/all_habits.dart';
 import '../../services/onboarding_service.dart';
 import '../../services/task_service.dart';
 import '../../services/cantina_ideas_service.dart';
@@ -605,17 +606,6 @@ const List<_TimeBlock> _timeBlocks = [
 const _TimeBlock _anytimeBlock =
     _TimeBlock('anytime', 'Unscheduled', 'ANYTIME', '');
 
-/// keyword → block id. Only short, unambiguous tokens map a block.
-const Map<String, String> _blockKeywords = {
-  'morning': 'morning', 'dawn': 'morning', 'am': 'morning',
-  'launch': 'morning', 'wake': 'morning', 'sunrise': 'morning',
-  'afternoon': 'workday', 'midday': 'workday', 'noon': 'workday',
-  'workday': 'workday', 'work': 'workday', 'day': 'workday',
-  'evening': 'evening', 'night': 'evening', 'pm': 'evening',
-  'bedtime': 'evening', 'reentry': 'evening', 're-entry': 'evening',
-  'dusk': 'evening', 'sunset': 'evening',
-};
-
 /// Lifecycle stage for a routine (color transformation — the sea of green).
 class _RoutineStage {
   const _RoutineStage(this.id, this.color, this.label);
@@ -675,55 +665,17 @@ class _RoutineHabit {
   String? cue;
   String? stage; // null → neutral (no backend source yet; set in edit sheet)
 
-  /// Splits a stored line into {block, cue, name}. Accepts the recommended
-  /// `Block · Habit · cue` convention (delimiter `·` or `|`) and falls back to
-  /// scanning a plain line for an embedded time-of-day keyword.
+  /// Splits a stored line into {block, cue, name} (shared with All Habits).
   static _RoutineHabit parse(String raw, String coreId, String coreLabel) {
-    final tokens = raw
-        .split(RegExp(r'\s*[·|]\s*'))
-        .map((t) => t.trim())
-        .where((t) => t.isNotEmpty)
-        .toList();
-    String? blockId;
-    String? cue;
-    final nameParts = <String>[];
-    for (final t in tokens) {
-      final key = t.toLowerCase();
-      if (blockId == null &&
-          _blockKeywords.containsKey(key) &&
-          t.split(' ').length <= 2) {
-        blockId = _blockKeywords[key];
-        continue;
-      }
-      if (cue == null && RegExp(r'^(after|before|when|during|once)\b',
-              caseSensitive: false).hasMatch(t)) {
-        cue = t;
-        continue;
-      }
-      nameParts.add(t);
-    }
-    var name = nameParts.join(' · ');
-    if (name.isEmpty) name = raw;
-    // Fallback: a strong block keyword sitting inside the habit name.
-    blockId ??= _scanForBlock(name);
+    final p = parseHabitLine(raw);
     return _RoutineHabit(
       raw: raw,
-      name: name,
+      name: p.name,
       coreId: coreId,
       coreLabel: coreLabel,
-      blockId: blockId,
-      cue: cue,
+      blockId: p.blockId,
+      cue: p.cue,
     );
-  }
-
-  static String? _scanForBlock(String text) {
-    for (final w in text.toLowerCase().split(RegExp(r'[^a-z]+'))) {
-      // Only the unambiguous time words — avoid matching "work"/"day".
-      if (const {'morning', 'afternoon', 'evening', 'night'}.contains(w)) {
-        return _blockKeywords[w];
-      }
-    }
-    return null;
   }
 }
 
