@@ -56,8 +56,8 @@ on top of the backend below, built 2026-09-13 and verified in the browser (relea
   per-row dirty state + "was …", **Preview diff**, and **Publish v{n+1}** (reason required) via `adminSetConfig`
   (`AdminApiService.setConfig`, changed keys only). Change-history panel = `admin_publish_config` audit entries for
   the selected doc (version, when, who, reason, key-by-key before→after). No add/delete-key. Discard-changes guard on
-  tree switch. **On-screen caveat: nothing reads `config/*` at runtime yet (#A7.2 open), so a publish is versioned +
-  audited but changes no live reward math.**
+  tree switch. ~~On-screen caveat: nothing reads `config/*` at runtime yet~~ — *superseded 2026-09-25: #A7.2 is done, so a
+  publish now changes live reward math.*
   **Backend tweak (DEPLOYED + browser-verified 2026-09-21):** `adminListAuditLog` now also returns `before`/`after`
   per row (CSV unchanged); the history panel shows version + key-by-key diffs (v6 `checkinCredits 11 → 10`, v5
   `10 → 11`, v1 seed `null → …`). Deploy needed `FUNCTIONS_DISCOVERY_TIMEOUT=60` once (default 10s discovery timed out).
@@ -511,6 +511,8 @@ key-value rows with dirty-state tracking, "Preview diff" / "Publish v{n}", and a
 Feature Flags: per-flag platform/cohort/rollout-% table plus two named kill switches
 (`maintenance_mode`, `force_update`).
 
+> **Update 2026-09-25:** #A7.2 is now done and deployed (see its entry below) — the paragraph that follows is the original pre-wiring note.
+
 **Critical scoping note, read before touching this section again:** `config/economy` +
 `config/streaks` back the *live* reward math in `flutterAwardCheckinPoints` — real users' real check-in
 points/credits. Everything below except **#A7.2 is built, deployed, and safe**, because nothing reads
@@ -519,7 +521,7 @@ from `config/*` yet — it's live, tested infrastructure with zero consumers, no
 with its own curl-verification that awards are byte-identical before/after, per `BACKEND_PLAN.md`
 **#B2**'s own acceptance test. Do not casually wire it in as a side effect of another task.
 
-- [~] **#A7.1 The `config/*` tree itself** — this is `BACKEND_PLAN.md` **#B1** (the design literally
+- [x] **#A7.1 The `config/*` tree itself** — this is `BACKEND_PLAN.md` **#B1** (the design literally
   names `config/economy`, `config/journey`, `config/levels`, `config/streaks`). **Done: the tree,
   seeding, and the versioned editor.** `config/economy` / `streaks` / `levels` / `journey` are seeded
   with values **byte-identical to today's hardcoded constants** in `functions-flutter/index.js`
@@ -531,7 +533,7 @@ with its own curl-verification that awards are byte-identical before/after, per 
   own Gamification doc (BACKEND_PLAN.md §13b/13c), so nothing is fabricated. **Marked `[~]` not `[x]`**
   because the other half of #B1 — the app and Cloud Functions actually *reading* this tree at runtime,
   with the in-process cache keyed off `config/_meta.version` — doesn't exist yet; that's #A7.2's job.
-- [ ] **#A7.2 Migrate the hardcoded constants** — `BACKEND_PLAN.md` **#B2**. Still open, on purpose (see
+- [x] **#A7.2 Migrate the hardcoded constants** — `BACKEND_PLAN.md` **#B2**. **DONE + deployed 2026-09-25** (`functions-flutter/economyConfig.js`, cached on `config/_meta.version`, hardcoded values as fallback; see weekly W39). Original scoping note kept below: Still open, on purpose (see
   the scoping note above). Needs: an in-process config loader/cache in `functions-flutter/index.js`
   keyed off `config/_meta.version`; `flutterAwardCheckinPoints` reading amounts from it instead of the
   hardcoded constants; a client-side loader with a baked-in fallback (same `Fetched<T>`/`LocalCache`

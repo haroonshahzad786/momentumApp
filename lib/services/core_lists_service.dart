@@ -197,5 +197,32 @@ class CoreListsService {
     }
   }
 
+  /// Non-Routines priority per Core (short id → ordered habit keys). Saving
+  /// one Core's [order] returns the full map; read-only when [core] is null.
+  Future<Map<String, List<String>>> nonRoutineOrder(String userId,
+      {String? core, List<String>? order}) async {
+    final response = await _client.post(
+      Uri.parse('$_baseUrl/flutterNonRoutineOrder'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'secret': _secret,
+        'userId': userId,
+        if (core != null) 'core': core,
+        if (order != null) 'order': order,
+      }),
+    );
+    final decoded = jsonDecode(response.body);
+    if (response.statusCode != 200 || decoded is! Map || decoded['ok'] != true) {
+      throw Exception('flutterNonRoutineOrder failed (${response.statusCode}): '
+          '${decoded is Map ? decoded['error'] : response.body}');
+    }
+    final raw = decoded['order'];
+    return {
+      if (raw is Map)
+        for (final e in raw.entries)
+          if (e.value is List) '${e.key}': [for (final k in e.value as List) '$k'],
+    };
+  }
+
   void dispose() => _client.close();
 }

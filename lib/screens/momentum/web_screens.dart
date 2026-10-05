@@ -843,10 +843,7 @@ class _Formed {
 // ROUTINES — real routine / non-routine core lists
 // ═══════════════════════════════════════════════════════════════
 class WebRoutines extends StatefulWidget {
-  const WebRoutines({super.key, this.nonRoutinesFirst = false});
-
-  /// Opened from the rocket's Non-Routines icon (#20) — lead with that list.
-  final bool nonRoutinesFirst;
+  const WebRoutines({super.key});
   @override
   State<WebRoutines> createState() => _WebRoutinesState();
 }
@@ -888,7 +885,9 @@ class _WebRoutinesState extends State<WebRoutines> {
     final st = _status(l, raw);
     if (st.golden != null) return; // 🟠/🟢 follow formation
     final picked =
-        await pickHabitColor(context, st.color, habitName: parseHabitLine(raw).name);
+        await pickHabitColor(context, st.color,
+            habitName: parseHabitLine(raw).name,
+            allowNeutral: !isNonRoutineList(l));
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
     if (picked == null || picked.color == st.color || uid.isEmpty || !mounted) return;
     final k = _tagKey(l, raw);
@@ -1062,9 +1061,9 @@ class _WebRoutinesState extends State<WebRoutines> {
             ]),
           ),
           const SizedBox(height: 18),
-          ...(widget.nonRoutinesFirst
-              ? [nonRoutine, const SizedBox(height: 30), routine]
-              : [routine, const SizedBox(height: 30), nonRoutine]),
+          routine,
+          const SizedBox(height: 30),
+          nonRoutine,
         ],
       ),
     );

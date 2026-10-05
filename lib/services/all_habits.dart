@@ -33,6 +33,10 @@ enum HabitColor {
   }
 }
 
+/// Whether [list] is a player's Non-Routine list (colour key without ⚫).
+bool isNonRoutineList(CoreList list) =>
+    list.name.trim().toLowerCase() == 'non-routine';
+
 /// Map key for one stored line — mirrors `itemKey` in functions-flutter/
 /// coreLists.js, which stores the colours under it.
 String itemKey(String item) {
@@ -158,6 +162,8 @@ class AllHabit {
     this.progress,
     this.habitId,
     this.flagged = false,
+    this.ifText = '',
+    this.thenText = '',
   });
 
   final String name;
@@ -177,7 +183,15 @@ class AllHabit {
   final String? habitId;
   final bool flagged;
 
+  /// IF-THEN (PRD §11): IF [internal trigger], THEN [growth-owner response].
+  /// Empty when the habit doesn't carry one.
+  final String ifText;
+  final String thenText;
+
   bool get isGolden => habitId != null;
+
+  /// Stable key for saved ordering: a Golden Habit by id, a line by name.
+  String get key => habitId != null ? 'g:$habitId' : 'n:${itemKey(name)}';
 }
 
 String _key(String core, String name) =>
@@ -280,6 +294,11 @@ List<AllHabit> mergeAllHabits({
       progress: g.formed ? null : progress,
       habitId: g.habitId,
       flagged: g.flagged,
+      // Non-routines: the trigger → the response; else the obstacle plan.
+      ifText: g.trigger.trim().isNotEmpty ? g.trigger.trim() : g.obstacleIf.trim(),
+      thenText: g.trigger.trim().isNotEmpty && g.what.trim().isNotEmpty
+          ? g.what.trim()
+          : g.obstacleThen.trim(),
     ));
   }
   out.addAll(lines.values);
@@ -339,4 +358,57 @@ Map<String, List<int>> coreScoreSeries(List<DailyCheckin> checkins) {
     c.scores.forEach((core, v) => byCore.putIfAbsent(core, () => []).add(v));
   }
   return byCore;
+}
+
+/// Default Non-Routines priority — "highest-damage failure habits at the top"
+/// (PRD §11): 🔴, then 🟠, 🔵, untagged, 🌟, 🟢, ⚫.
+const List<HabitColor?> _damageOrder = [
+  HabitColor.red,
+  HabitColor.orange,
+  HabitColor.blue,
+  null,
+  HabitColor.note,
+  HabitColor.green,
+  HabitColor.black,
+];
+
+/// One Core's habits in the player's saved order; habits the order doesn't
+/// know yet (new since the last drag) follow in default priority.
+List<AllHabit> orderByPriority(List<AllHabit> habits, List<String> saved) {
+  final rank = {for (var i = 0; i < saved.length; i++) saved[i]: i};
+  int damage(AllHabit h) => _damageOrder.indexOf(h.color);
+  return [...habits]..sort((a, b) {
+      final ra = rank[a.key], rb = rank[b.key];
+      if (ra != null && rb != null) return ra.compareTo(rb);
+      if (ra != null) return -1;
+      if (rb != null) return 1;
+      final d = damage(a).compareTo(damage(b));
+      return d != 0 ? d : a.name.compareTo(b.name);
+    });
+}
+
+/// The Non-Routines List: non-routine habits per Core (PRD order), each Core
+/// in priority order. Formed Golden Habits have graduated to the Trophy Room
+/// and are only counted. Mindset is always present — it carries the locked
+/// Mantra / Gratitude slots.
+({Map<String, List<AllHabit>> byCore, int graduated}) nonRoutineList(
+    List<AllHabit> all, Map<String, List<String>> savedOrder) {
+  final active = all.where((h) => !h.isRoutine);
+  final graduated =
+      active.where((h) => h.isGolden && h.color == HabitColor.green).length;
+  final byCore = <String, List<AllHabit>>{'mindset': []};
+  for (final h in active) {
+    if (h.isGolden && h.color == HabitColor.green) continue;
+    byCore.putIfAbsent(h.core, () => []).add(h);
+  }
+  final ordered = <String, List<AllHabit>>{};
+  for (final core in [
+    ...kCoreOrder,
+    ...byCore.keys.where((c) => !kCoreOrder.contains(c)),
+  ]) {
+    final list = byCore[core];
+    if (list == null) continue;
+    ordered[core] = orderByPriority(list, savedOrder[core] ?? const []);
+  }
+  return (byCore: ordered, graduated: graduated);
 }

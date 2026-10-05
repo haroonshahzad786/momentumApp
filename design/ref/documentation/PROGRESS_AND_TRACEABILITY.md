@@ -610,7 +610,8 @@ These three come straight from the Gamification Mechanics Specs Reference (§6 S
 - **Built:** the ∞ icon opens a view of every habit, whether it was forged with Nova or added to a Routines list (duplicates merged). **By Time:** Morning → Afternoon → Evening, non-routines in "Throughout Day" at the end. **By Core:** 🧠 → 💰 → 👥 → 💪 → 🧘. Each habit shows its status and "Day X/14" formation progress, from the same data as the Trophy Room.
 - **Verified:** 9 tests; browser-checked on your account (Deep Presence Practice under Relationships · Throughout Day) and at phone width.
 - **Step 2 — colour key (built):** "Every habit in the Routines List is labeled using a color system" (PRD §11 Color Key). Each line can be tagged 🔴 / 🟠 / ⚫ / 🟢 / 🔵 / 🌟 and the tag is saved; Golden Habits colour themselves (🟠 forming with "Day X/14", 🟢 formed). Routines and All Habits show the "status counter at top showing red/orange/green tallies".
-- **Still to come in #21:** the Non-Routines list (Mantra/Gratitude locked, drag to prioritise), and "N/A — not triggered" scoring (your Decision 6).
+- **Step 3 — Non-Routines List (built):** "Organized by Core, Prioritized by Impact … Drag-and-drop to reprioritize anytime"; "Mindset Core Locked Defaults: #1 Mantra and #2 Gratitude"; "Back to the Future Quick Reference"; "Formed habits leave this list entirely". All four are in, plus each habit's IF-THEN. **Verified:** 5 tests; browser-checked on web (5 Oct): opened from the rocket's checklist icon, Mantra/Gratitude locked at #1/#2, dragging a habit to a new position is saved and still there after a full page reload.
+- **Still to come in #21:** "N/A — not triggered" scoring (your Decision 6).
 
 ---
 

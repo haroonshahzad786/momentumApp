@@ -13,6 +13,7 @@ import '../../services/points_service.dart';
 import '../../services/profile_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/all_habits_view.dart';
+import '../../widgets/momentum/non_routines_view.dart';
 import '../../widgets/momentum/celebration_host.dart';
 import '../../widgets/momentum/core_alert_sheet.dart';
 import '../../widgets/momentum/menu_drawer.dart';
@@ -54,10 +55,6 @@ class _MomentumHomeState extends State<MomentumHome> {
   /// Short Core id the Habits screen is filtered to (a Core tapped on the
   /// rocket, #20); null shows every Core.
   String? _habitsCore;
-
-  /// The rocket's right-nose "Non-Routines" icon opens the Routines screen
-  /// with its Non-Routine section first (#21 splits it into its own view).
-  bool _nonRoutinesFirst = false;
 
   /// Locked Core the player chose to fuel — pre-drafts the HHS opener.
   String? _fuelCore;
@@ -344,13 +341,9 @@ class _MomentumHomeState extends State<MomentumHome> {
         _phase1EntryHabitId = null;
         _fuelCore = null;
         _habitsCore = null;
-        _nonRoutinesFirst = false;
         if (key.startsWith('habits:')) {
           _habitsCore = key.substring(7);
           key = 'habits';
-        } else if (key == 'nonroutines') {
-          _nonRoutinesFirst = true;
-          key = 'routines';
         } else if (key.startsWith('fuel:')) {
           // A locked Core lights up with its first Golden Habit, which only
           // the HHS forges — so fuelling one re-enters Stage 1 (§4C bridge).
@@ -699,7 +692,6 @@ class _MomentumHomeState extends State<MomentumHome> {
     }
     if (_screen == 'routines') {
       return RoutinesScreen(
-        nonRoutinesFirst: _nonRoutinesFirst,
         onBack: () => _go('dashboard'),
         onChat: _openChat,
         onNav: _go,
@@ -712,6 +704,18 @@ class _MomentumHomeState extends State<MomentumHome> {
         onBack: () => _go('dashboard'),
         onChat: _openChat,
         onNav: _go,
+      );
+    }
+    if (_screen == 'nonroutines') {
+      // Non-Routines List (PRD §11, #21) — the rocket's right icon.
+      return ScreenShell(
+        title: 'Non-Routines',
+        subtitle: 'BY CORE · PRIORITY',
+        accent: MM.yellow,
+        onBack: () => _go('dashboard'),
+        onChat: _openChat,
+        onNav: _go,
+        child: NonRoutinesView(onNav: _go),
       );
     }
     if (_screen == 'allhabits') {
@@ -885,6 +889,7 @@ class _MomentumHomeState extends State<MomentumHome> {
     'routines',
     'habits',
     'allhabits',
+    'nonroutines',
     'tasks',
     'lists',
     'cantina',
@@ -957,9 +962,7 @@ class _MomentumHomeState extends State<MomentumHome> {
         title = 'Routines';
         subtitle = 'Daily Orbit';
         accent = MM.teal;
-        content = WebRoutines(
-            key: ValueKey(_nonRoutinesFirst),
-            nonRoutinesFirst: _nonRoutinesFirst);
+        content = const WebRoutines();
         break;
       case 'habits':
         title = 'Habits';
@@ -969,6 +972,15 @@ class _MomentumHomeState extends State<MomentumHome> {
             key: ValueKey(_habitsCore),
             coreFilter: _habitsCore,
             onClearFilter: () => _go('habits'));
+        break;
+      case 'nonroutines':
+        title = 'Non-Routines';
+        subtitle = 'By Core · Priority';
+        accent = MM.yellow;
+        content = SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(40, 4, 40, 56),
+          child: NonRoutinesView(onNav: _go, wide: true),
+        );
         break;
       case 'allhabits':
         title = 'All Habits';

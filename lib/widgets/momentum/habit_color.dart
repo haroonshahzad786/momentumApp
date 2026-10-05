@@ -75,8 +75,11 @@ class HabitStatusCounter extends StatelessWidget {
 /// Picker for the player's own lines. Golden Habits aren't offered it — their
 /// 🟠/🟢 comes from formation. Returns null when dismissed; `(color: null)`
 /// means "remove the tag".
+///
+/// [allowNeutral] is false for non-routines: "there is no Black (neutral)
+/// category" in their colour key (PRD §11).
 Future<({HabitColor? color})?> pickHabitColor(BuildContext context, HabitColor? current,
-    {String? habitName}) {
+    {String? habitName, bool allowNeutral = true}) {
   return showModalBottomSheet<({HabitColor? color})>(
     context: context,
     backgroundColor: MM.navy2,
@@ -98,7 +101,8 @@ Future<({HabitColor? color})?> pickHabitColor(BuildContext context, HabitColor? 
             ],
             const SizedBox(height: 10),
             for (final c in HabitColor.values)
-              ListTile(
+              if (allowNeutral || c != HabitColor.black)
+                ListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 leading: HabitColorDot(c, size: 14),

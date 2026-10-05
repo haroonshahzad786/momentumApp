@@ -847,7 +847,14 @@ distances/momentum values (see #40).
   chips save (revert + toast on failure); web Routines: tap a line → colour picker; 🔴/🟠/🟢 counter on
   Routines (both) + All Habits; forming is now true orange (was yellow = 🌟). Also fixed web Routines'
   core icons/colours never showing (long vs short core id). 12 client + 8 backend tests.
-  Next: step 3 Non-Routines view; step 4 N/A (needs Will).
+  **Step 3 DONE 2026-09-28, browser-verified 2026-10-05 (web, dev account: rocket checklist icon → view; Mindset #1 Mantra / #2 Gratitude locked; 2 TEST lines; drag #4→#3 saved and survives a full reload, then restored):** `NonRoutinesView` (route `nonroutines`, the
+  rocket's checklist icon; replaces #20's "Routines, non-routines first" stopgap): non-routine habits from both
+  stores per Core (PRD order; Mindset always shown), #1 🔗 Mantra / #2 🔗 Gratitude locked rows → Lists,
+  🔮 Back to the Future link, IF-THEN per habit (Golden trigger → response, else obstacle plan), drag to
+  reprioritise within a Core (saved per Core on `users/{uid}.nonRoutineOrder` via new `flutterNonRoutineOrder`,
+  deployed; default = highest damage first 🔴→🟠→🔵), formed Golden Habits graduate ("N formed → Trophy Room").
+  Colour picker / edit sheet drop ⚫ for non-routine lines. 5 client + 3 backend tests (81 / 43+3).
+  Next: step 4 N/A — needs Will (Decision 6).
   Original scope: — ∞ All Habits Quick View (By Time / By Core toggle); Full Routines List
   with 6-color system, status counter ("8 🔴 · 12 🟠 · 15 🟢"), day counts ("Day 8/14"), yellow notes;
   Non-Routines List per Core with Mantra + Gratitude locked at #1/#2, drag-to-prioritize, IF-THEN shown;

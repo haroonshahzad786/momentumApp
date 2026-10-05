@@ -178,4 +178,90 @@ void main() {
       expect((n.red, n.orange, n.green), (1, 2, 1));
     });
   });
+
+  group('Non-Routines list', () {
+    AllHabit nr(String name, String core, HabitColor? c, {String? id}) => AllHabit(
+        name: name,
+        core: core,
+        isRoutine: false,
+        slot: HabitSlot.throughout,
+        color: c,
+        habitId: id);
+
+    test('default priority: highest damage first (red, orange, blue …)', () {
+      final out = orderByPriority([
+        nr('b', 'career', HabitColor.blue),
+        nr('n', 'career', null),
+        nr('r', 'career', HabitColor.red),
+        nr('o', 'career', HabitColor.orange),
+      ], const []);
+      expect([for (final h in out) h.name], ['r', 'o', 'b', 'n']);
+    });
+
+    test('saved order wins; habits it does not know follow by priority', () {
+      final out = orderByPriority([
+        nr('A', 'career', HabitColor.red, id: 'a'),
+        nr('B', 'career', HabitColor.orange, id: 'b'),
+        nr('New bad one', 'career', HabitColor.red),
+      ], const ['g:b', 'g:a']);
+      expect([for (final h in out) h.name], ['B', 'A', 'New bad one']);
+    });
+
+    test('keys: Golden Habit by id, line by name', () {
+      expect(nr('X', 'career', null, id: 'h9').key, 'g:h9');
+      expect(nr('Breathe when anxious', 'career', null).key, 'n:breathe_when_anxious');
+    });
+
+    test('formed Golden Habits graduate; routines excluded; Mindset always there', () {
+      final all = [
+        nr('Formed one', 'physical', HabitColor.green, id: 'f'),
+        nr('Still forming', 'physical', HabitColor.orange, id: 's'),
+        AllHabit(
+            name: 'Routine',
+            core: 'physical',
+            isRoutine: true,
+            slot: HabitSlot.morning,
+            color: HabitColor.red),
+        nr('Tagged healthy line', 'career', HabitColor.green),
+      ];
+      final out = nonRoutineList(all, const {});
+      expect(out.graduated, 1);
+      expect(out.byCore.keys, ['mindset', 'career', 'physical']);
+      expect(out.byCore['mindset'], isEmpty);
+      expect([for (final h in out.byCore['physical']!) h.name], ['Still forming']);
+      expect(out.byCore['career']!.single.name, 'Tagged healthy line',
+          reason: 'only formed Golden Habits leave for the Trophy Room');
+    });
+
+    test('IF-THEN: trigger → response, else the obstacle plan', () {
+      final withTrigger = mergeAllHabits(
+        golden: [
+          GoldenHabit.fromJson({
+            'habitId': 't',
+            'habitName': 'Reframe',
+            'coreId': 'mindset_core',
+            'habitType': 'non_routine',
+            'trigger': 'spiraling into "not good enough"',
+            'what': 'pause and ask what a growth-owner would do',
+          }),
+          GoldenHabit.fromJson({
+            'habitId': 'o',
+            'habitName': 'Walk',
+            'coreId': 'physical_health_core',
+            'habitType': 'routine',
+            'obstacleIf': 'it rains',
+            'obstacleThen': 'walk the stairs',
+          }),
+        ],
+        routineLists: const [],
+        nonRoutineLists: const [],
+        coreScores: const {},
+      );
+      final t = withTrigger.firstWhere((h) => h.habitId == 't');
+      expect(t.ifText, 'spiraling into "not good enough"');
+      expect(t.thenText, 'pause and ask what a growth-owner would do');
+      final o = withTrigger.firstWhere((h) => h.habitId == 'o');
+      expect((o.ifText, o.thenText), ('it rains', 'walk the stairs'));
+    });
+  });
 }

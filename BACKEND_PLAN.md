@@ -1,11 +1,11 @@
-# Moore Momentum — Backend & Admin Plan
+    # Moore Momentum — Backend & Admin Plan
 
 > **Resume instructions (for Claude):** this file is the canonical backlog for **backend/admin** work —
 > remote config, the admin console, moderation, scheduling and the AI layer. Sibling of
 > `COMPLETION_PLAN.md` (client/feature work). To "continue the backend todo": open this file, take the
 > lowest unchecked task whose dependencies are met, mark it `[~]`, implement + verify, mark `[x]`, and
 > update the **Status** line of its section.
->
+>.0
 > Rewritten **2026-09-08** to describe what a backend/admin layer would realistically control given the
 > structures the app *already has* — Firestore, the `flutter` Cloud Functions codebase in `vf-bridge`,
 > and the Voiceflow bridge. (The previous revision was derived from the client's old Django app; that
@@ -53,9 +53,9 @@ Every row above means "ship an app update to change a number".
 
 ## 1. Game engine / progression rules — *highest value*
 
-**Status:** not started. Moving these server-side means tuning without a release.
+**Status:** #B1–#B2 done (2026-09-25); #B3–#B5 open. Moving these server-side means tuning without a release.
 
-- [ ] **#B1 `config/*` remote config tree + client & function loader.**
+- [x] **#B1 `config/*` remote config tree + client & function loader.** *(DONE 2026-09-25: tree + versioned admin editor (#A7.1) and the `economyConfig.js` loader cached on `config/_meta.version` — see `ADMIN_PANEL_BACKEND_PLAN.md` §7.)*
   One Firestore tree the app reads and caches, with `config/_meta.version` so functions cache
   in-process and re-read on a version bump (not per request). Ships with the **current values as
   defaults**, so day-one behaviour is byte-identical.
@@ -69,7 +69,7 @@ Every row above means "ship an app update to change a number".
   ```
   *Acceptance:* change a value in Firestore → live in app + functions on the next version bump, no deploy.
 
-- [ ] **#B2 Migrate the existing constants into `config/economy` + `config/streaks`.**
+- [x] **#B2 Migrate the existing constants into `config/economy` + `config/streaks`.** *(DONE 2026-09-25: award / habit-formed / Cantina-welcome functions read `config/economy` + `config/streaks`; app reads `config/streaks` + `config/journey` for the milestone bar and planet route — #A7.2.)*
   `CHECKIN_CREDITS`, `HIGH_SCORE_CREDITS`, `FORMATION_CREDITS`, `CANTINA_WELCOME_CREDITS`,
   `CREDIT_LEVEL_MULT`, `STREAK_MILESTONES`, `STREAK_MILESTONE_CREDITS` out of `index.js`.
   *Depends on:* #B1. *Acceptance:* curl-verify a check-in award is unchanged (10💎 + 5💎 high score).
@@ -124,11 +124,11 @@ Every row above means "ship an app update to change a number".
 
 ## 4. Users & support
 
-**Status:** not started.
+**Status:** #B17–#B18 done via the admin panel; #B19 (hard delete / GDPR) and #B20 open.
 
-- [ ] **#B17 User search + profile view** — HHS scores, current phase/stage, points & credits history,
+- [x] **#B17 User search + profile view** — HHS scores, current phase/stage, points & credits history, *(DONE via admin Clients + Client Detail — `ADMIN_PANEL_BACKEND_PLAN.md` §2.)*
   streak state, golden habits, check-in calendar.
-- [ ] **#B18 Manual adjustments** — grant/deduct MP or credits, reset a stage, unlock a feature for a
+- [x] **#B18 Manual adjustments** — grant/deduct MP or credits, reset a stage, unlock a feature for a *(DONE via `adminAdjustClient`, audit-logged — `ADMIN_PANEL_BACKEND_PLAN.md` §2/§9.)*
   tester, reset onboarding. Every adjustment writes an audit entry (who/when/what/why).
 - [ ] **#B19 Suspend / delete account** — including GDPR "delete my data" (Firestore subtrees + Auth
   record + Storage).
@@ -139,13 +139,13 @@ Every row above means "ship an app update to change a number".
 
 ## 5. Community (Cantina) moderation
 
-**Status:** not started. Needed before the social pillars carry real user content.
+**Status:** #B21–#B24 done via the admin panel; #B25 (AI moderation) open. Needed before the social pillars carry real user content.
 
-- [ ] **#B21 Review / remove Ideas Well posts and thread messages**
+- [x] **#B21 Review / remove Ideas Well posts and thread messages** *(DONE — `ADMIN_PANEL_BACKEND_PLAN.md` §11.)*
   (`space_cantina_posts`, the direct-Firestore thread messages).
-- [ ] **#B22 Space Tribes admin** — approve, rename, delete.
-- [ ] **#B23 Ban / mute users, report queue, banned-word list.**
-- [ ] **#B24 Pin / feature content.**
+- [x] **#B22 Space Tribes admin** — approve, rename, delete. *(DONE — §11 of the admin plan.)*
+- [x] **#B23 Ban / mute users, report queue, banned-word list.** *(DONE — §11 of the admin plan.)*
+- [x] **#B24 Pin / feature content.** *(DONE — §11 of the admin plan.)*
 - [ ] **#B25 (later) AI moderation pass** on new posts — classification-shaped, cheap model.
 
 ---

@@ -681,11 +681,8 @@ class RoutinesScreen extends StatefulWidget {
     this.onBack,
     this.onChat,
     this.onNav,
-    this.nonRoutinesFirst = false,
   });
 
-  /// Opened from the rocket's Non-Routines icon (#20) — lead with that list.
-  final bool nonRoutinesFirst;
   final VoidCallback? onBack;
   final VoidCallback? onChat;
   final void Function(String key)? onNav;
@@ -927,16 +924,9 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
         ]),
         const SizedBox(height: 16),
 
-        // The rocket's Non-Routines icon (#20) leads with that section.
-        if (widget.nonRoutinesFirst) ...[
-          ...nonRoutine,
-          const SizedBox(height: 22),
-          ...routine,
-        ] else ...[
-          ...routine,
-          const SizedBox(height: 22),
-          ...nonRoutine,
-        ],
+        ...routine,
+        const SizedBox(height: 22),
+        ...nonRoutine,
 
         // Trophy Room link.
         const SizedBox(height: 10),
@@ -1409,10 +1399,14 @@ class _RoutineEditSheetState extends State<_RoutineEditSheet> {
                   style: MM.body(size: 12, color: Colors.white.withOpacity(0.7)))
             else
               Wrap(spacing: 8, runSpacing: 8, children: [
+                // Non-routines have no ⚫ Neutral (PRD §11).
                 for (final c in HabitColor.values)
-                  _choiceChip('${c.emoji} ${c.label.toUpperCase()}',
-                      _color == c, habitColorValue(c),
-                      () => setState(() => _color = c)),
+                  if (c != HabitColor.black ||
+                      widget.habit.list == null ||
+                      !isNonRoutineList(widget.habit.list!))
+                    _choiceChip('${c.emoji} ${c.label.toUpperCase()}',
+                        _color == c, habitColorValue(c),
+                        () => setState(() => _color = c)),
                 _choiceChip('NONE', _color == null, Colors.white54,
                     () => setState(() => _color = null)),
               ]),
