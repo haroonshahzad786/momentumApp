@@ -11,7 +11,7 @@ docs I haven't used yet*.
 - **More detail:** *Moore Momentum - Build Progress & Traceability - From Haroon.docx* (in `DOCS SHARED W- HAROON TO UPDATED PRD-FINALIZE APP`)
   quotes the exact passage from your docs and shows a screenshot for each feature.
 - **Task numbers** (#1, #2 …) are the numbers I use in my build plan and weekly reports.
-- **Updates:** I add a new entry to section 6 at the end of each week.
+- **Updates:** I add a new entry to section 7 at the end of each week.
 
 ---
 
@@ -185,7 +185,40 @@ Will, these are the features in your docs that aren't built yet. Please mark the
 
 ---
 
-## 6. Weekly updates
+## 6. Scope checks: your scope vs what's built
+
+When you ask "is this built?", I check your scope line by line and record the answer here. ⚠️ marks
+places where the build follows one of your docs and another doc says something different.
+
+### 6.1 Streak system
+
+**Short answer: yes, it's built.** It's task #10 (Streaks), plus #16 (missed check-ins) and #17 (Streak
+Savers). Two points differ between your docs; they're marked ⚠️ below.
+
+| Your scope | Built? | Where to see it |
+|---|---|---|
+| **Consecutive weekday check-ins with a 4+ average** | ✅ Yes. The 4.0 average is an admin setting, not fixed in the code. | **Cockpit**: the streak bar across the top (phone: top bar). Setting: **Admin → Economy → Streaks**. |
+| **Milestone rewards at 7, 14, 21, 30, 60, 90, 180 and 365 days** | ⚠️ **Partly.** Built with the Gamification Mechanics Specs schedule: **3/7/14/30/60/90/180/365** (no 21-day, plus a 3-day one). Your list matches the **PRD**. The two docs disagree (question 1 below). Credit amounts per milestone are the ones you confirmed. | Cockpit streak bar: "N days to X-day reward". The milestone list is editable in **Admin → Economy → Streaks**, so switching schedules needs no code change. |
+| **Weekend protection** | ✅ Yes. Weekends never count as missed days. | Automatic: skip a Saturday or Sunday and the streak stays. |
+| **Streak Savers** | ✅ Yes (#17). Earned at a **30-day streak**, **max 1** held, used automatically on a missed weekday. ⚠️ The PRD says max **3** (question 2 below). | **Cockpit → "Streak Protection" card** (phone: tap the streak). Rules: **Admin → Economy → Streaks → "Streak rules"** card. |
+| **Warning after two missed check-ins, before Momentum Points are lost** | ✅ Yes (#16). **1 missed weekday** → a friendly "Ship Warning" banner (Check in now / Remind me in 1 hour). **2+ missed** → the "Relaunch" screen. ⚠️ The point-loss penalty exists but is set to **0** until you choose an amount (question 3 below). | **Cockpit** banner / Relaunch screen. Penalty: **Admin → Economy → Streaks → "Streak rules" → Relaunch penalty**. |
+
+**Also built:** **Vacation Mode**, which pauses the streak for up to 7 days (same Streak Protection card).
+
+**How to see it working:**
+- **Visible right away:** the streak bar, the Streak Protection card and the Admin Economy settings.
+- **Needs a real situation:** Ship Warning, Relaunch and Streak Savers only appear after real missed
+  weekdays. #16 and #17 pass their tests and are live, but haven't been confirmed end to end on a real
+  account yet. To see them, use a test account that has missed 1–2 weekdays.
+
+**Questions for you** (so the build matches what you want):
+1. Milestones: **7/14/21/30…** (PRD) or **3/7/14/30…** (currently built)?
+2. Streak Savers: can players hold **1** or **3**?
+3. How many Momentum Points should a player lose after 2 missed check-ins? (Currently 0.)
+
+---
+
+## 7. Weekly updates
 
 *I add a new entry here at the end of each week.*
 
