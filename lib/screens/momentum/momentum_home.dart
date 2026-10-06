@@ -353,7 +353,16 @@ class _MomentumHomeState extends State<MomentumHome> {
       }
       return;
     }
+    // Points earned inside Phase 1 (a returning session's checkpoints) only
+    // reached the Cockpit after a reload — refresh on the way out (P1-10 #9).
+    // Delayed so the last state save commits first (see _persistPhase1).
+    final leavingPhase1 = _screen == 'phase1' && key != 'phase1';
     _goTo(key);
+    if (leavingPhase1) {
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) _fetchProfile();
+      });
+    }
   }
 
   void _goTo(String key) => setState(() {
@@ -384,6 +393,39 @@ class _MomentumHomeState extends State<MomentumHome> {
     _screen = key;
     _menuOpen = false;
   });
+
+  /// Web Cockpit banner back into an unfinished Phase 1 (P1-10 #5).
+  Widget _phase1Banner() {
+    final s = _phase1;
+    final label =
+        s.stage1Completed
+            ? 'PHASE 1 · STAGE 2 — make your Golden Habit automatic'
+            : 'PHASE 1 · STAGE 1 (${s.stage1Progress}/5) — forge your first Golden Habit';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: MM.yellow.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: MM.yellow.withOpacity(0.45)),
+      ),
+      child: Row(
+        children: [
+          const Text('🚀', style: TextStyle(fontSize: 18)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(label, style: MM.displayX(size: 11, color: MM.yellow)),
+          ),
+          IntrinsicWidth(
+            child: MMPrimaryButton(
+              label: s.brandNew ? 'Ready Player One? →' : 'Continue Game 🎮',
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              onPressed: () => _go('phase1'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   /// First-time vs returning landing (#26 / P1-1). Until Phase 1 is finished
   /// the player opens the app inside it, not on the Cockpit: a brand-new
@@ -1056,6 +1098,7 @@ class _MomentumHomeState extends State<MomentumHome> {
           onNav: _go,
           onCheckIn: _startCheckin,
           onCoreAlert: _showCoreAlert,
+          phase1Banner: _phase1.finished ? null : _phase1Banner(),
         );
         break;
       case 'routines':

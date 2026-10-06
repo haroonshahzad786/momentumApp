@@ -29,7 +29,12 @@ class WebCockpit extends StatelessWidget {
     required this.onNav,
     required this.onCheckIn,
     required this.onCoreAlert,
+    this.phase1Banner,
   });
+
+  /// "Continue Phase 1" banner while Phase 1 is unfinished — the phone has
+  /// the Phase 1 pill; web had no way back in (P1-10 #5).
+  final Widget? phase1Banner;
 
   final String name;
   final int streak;
@@ -114,33 +119,37 @@ class WebCockpit extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (phase1Banner != null) ...[
+                phase1Banner!,
+                const SizedBox(height: 14),
+              ],
               streakBar,
               const SizedBox(height: 20),
               wide
-              ? Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(flex: 20, child: left),
-                    const SizedBox(width: 24),
-                    Expanded(flex: 30, child: center),
-                    const SizedBox(width: 24),
-                    Expanded(flex: 20, child: right),
-                  ],
-                )
-              : Column(
-                  children: [
-                    center,
-                    const SizedBox(height: 24),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(child: left),
-                        const SizedBox(width: 24),
-                        Expanded(child: right),
-                      ],
-                    ),
-                  ],
-                ),
+                  ? Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(flex: 20, child: left),
+                      const SizedBox(width: 24),
+                      Expanded(flex: 30, child: center),
+                      const SizedBox(width: 24),
+                      Expanded(flex: 20, child: right),
+                    ],
+                  )
+                  : Column(
+                    children: [
+                      center,
+                      const SizedBox(height: 24),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: left),
+                          const SizedBox(width: 24),
+                          Expanded(child: right),
+                        ],
+                      ),
+                    ],
+                  ),
             ],
           ),
         );
@@ -170,21 +179,27 @@ class _Panel extends StatelessWidget {
 }
 
 Widget _sectionLabel(String text) => Padding(
-      padding: const EdgeInsets.fromLTRB(2, 2, 2, 2),
-      child: Text(text,
-          style: GoogleFonts.orbitron(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.8,
-              color: Colors.white)),
-    );
+  padding: const EdgeInsets.fromLTRB(2, 2, 2, 2),
+  child: Text(
+    text,
+    style: GoogleFonts.orbitron(
+      fontSize: 10,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 1.8,
+      color: Colors.white,
+    ),
+  ),
+);
 
 // ═══════════════════════════════════════════════════════════════
 // LEFT — the 5 cores
 // ═══════════════════════════════════════════════════════════════
 class _CoresColumn extends StatelessWidget {
-  const _CoresColumn(
-      {required this.cores, required this.activeCores, required this.onNav});
+  const _CoresColumn({
+    required this.cores,
+    required this.activeCores,
+    required this.onNav,
+  });
   final List<(String, String, String)> cores;
   final List<String> activeCores;
   final void Function(String key) onNav;
@@ -203,26 +218,33 @@ class _CoresColumn extends StatelessWidget {
             icon: core.$3,
             active: activeCores.contains(core.$1),
             // Active → that Core's habits; dormant → fuel it via HHS.
-            onTap: () => onNav(activeCores.contains(core.$1)
-                ? 'habits:${core.$1}'
-                : 'fuel:${core.$1}'),
+            onTap:
+                () => onNav(
+                  activeCores.contains(core.$1)
+                      ? 'habits:${core.$1}'
+                      : 'fuel:${core.$1}',
+                ),
           ),
           const SizedBox(height: 12),
         ],
         const SizedBox(height: 4),
-        MMGhostButton(label: 'Manage cores →', onPressed: () => onNav('habits')),
+        MMGhostButton(
+          label: 'Manage cores →',
+          onPressed: () => onNav('habits'),
+        ),
       ],
     );
   }
 }
 
 class _CoreCard extends StatelessWidget {
-  const _CoreCard(
-      {required this.id,
-      required this.label,
-      required this.icon,
-      required this.active,
-      required this.onTap});
+  const _CoreCard({
+    required this.id,
+    required this.label,
+    required this.icon,
+    required this.active,
+    required this.onTap,
+  });
   final String id;
   final String label;
   final String icon;
@@ -236,76 +258,88 @@ class _CoreCard extends StatelessWidget {
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF111C4E).withOpacity(0.55),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white.withOpacity(0.10)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                color: active
-                    ? hex.withOpacity(0.13)
-                    : Colors.white.withOpacity(0.05),
-                border: Border.all(
-                    color: active
-                        ? hex.withOpacity(0.4)
-                        : Colors.white.withOpacity(0.12)),
-                boxShadow: active
-                    ? [
-                        BoxShadow(
-                            color: hex.withOpacity(0.27),
-                            blurRadius: 14,
-                            spreadRadius: -2)
-                      ]
-                    : null,
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF111C4E).withOpacity(0.55),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white.withOpacity(0.10)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color:
+                      active
+                          ? hex.withOpacity(0.13)
+                          : Colors.white.withOpacity(0.05),
+                  border: Border.all(
+                    color:
+                        active
+                            ? hex.withOpacity(0.4)
+                            : Colors.white.withOpacity(0.12),
+                  ),
+                  boxShadow:
+                      active
+                          ? [
+                            BoxShadow(
+                              color: hex.withOpacity(0.27),
+                              blurRadius: 14,
+                              spreadRadius: -2,
+                            ),
+                          ]
+                          : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(icon, style: const TextStyle(fontSize: 19)),
               ),
-              alignment: Alignment.center,
-              child: Text(icon, style: const TextStyle(fontSize: 19)),
-            ),
-            const SizedBox(width: 13),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(label,
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
                       style: MM.body(
-                          size: 13.5,
-                          color: active
-                              ? Colors.white
-                              : Colors.white.withOpacity(0.55),
-                          weight: FontWeight.w600)),
-                  const SizedBox(height: 3),
-                  Text(active ? 'ACTIVE' : 'DORMANT · FUEL THIS CORE →',
+                        size: 13.5,
+                        color:
+                            active
+                                ? Colors.white
+                                : Colors.white.withOpacity(0.55),
+                        weight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      active ? 'ACTIVE' : 'DORMANT · FUEL THIS CORE →',
                       style: GoogleFonts.orbitron(
-                          fontSize: 8,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.2,
-                          color: active ? hex : MM.yellow.withOpacity(0.8))),
-                ],
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                        color: active ? hex : MM.yellow.withOpacity(0.8),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            // left accent bar
-            Container(
-              width: 3,
-              height: 30,
-              decoration: BoxDecoration(
-                color: active ? hex : Colors.white.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(3),
+              // left accent bar
+              Container(
+                width: 3,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: active ? hex : Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(3),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -339,8 +373,9 @@ class _RocketStage extends StatefulWidget {
 class _RocketStageState extends State<_RocketStage> {
   /// Shared between the journey stage (which drives it) and the panel-wide
   /// starfield (which reads it), so the stars stream faster mid-flight.
-  late final ValueNotifier<double> _warp =
-      ValueNotifier<double>(journeyIdleWarp(widget.planetIdx));
+  late final ValueNotifier<double> _warp = ValueNotifier<double>(
+    journeyIdleWarp(widget.planetIdx),
+  );
 
   @override
   void dispose() {
@@ -366,8 +401,7 @@ class _RocketStageState extends State<_RocketStage> {
           // Nebula base + a starfield that is always drifting behind the whole
           // panel, and streaks when the rocket is under way.
           const Positioned.fill(
-            child: StarfieldBackground(
-                showScanlines: false, showStars: false),
+            child: StarfieldBackground(showScanlines: false, showStars: false),
           ),
           Positioned.fill(child: MovingStarfield(speed: _warp)),
           // target planet halo
@@ -396,12 +430,15 @@ class _RocketStageState extends State<_RocketStage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('MISSION IN PROGRESS',
-                    style: GoogleFonts.orbitron(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 2.2,
-                        color: const Color(0xFFD8C0FF).withOpacity(0.85))),
+                Text(
+                  'MISSION IN PROGRESS',
+                  style: GoogleFonts.orbitron(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2.2,
+                    color: const Color(0xFFD8C0FF).withOpacity(0.85),
+                  ),
+                ),
                 const SizedBox(height: 14),
                 // Cockpit dashboard by default; plays the arrival cinematic in
                 // place when the player reaches a new planet, and the vertical
@@ -469,21 +506,26 @@ class _FlightData extends StatelessWidget {
         Row(
           children: [
             Expanded(
-                child: _Stat(
-                    label: 'Planet',
-                    value: (planet['name'] as String).toUpperCase(),
-                    valueSize: 20,
-                    accent: planet['color'] as Color,
-                    sub: nextPlanetName == null
+              child: _Stat(
+                label: 'Planet',
+                value: (planet['name'] as String).toUpperCase(),
+                valueSize: 20,
+                accent: planet['color'] as Color,
+                sub:
+                    nextPlanetName == null
                         ? 'Final stop'
-                        : 'Next: $nextPlanetName')),
+                        : 'Next: $nextPlanetName',
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
-                child: _Stat(
-                    label: 'Balance',
-                    value: balance == null ? '—' : '$balance%',
-                    accent: MM.teal,
-                    sub: '5-Core, 7 days')),
+              child: _Stat(
+                label: 'Balance',
+                value: balance == null ? '—' : '$balance%',
+                accent: MM.teal,
+                sub: '5-Core, 7 days',
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -520,12 +562,13 @@ class _FlightData extends StatelessWidget {
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat(
-      {required this.label,
-      required this.value,
-      required this.accent,
-      this.sub,
-      this.valueSize = 28});
+  const _Stat({
+    required this.label,
+    required this.value,
+    required this.accent,
+    this.sub,
+    this.valueSize = 28,
+  });
   final String label;
   final String value;
   final Color accent;
@@ -540,21 +583,28 @@ class _Stat extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label.toUpperCase(),
-              style: GoogleFonts.orbitron(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                  color: Colors.white.withOpacity(0.5))),
+          Text(
+            label.toUpperCase(),
+            style: GoogleFonts.orbitron(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.5,
+              color: Colors.white.withOpacity(0.5),
+            ),
+          ),
           const SizedBox(height: 6),
-          Text(value,
-              style: MM.display(size: valueSize, color: accent, height: 1),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis),
+          Text(
+            value,
+            style: MM.display(size: valueSize, color: accent, height: 1),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           if (sub != null) ...[
             const SizedBox(height: 5),
-            Text(sub!,
-                style: MM.body(size: 11, color: Colors.white.withOpacity(0.5))),
+            Text(
+              sub!,
+              style: MM.body(size: 11, color: Colors.white.withOpacity(0.5)),
+            ),
           ],
         ],
       ),

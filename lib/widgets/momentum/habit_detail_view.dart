@@ -55,6 +55,15 @@ const Map<String, String> _coreIcon = {
   'emotional': '🧘',
 };
 
+/// The short version of a habit for the header line (P1-10 #7). Nova stores
+/// its whole formatted Golden Habit block in `displayText`, so a multi-line or
+/// long value falls back to the WHAT line.
+String abbreviatedVersion(GoldenHabit h) {
+  final d = h.displayText.trim();
+  if (d.isEmpty || d.contains('\n') || d.length > 160) return h.what.trim();
+  return d;
+}
+
 /// A Captain's Log line for this habit's Core; [mentions] = names the habit.
 typedef HabitLogLine =
     ({String date, String wins, String lessons, bool mentions});
@@ -563,7 +572,7 @@ class _HabitDetailViewState extends State<HabitDetailView> {
         _field(
           'Abbreviated version',
           'displayText',
-          h.displayText,
+          abbreviatedVersion(h),
           fallback: h.what,
         ),
         _field('WHAT', 'what', h.what),

@@ -93,6 +93,10 @@ class _Phase1FlowState extends State<Phase1Flow> {
   /// Has forged a Golden Habit before — new habits use returning sessions.
   bool get _returning => widget.state.stage1Completed;
 
+  /// The "Fuel this Core" opener, used by the first chat only — it leaked into
+  /// later sessions' inputs (P1-10 #6).
+  late String? _draft = widget.entryDraft;
+
   @override
   void initState() {
     super.initState();
@@ -121,7 +125,10 @@ class _Phase1FlowState extends State<Phase1Flow> {
   /// carries a state change made in the same tap, since [widget.state] only
   /// updates on the next build.
   void _go(String view, {Phase1State? base}) {
-    setState(() => _view = view);
+    setState(() {
+      if (_view == 'section' && view != 'section') _draft = null;
+      _view = view;
+    });
     final from = base ?? widget.state;
     if (base != null || from.lastView != view) {
       widget.onStateChange(from.copyWith(lastView: view));
@@ -191,7 +198,7 @@ class _Phase1FlowState extends State<Phase1Flow> {
         if (!_returning && _start == null) {
           return HhsChatView(
             userId: uid,
-            initialDraft: widget.entryDraft,
+            initialDraft: _draft,
             onProgress: _onHhsProgress,
             onComplete: _onHhsComplete,
             onBack: () => _go('hub'),
@@ -203,7 +210,8 @@ class _Phase1FlowState extends State<Phase1Flow> {
             key: ValueKey(session.id),
             userId: uid,
             sessionId: session.id,
-            initialDraft: widget.entryDraft,
+            title: session.isGoDeeper ? 'Rebuild your Golden Habit' : null,
+            initialDraft: _draft,
             onProgress: _onHhsProgress,
             onComplete: _onHhsComplete,
             onBack: () => _go('hub'),
@@ -310,36 +318,39 @@ class _HhsSessionGateState extends State<_HhsSessionGate> {
   Widget build(BuildContext context) {
     final rebuilding = widget.start?.mode == 'go_deeper';
     return _PhaseScaffold(
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_error == null) ...[
-                const CircularProgressIndicator(color: MM.blue),
-                const SizedBox(height: 16),
-                Text(
-                  rebuilding
-                      ? 'Nova is loading everything about this habit…'
-                      : 'Nova is reviewing your habits and lists…',
-                  textAlign: TextAlign.center,
-                  style: MM.body(
-                    color: Colors.white.withOpacity(0.8),
-                    size: 13,
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.85,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_error == null) ...[
+                  const CircularProgressIndicator(color: MM.blue),
+                  const SizedBox(height: 16),
+                  Text(
+                    rebuilding
+                        ? 'Nova is loading everything about this habit…'
+                        : 'Nova is reviewing your habits and lists…',
+                    textAlign: TextAlign.center,
+                    style: MM.body(
+                      color: Colors.white.withOpacity(0.8),
+                      size: 13,
+                    ),
                   ),
-                ),
-              ] else ...[
-                Text(
-                  "Couldn't reach Nova",
-                  style: MM.display(size: 15, color: Colors.white),
-                ),
-                const SizedBox(height: 12),
-                MMGhostButton(label: 'Try again', onPressed: _resolve),
-                const SizedBox(height: 8),
-                MMGhostButton(label: 'Back', onPressed: widget.onBack),
+                ] else ...[
+                  Text(
+                    "Couldn't reach Nova",
+                    style: MM.display(size: 15, color: Colors.white),
+                  ),
+                  const SizedBox(height: 12),
+                  MMGhostButton(label: 'Try again', onPressed: _resolve),
+                  const SizedBox(height: 8),
+                  MMGhostButton(label: 'Back', onPressed: widget.onBack),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

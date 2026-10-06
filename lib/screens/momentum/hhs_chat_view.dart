@@ -4,6 +4,7 @@ import '../../models/chat_message.dart';
 import '../../services/chat_service.dart';
 import '../../services/onboarding_service.dart';
 import '../../theme/momentum_tokens.dart';
+import '../../widgets/momentum/chat_markdown.dart';
 import '../../widgets/momentum/celebration_host.dart';
 import '../../widgets/momentum/confetti_overlay.dart';
 import '../../widgets/momentum/glass_panel.dart';
@@ -28,7 +29,11 @@ class HhsChatView extends StatefulWidget {
     required this.onBack,
     this.initialDraft,
     this.sessionId,
+    this.title,
   });
+
+  /// Header title; default "N/5 · Forge your Golden Habit".
+  final String? title;
 
   final String userId;
 
@@ -85,6 +90,10 @@ class _HhsChatViewState extends State<HhsChatView> {
   final _chat = ChatService();
   final _onboarding = OnboardingService();
   final _input = TextEditingController();
+  // Kept enabled while a reply is pending and re-focused afterwards: on web,
+  // disabling the field (or covering it with a reward overlay) left a stale
+  // hidden text box, so later typing went nowhere (P1-10 #3).
+  final _inputFocus = FocusNode();
   final _scroll = ScrollController();
 
   final List<ChatMessage> _messages = [];
@@ -111,6 +120,7 @@ class _HhsChatViewState extends State<HhsChatView> {
     _chat.dispose();
     _onboarding.dispose();
     _input.dispose();
+    _inputFocus.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -172,6 +182,7 @@ class _HhsChatViewState extends State<HhsChatView> {
       setState(() => _messages.addAll(reply));
       _scrollToEnd();
       await _syncOnboarding();
+      _refocusInput();
     } catch (_) {
       if (!mounted) return;
       // Non-fatal: leave the user's message; they can retry.
@@ -226,6 +237,14 @@ class _HhsChatViewState extends State<HhsChatView> {
     setState(() {
       if (_rewardQueue.isNotEmpty) _rewardQueue.removeAt(0);
     });
+    _refocusInput();
+  }
+
+  void _refocusInput() {
+    if (_rewardQueue.isNotEmpty || _showForge) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _inputFocus.requestFocus();
+    });
   }
 
   void _scrollToEnd() {
@@ -265,7 +284,9 @@ class _HhsChatViewState extends State<HhsChatView> {
               queued: _rewardQueue.first,
               onDismiss: _dismissReward,
             ),
-          if (_showForge)
+          // The forge card waits until every reward card is dismissed — they
+          // used to stack (P1-10 #4).
+          if (_showForge && _rewardQueue.isEmpty)
             _ForgeConfirmOverlay(
               fields: _sync.fields,
               onLockIn: widget.onComplete,
@@ -317,7 +338,8 @@ class _HhsChatViewState extends State<HhsChatView> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${_sync.completedCount}/5 · Forge your Golden Habit',
+                      widget.title ??
+                          '${_sync.completedCount}/5 · Forge your Golden Habit',
                       style: MM.display(size: 13, color: Colors.white),
                     ),
                   ],
@@ -385,9 +407,9 @@ class _HhsChatViewState extends State<HhsChatView> {
           Expanded(
             child: TextField(
               controller: _input,
+              focusNode: _inputFocus,
               minLines: 1,
               maxLines: 4,
-              enabled: !_sending,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _send(),
               style: MM.body(color: Colors.white, size: 13),
@@ -496,7 +518,7 @@ class _ChatBubble extends StatelessWidget {
                       bottomRight: Radius.circular(isMe ? 4 : 14),
                     ),
                   ),
-                  child: Text(
+                  child: ChatMarkdownText(
                     message.text,
                     style: MM.body(color: Colors.white, size: 13, height: 1.45),
                   ),

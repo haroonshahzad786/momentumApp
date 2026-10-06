@@ -713,7 +713,8 @@ post-sign-in routing ❌ (everyone lands on the Cockpit; intro shown to every si
 - [x] **P1-4 Go Deeper session** — **DONE + browser-verified 2026-10-06** from Detailed View → Need Help → rebuild: Nova named the habit, "no failure here — only data 🧪", offered pain point / timing / cue / obstacle plan. Rebuild not run to the forge.
   Original: — flagged habit + its Momentum List context pre-loaded; rework pain point,
   type, cue/trigger or IF-THEN. (Phase 2 trigger UI + Quick Suggestion / Manual Edit stay in #23.)
-- [ ] **P1-10 Fixes found in the 2026-10-06 browser run** (do before P1-5):
+- [x] **P1-10 Fixes found in the 2026-10-06 browser run** — **all 9 DONE 2026-10-07** (unit-tested; #2 deployed; browser re-check pending a dev-server restart): #1 HHS chat uses the existing `ChatMarkdownText`; #2 first-time chat opens on a short "Ready Player One?" line (`FIRST_TIME_OPENER`), not a repeat of the intro; #3 chat field stays enabled + refocuses after replies/overlays; #4 forge card waits for reward cards; #5 web Cockpit Phase 1 banner (Ready Player One? / Continue Game 🎮); #6 Fuel draft used once; #7 `abbreviatedVersion` falls back to WHAT; #8 centred loader + "Rebuild your Golden Habit" title; #9 profile refresh when leaving Phase 1.
+  Was:
   1. Nova chat shows raw `**markdown**` (render bold/headers).
   2. First-time Nova welcome repeats the intro carousel text (Sequence: intro = no AI) → start at Section 1.
   3. Chat input can't be focused after a checkpoint reward overlay (stale hidden text field).
