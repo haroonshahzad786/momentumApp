@@ -699,17 +699,31 @@ post-sign-in routing ❌ (everyone lands on the Cockpit; intro shown to every si
   Original: — new player: sign-up → Phase 1 welcome (not the Cockpit); intro carousel skipped
   for anyone who has signed in before (device flag + `hasSignedInBefore`); Phase 1 resumes at `lastView`.
   Gamification spec: "Ready Player One?" (new) / "Continue Game 🎮?" (returning) CTAs.
-- [ ] **P1-2 HHS sessions** — each HHS run is its own session (`hhs_sessions/{sid}` with messages + state +
+- [x] **P1-2 HHS sessions** — **DONE + deployed 2026-10-06, browser-verified** (functions-flutter `hhsSessions.js`, `claudeHhsSession`; `sessionId` on send/latest/sync; legacy first-time path unchanged). A returning session's checkpoint paid again (1/5 ✓).
+  Original: — each HHS run is its own session (`hhs_sessions/{sid}` with messages + state +
   `mode`: first_time | returning_voluntary | returning_guided | go_deeper, + `habitId`). Existing
   `claude_messages` / `hhs_state` read as each player's first session (no data moved). Section MP awarded per
   session (decision 2).
-- [ ] **P1-3 Returning-player HHS (#32)** — returning system prompt: no tutorial/narrative, opens with a recap
+- [x] **P1-3 Returning-player HHS (#32)** — **DONE + browser-verified 2026-10-06:** chooser (🧭 voluntary / 🎯 guided); Nova opened with a recap of the forged habit + Passions / If-Then lists, no welcome/tutorial, straight to the new pain point. Second habit not run to the forge (session left open, resumable).
+  Original: — returning system prompt: no tutorial/narrative, opens with a recap
   of current Golden Habits + Momentum List status (injected server-side), reuses list data, surfaces cross-Core
   connections, Core Areas / Universal Principles referenced not taught; choice "Help me find my next pain
   point" (voluntary, discovery) vs "I know my pain point" (guided, checkpoints kept); Command Center update =
   short progress summary (no full unlock reveal).
-- [ ] **P1-4 Go Deeper session** — flagged habit + its Momentum List context pre-loaded; rework pain point,
+- [x] **P1-4 Go Deeper session** — **DONE + browser-verified 2026-10-06** from Detailed View → Need Help → rebuild: Nova named the habit, "no failure here — only data 🧪", offered pain point / timing / cue / obstacle plan. Rebuild not run to the forge.
+  Original: — flagged habit + its Momentum List context pre-loaded; rework pain point,
   type, cue/trigger or IF-THEN. (Phase 2 trigger UI + Quick Suggestion / Manual Edit stay in #23.)
+- [ ] **P1-10 Fixes found in the 2026-10-06 browser run** (do before P1-5):
+  1. Nova chat shows raw `**markdown**` (render bold/headers).
+  2. First-time Nova welcome repeats the intro carousel text (Sequence: intro = no AI) → start at Section 1.
+  3. Chat input can't be focused after a checkpoint reward overlay (stale hidden text field).
+  4. Golden Habit forged card overlaps the last reward overlay.
+  5. Web Cockpit has no way back into an unfinished Phase 1 (phone has the Phase 1 pill).
+  6. "Fuel this Core" draft leaks into the next session's input.
+  7. Detailed View "Abbreviated version" shows Nova's whole formatted block (displayText) → use WHAT when long.
+  8. Session loader pinned to the top of the screen; Go Deeper header still says "0/5 · Forge your Golden Habit".
+  9. Cockpit MP (110) didn't include the returning session's +10 — refresh profile after session awards (verify).
+  ✅ fixed + deployed same day: Nova's turn loop dropped the main message when a tool call came mid-turn (kept only the last round's text) — affected every player.
 - [ ] **P1-5 Nova-led Stage 2 MBS (first-time)** — Sequence "PHASE 1, STAGE 2 PLAYER WALKTHROUGH": §1 intro +
   3 MBMs overview ("Level 2"), §2 Obstacle & Opportunity assessment, §3 MBM implementation 3.1 Obvious /
   3.2 Easy / 3.3 Fun + 3.4 final review, §5 Space Cantina intro (+25💎). §4 Personal Assistant = post-MVP stub.
