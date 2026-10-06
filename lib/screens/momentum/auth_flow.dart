@@ -1,14 +1,21 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import '../../services/offline.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 import '../../widgets/momentum/starfield.dart';
 import '../../widgets/momentum/web_shell.dart';
 import 'intro_flow.dart';
 
+/// Set once a player has signed in on this device. A returning player skips
+/// the intro and lands on Sign In (Phase 1&2 Sequence: returning players
+/// "bypass all tutorial and narrative onboarding").
+const kSignedInBeforeKey = 'auth:signedInBefore';
+
 /// Entry-point for unauthenticated users.
 /// Flow: intro carousel → sign-up → sign-in (toggle), all wired to Firebase.
+/// A player who has signed in here before starts on sign-in instead.
 class AuthFlow extends StatefulWidget {
   const AuthFlow({super.key});
 
@@ -17,11 +24,23 @@ class AuthFlow extends StatefulWidget {
 }
 
 class _AuthFlowState extends State<AuthFlow> {
-  _Stage _stage = _Stage.intro;
+  _Stage? _stage;
+
+  @override
+  void initState() {
+    super.initState();
+    LocalCache.getJson(kSignedInBeforeKey).then((seen) {
+      if (mounted) {
+        setState(() => _stage = seen == true ? _Stage.signin : _Stage.intro);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     switch (_stage) {
+      case null:
+        return const Scaffold(backgroundColor: MM.pageBg);
       case _Stage.intro:
         // New 5-page intro carousel (client "pagewise" redesign). The old
         // [IntroScreen] below is kept but no longer linked into the flow.
@@ -135,22 +154,28 @@ class _IntroScreenState extends State<IntroScreen> {
                                 onTap: () => _go(i),
                                 child: Container(
                                   margin: EdgeInsets.only(
-                                      right: i < _slides.length - 1 ? 6 : 0),
+                                    right: i < _slides.length - 1 ? 6 : 0,
+                                  ),
                                   height: 3,
                                   decoration: BoxDecoration(
-                                    color: i < _idx
-                                        ? slide.accent
-                                        : (i == _idx
-                                            ? Colors.white
-                                            : Colors.white.withOpacity(0.18)),
+                                    color:
+                                        i < _idx
+                                            ? slide.accent
+                                            : (i == _idx
+                                                ? Colors.white
+                                                : Colors.white.withOpacity(
+                                                  0.18,
+                                                )),
                                     borderRadius: BorderRadius.circular(2),
-                                    boxShadow: i == _idx
-                                        ? [
-                                            BoxShadow(
+                                    boxShadow:
+                                        i == _idx
+                                            ? [
+                                              BoxShadow(
                                                 color: slide.accent,
-                                                blurRadius: 8),
-                                          ]
-                                        : null,
+                                                blurRadius: 8,
+                                              ),
+                                            ]
+                                            : null,
                                   ),
                                 ),
                               ),
@@ -164,18 +189,24 @@ class _IntroScreenState extends State<IntroScreen> {
                         borderRadius: BorderRadius.circular(999),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 5),
+                            horizontal: 12,
+                            vertical: 5,
+                          ),
                           decoration: BoxDecoration(
                             border: Border.all(
-                                color: Colors.white.withOpacity(0.2)),
+                              color: Colors.white.withOpacity(0.2),
+                            ),
                             borderRadius: BorderRadius.circular(999),
                           ),
-                          child: Text('SKIP →',
-                              style: MM.display(
-                                  size: 9,
-                                  color: Colors.white.withOpacity(0.7),
-                                  weight: FontWeight.w600,
-                                  letterSpacing: 9 * 0.18)),
+                          child: Text(
+                            'SKIP →',
+                            style: MM.display(
+                              size: 9,
+                              color: Colors.white.withOpacity(0.7),
+                              weight: FontWeight.w600,
+                              letterSpacing: 9 * 0.18,
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -193,8 +224,9 @@ class _IntroScreenState extends State<IntroScreen> {
                           Expanded(
                             flex: 5,
                             child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 20),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
                               child: s.hero,
                             ),
                           ),
@@ -205,21 +237,31 @@ class _IntroScreenState extends State<IntroScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(s.eyebrow,
-                                      style: MM.displayX(
-                                          size: 10, color: s.accent)),
+                                  Text(
+                                    s.eyebrow,
+                                    style: MM.displayX(
+                                      size: 10,
+                                      color: s.accent,
+                                    ),
+                                  ),
                                   const SizedBox(height: 8),
-                                  Text(s.title,
-                                      style: MM.display(
-                                          size: 24,
-                                          color: Colors.white,
-                                          height: 1.18)),
+                                  Text(
+                                    s.title,
+                                    style: MM.display(
+                                      size: 24,
+                                      color: Colors.white,
+                                      height: 1.18,
+                                    ),
+                                  ),
                                   const SizedBox(height: 10),
-                                  Text(s.body,
-                                      style: MM.body(
-                                          color: Colors.white.withOpacity(0.75),
-                                          size: 13,
-                                          height: 1.55)),
+                                  Text(
+                                    s.body,
+                                    style: MM.body(
+                                      color: Colors.white.withOpacity(0.75),
+                                      size: 13,
+                                      height: 1.55,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -231,52 +273,62 @@ class _IntroScreenState extends State<IntroScreen> {
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(22, 0, 22, 24),
-                  child: last
-                      ? MMPrimaryButton(
-                          label: 'Get Started 🚀',
-                          pulse: true,
-                          onPressed: widget.onFinish,
-                        )
-                      : Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('SWIPE OR TAP',
+                  child:
+                      last
+                          ? MMPrimaryButton(
+                            label: 'Get Started 🚀',
+                            pulse: true,
+                            onPressed: widget.onFinish,
+                          )
+                          : Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'SWIPE OR TAP',
                                 style: MM.display(
-                                    size: 10,
-                                    color: Colors.white.withOpacity(0.5),
-                                    letterSpacing: 10 * 0.18)),
-                            GestureDetector(
-                              onTap: () => _go(_idx + 1),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 18, vertical: 10),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      slide.accent,
-                                      slide.accent.withOpacity(0.8),
+                                  size: 10,
+                                  color: Colors.white.withOpacity(0.5),
+                                  letterSpacing: 10 * 0.18,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => _go(_idx + 1),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        slide.accent,
+                                        slide.accent.withOpacity(0.8),
+                                      ],
+                                    ),
+                                    border: Border.all(color: slide.accent),
+                                    borderRadius: BorderRadius.circular(999),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: slide.accent.withOpacity(0.4),
+                                        blurRadius: 18,
+                                      ),
                                     ],
                                   ),
-                                  border: Border.all(color: slide.accent),
-                                  borderRadius: BorderRadius.circular(999),
-                                  boxShadow: [
-                                    BoxShadow(
-                                        color: slide.accent.withOpacity(0.4),
-                                        blurRadius: 18),
-                                  ],
-                                ),
-                                child: Text('NEXT →',
+                                  child: Text(
+                                    'NEXT →',
                                     style: MM.display(
-                                        size: 12,
-                                        color: Colors.white,
-                                        weight: FontWeight.w700,
-                                        letterSpacing: 12 * 0.14)),
+                                      size: 12,
+                                      color: Colors.white,
+                                      weight: FontWeight.w700,
+                                      letterSpacing: 12 * 0.14,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
+                            ],
+                          ),
                 ),
               ],
             ),
@@ -288,9 +340,11 @@ class _IntroScreenState extends State<IntroScreen> {
 
   void _go(int i) {
     if (i < 0 || i >= _slides.length) return;
-    _ctrl.animateToPage(i,
-        duration: const Duration(milliseconds: 400),
-        curve: Curves.easeOutCubic);
+    _ctrl.animateToPage(
+      i,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
+    );
   }
 }
 
@@ -323,8 +377,10 @@ class _HeroCores extends StatelessWidget {
             stops: const [0, 0.6],
           ),
         ),
-        child: Image.asset('assets/momentum/intro-cores.png',
-            fit: BoxFit.contain),
+        child: Image.asset(
+          'assets/momentum/intro-cores.png',
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }
@@ -344,8 +400,11 @@ class _HeroJourney extends StatelessWidget {
             child: Center(
               child: Transform.rotate(
                 angle: 78 * 3.14159 / 180,
-                child: Image.asset('assets/momentum/intro-cores.png',
-                    width: 70, fit: BoxFit.contain),
+                child: Image.asset(
+                  'assets/momentum/intro-cores.png',
+                  width: 70,
+                  fit: BoxFit.contain,
+                ),
               ),
             ),
           ),
@@ -359,25 +418,37 @@ class _JourneyHeroPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     // Yellow ascent arc + planets
-    final yellow = Paint()
-      ..color = MM.yellow
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    final dashed = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0xE52A7DE1), Color(0xB39B5CFF)],
-      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    final path = Path()
-      ..moveTo(size.width * 0.08, size.height * 0.8)
-      ..quadraticBezierTo(size.width * 0.27, size.height * 0.1,
-          size.width * 0.5, size.height * 0.35);
+    final yellow =
+        Paint()
+          ..color = MM.yellow
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2;
+    final dashed =
+        Paint()
+          ..shader = const LinearGradient(
+            colors: [Color(0xE52A7DE1), Color(0xB39B5CFF)],
+          ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5;
+    final path =
+        Path()
+          ..moveTo(size.width * 0.08, size.height * 0.8)
+          ..quadraticBezierTo(
+            size.width * 0.27,
+            size.height * 0.1,
+            size.width * 0.5,
+            size.height * 0.35,
+          );
     canvas.drawPath(path, yellow);
-    final tail = Path()
-      ..moveTo(size.width * 0.5, size.height * 0.35)
-      ..quadraticBezierTo(size.width * 0.73, size.height * 0.55,
-          size.width * 0.93, size.height * 0.65);
+    final tail =
+        Path()
+          ..moveTo(size.width * 0.5, size.height * 0.35)
+          ..quadraticBezierTo(
+            size.width * 0.73,
+            size.height * 0.55,
+            size.width * 0.93,
+            size.height * 0.65,
+          );
     canvas.drawPath(tail, dashed);
 
     // Planet dots
@@ -418,14 +489,13 @@ class _HeroTrophies extends StatelessWidget {
                 SizedBox(
                   width: 96,
                   height: 128,
-                  child: CustomPaint(
-                    painter: _BigFlamePainter(),
-                  ),
+                  child: CustomPaint(painter: _BigFlamePainter()),
                 ),
-                Text('47',
-                    style: MM.display(size: 32, color: Colors.white)),
-                Text('DAY STREAK',
-                    style: MM.displayX(size: 9, color: MM.yellow)),
+                Text('47', style: MM.display(size: 32, color: Colors.white)),
+                Text(
+                  'DAY STREAK',
+                  style: MM.displayX(size: 9, color: MM.yellow),
+                ),
               ],
             ),
           ),
@@ -458,25 +528,21 @@ class _BigFlamePainter extends CustomPainter {
     final shader = const RadialGradient(
       center: Alignment(0, 0.6),
       radius: 0.6,
-      colors: [
-        Colors.white,
-        MM.yellow,
-        MM.red,
-        Color(0x009B5CFF),
-      ],
+      colors: [Colors.white, MM.yellow, MM.red, Color(0x009B5CFF)],
       stops: [0.0, 0.35, 0.75, 1.0],
     ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
     final p = Paint()..shader = shader;
     final w = size.width, h = size.height;
-    final path = Path()
-      ..moveTo(w * 0.5, h * 0.10)
-      ..cubicTo(w * 0.32, h * 0.32, w * 0.20, h * 0.45, w * 0.20, h * 0.62)
-      ..cubicTo(w * 0.20, h * 0.80, w * 0.32, h * 0.92, w * 0.50, h * 0.92)
-      ..cubicTo(w * 0.68, h * 0.92, w * 0.80, h * 0.80, w * 0.80, h * 0.62)
-      ..cubicTo(w * 0.80, h * 0.50, w * 0.65, h * 0.40, w * 0.60, h * 0.26)
-      ..cubicTo(w * 0.58, h * 0.40, w * 0.50, h * 0.45, w * 0.46, h * 0.40)
-      ..cubicTo(w * 0.46, h * 0.26, w * 0.50, h * 0.18, w * 0.50, h * 0.10)
-      ..close();
+    final path =
+        Path()
+          ..moveTo(w * 0.5, h * 0.10)
+          ..cubicTo(w * 0.32, h * 0.32, w * 0.20, h * 0.45, w * 0.20, h * 0.62)
+          ..cubicTo(w * 0.20, h * 0.80, w * 0.32, h * 0.92, w * 0.50, h * 0.92)
+          ..cubicTo(w * 0.68, h * 0.92, w * 0.80, h * 0.80, w * 0.80, h * 0.62)
+          ..cubicTo(w * 0.80, h * 0.50, w * 0.65, h * 0.40, w * 0.60, h * 0.26)
+          ..cubicTo(w * 0.58, h * 0.40, w * 0.50, h * 0.45, w * 0.46, h * 0.40)
+          ..cubicTo(w * 0.46, h * 0.26, w * 0.50, h * 0.18, w * 0.50, h * 0.10)
+          ..close();
     canvas.drawPath(path, p);
   }
 
@@ -493,24 +559,29 @@ class _TrophyTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        gradient: locked
-            ? null
-            : RadialGradient(
-                colors: [color.withOpacity(0.33), Colors.transparent],
-                stops: const [0, 0.7],
-              ),
+        gradient:
+            locked
+                ? null
+                : RadialGradient(
+                  colors: [color.withOpacity(0.33), Colors.transparent],
+                  stops: const [0, 0.7],
+                ),
         color: locked ? Colors.white.withOpacity(0.05) : null,
         border: Border.all(
-            color: locked
-                ? Colors.white.withOpacity(0.12)
-                : color.withOpacity(0.47)),
+          color:
+              locked ? Colors.white.withOpacity(0.12) : color.withOpacity(0.47),
+        ),
         borderRadius: BorderRadius.circular(8),
-        boxShadow: locked
-            ? null
-            : [BoxShadow(color: color.withOpacity(0.33), blurRadius: 12)],
+        boxShadow:
+            locked
+                ? null
+                : [BoxShadow(color: color.withOpacity(0.33), blurRadius: 12)],
       ),
-      child: Icon(icon,
-          color: locked ? Colors.white.withOpacity(0.3) : color, size: 22),
+      child: Icon(
+        icon,
+        color: locked ? Colors.white.withOpacity(0.3) : color,
+        size: 22,
+      ),
     );
   }
 }
@@ -540,13 +611,17 @@ class _HeroCopilot extends StatelessWidget {
                     BoxShadow(color: Color(0xB39B5CFF), blurRadius: 30),
                   ],
                 ),
-                child: const Icon(Icons.star_border,
-                    color: Colors.white, size: 66),
+                child: const Icon(
+                  Icons.star_border,
+                  color: Colors.white,
+                  size: 66,
+                ),
               ),
               const SizedBox(height: 8),
-              Text('CO-PILOT',
-                  style: MM.displayX(
-                      size: 9, color: const Color(0xFFD8C0FF))),
+              Text(
+                'CO-PILOT',
+                style: MM.displayX(size: 9, color: const Color(0xFFD8C0FF)),
+              ),
               const SizedBox(height: 4),
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -563,11 +638,14 @@ class _HeroCopilot extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 5),
-                  Text('ONLINE',
-                      style: MM.display(
-                          size: 9,
-                          color: const Color(0xFF00FF88),
-                          letterSpacing: 9 * 0.14)),
+                  Text(
+                    'ONLINE',
+                    style: MM.display(
+                      size: 9,
+                      color: const Color(0xFF00FF88),
+                      letterSpacing: 9 * 0.14,
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -588,15 +666,17 @@ class _HeroCopilot extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _ChatBubble(
-                      text: 'Pattern: Mindset dipped 3 days. Want a tweak?',
-                      mine: false),
+                    text: 'Pattern: Mindset dipped 3 days. Want a tweak?',
+                    mine: false,
+                  ),
                   const SizedBox(height: 6),
                   _ChatBubble(text: 'Yes please', mine: true),
                   const SizedBox(height: 6),
                   _ChatBubble(
-                      text:
-                          'Move meditation to right after coffee. Lower friction.',
-                      mine: false),
+                    text:
+                        'Move meditation to right after coffee. Lower friction.',
+                    mine: false,
+                  ),
                 ],
               ),
             ),
@@ -619,18 +699,21 @@ class _ChatBubble extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 200),
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
         decoration: BoxDecoration(
-          gradient: mine
-              ? const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFF3A8DFF), Color(0xFF1F5FB8)],
-                )
-              : null,
+          gradient:
+              mine
+                  ? const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFF3A8DFF), Color(0xFF1F5FB8)],
+                  )
+                  : null,
           color: mine ? null : MM.violet.withOpacity(0.18),
           border: Border.all(
-              color: mine
-                  ? const Color(0xFF4D9BFF).withOpacity(0.5)
-                  : MM.violet.withOpacity(0.35)),
+            color:
+                mine
+                    ? const Color(0xFF4D9BFF).withOpacity(0.5)
+                    : MM.violet.withOpacity(0.35),
+          ),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(10),
             topRight: const Radius.circular(10),
@@ -638,8 +721,10 @@ class _ChatBubble extends StatelessWidget {
             bottomRight: Radius.circular(mine ? 3 : 10),
           ),
         ),
-        child: Text(text,
-            style: MM.body(color: Colors.white, size: 10, height: 1.4)),
+        child: Text(
+          text,
+          style: MM.body(color: Colors.white, size: 10, height: 1.4),
+        ),
       ),
     );
   }
@@ -647,8 +732,11 @@ class _ChatBubble extends StatelessWidget {
 
 // ─── SIGN-UP ────────────────────────────────────────────────
 class SignUpScreen extends StatefulWidget {
-  const SignUpScreen(
-      {super.key, required this.onBack, required this.onSwitchToSignIn});
+  const SignUpScreen({
+    super.key,
+    required this.onBack,
+    required this.onSwitchToSignIn,
+  });
   final VoidCallback onBack;
   final VoidCallback onSwitchToSignIn;
 
@@ -671,8 +759,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  bool get _valid =>
-      _emailCtrl.text.contains('@') && _pwCtrl.text.length >= 6;
+  bool get _valid => _emailCtrl.text.contains('@') && _pwCtrl.text.length >= 6;
 
   Future<void> _doSignUp() async {
     if (!_valid || _busy) return;
@@ -690,10 +777,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         // leaderboard, etc. can resolve a name by uid). Best-effort — a
         // failure here must never block sign-up.
         try {
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(u.uid)
-              .set({
+          await FirebaseFirestore.instance.collection('users').doc(u.uid).set({
             if (name.isNotEmpty) 'name': name,
             'email': u.email,
             'updatedAt': FieldValue.serverTimestamp(),
@@ -704,8 +788,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(AuthService.describeError(e))));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(AuthService.describeError(e))));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -718,8 +803,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       await _auth.signInAnonymously();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(AuthService.describeError(e))));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(AuthService.describeError(e))));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -736,8 +822,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          if (flow == null)
-            const Positioned.fill(child: StarfieldBackground()),
+          if (flow == null) const Positioned.fill(child: StarfieldBackground()),
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(18, 14, 18, 40),
@@ -746,16 +831,23 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 children: [
                   _BackButton(onTap: widget.onBack),
                   const SizedBox(height: 14),
-                  Text('NEW CADET',
-                      style: MM.displayX(size: 11, color: MM.yellow)),
+                  Text(
+                    'NEW CADET',
+                    style: MM.displayX(size: 11, color: MM.yellow),
+                  ),
                   const SizedBox(height: 4),
-                  Text('Launch your account',
-                      style: MM.display(size: 24, color: Colors.white)),
+                  Text(
+                    'Launch your account',
+                    style: MM.display(size: 24, color: Colors.white),
+                  ),
                   const SizedBox(height: 6),
                   Text(
-                      'Save your streaks, sync across devices, join a squad.',
-                      style: MM.body(
-                          color: Colors.white.withOpacity(0.6), size: 12)),
+                    'Save your streaks, sync across devices, join a squad.',
+                    style: MM.body(
+                      color: Colors.white.withOpacity(0.6),
+                      size: 12,
+                    ),
+                  ),
                   const SizedBox(height: 22),
                   _AuthField(
                     label: 'CALL SIGN',
@@ -784,39 +876,49 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     onPressed: _valid ? _doSignUp : null,
                   ),
                   const SizedBox(height: 18),
-                  Row(children: [
-                    Expanded(
+                  Row(
+                    children: [
+                      Expanded(
                         child: Container(
-                            height: 1,
-                            color: Colors.white.withOpacity(0.18))),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Text('OR',
+                          height: 1,
+                          color: Colors.white.withOpacity(0.18),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Text(
+                          'OR',
                           style: MM.display(
-                              size: 10,
-                              color: Colors.white.withOpacity(0.4),
-                              letterSpacing: 10 * 0.18)),
-                    ),
-                    Expanded(
+                            size: 10,
+                            color: Colors.white.withOpacity(0.4),
+                            letterSpacing: 10 * 0.18,
+                          ),
+                        ),
+                      ),
+                      Expanded(
                         child: Container(
-                            height: 1,
-                            color: Colors.white.withOpacity(0.18))),
-                  ]),
+                          height: 1,
+                          color: Colors.white.withOpacity(0.18),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 18),
                   MMGhostButton(
                     label: 'Skip — Continue as Guest',
                     expand: true,
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     onPressed: _busy ? null : _doGuest,
                   ),
                   const SizedBox(height: 8),
                   Center(
                     child: Text(
-                        'Creates a temporary account · upgrade anytime',
-                        style: MM.body(
-                            color: Colors.white.withOpacity(0.45),
-                            size: 10)),
+                      'Creates a temporary account · upgrade anytime',
+                      style: MM.body(
+                        color: Colors.white.withOpacity(0.45),
+                        size: 10,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 24),
                   Center(
@@ -825,14 +927,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       child: RichText(
                         text: TextSpan(
                           style: MM.body(
-                              color: Colors.white.withOpacity(0.6), size: 12),
+                            color: Colors.white.withOpacity(0.6),
+                            size: 12,
+                          ),
                           children: [
                             const TextSpan(text: 'Already flying? '),
                             TextSpan(
                               text: 'Sign in',
                               style: TextStyle(
-                                  color: MM.blue,
-                                  fontWeight: FontWeight.w600),
+                                color: MM.blue,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
@@ -851,8 +956,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
 // ─── SIGN-IN ────────────────────────────────────────────────
 class SignInScreen extends StatefulWidget {
-  const SignInScreen(
-      {super.key, required this.onBack, required this.onSwitchToSignUp});
+  const SignInScreen({
+    super.key,
+    required this.onBack,
+    required this.onSwitchToSignUp,
+  });
   final VoidCallback onBack;
   final VoidCallback onSwitchToSignUp;
 
@@ -873,8 +981,7 @@ class _SignInScreenState extends State<SignInScreen> {
     super.dispose();
   }
 
-  bool get _valid =>
-      _emailCtrl.text.contains('@') && _pwCtrl.text.length >= 6;
+  bool get _valid => _emailCtrl.text.contains('@') && _pwCtrl.text.length >= 6;
 
   Future<void> _doSignIn() async {
     if (!_valid || _busy) return;
@@ -883,8 +990,9 @@ class _SignInScreenState extends State<SignInScreen> {
       await _auth.signInWithEmail(_emailCtrl.text, _pwCtrl.text);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(AuthService.describeError(e))));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(AuthService.describeError(e))));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -901,8 +1009,7 @@ class _SignInScreenState extends State<SignInScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          if (flow == null)
-            const Positioned.fill(child: StarfieldBackground()),
+          if (flow == null) const Positioned.fill(child: StarfieldBackground()),
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(18, 14, 18, 40),
@@ -911,15 +1018,23 @@ class _SignInScreenState extends State<SignInScreen> {
                 children: [
                   _BackButton(onTap: widget.onBack),
                   const SizedBox(height: 14),
-                  Text('RETURNING PILOT',
-                      style: MM.displayX(size: 11, color: MM.blue)),
+                  Text(
+                    'RETURNING PILOT',
+                    style: MM.displayX(size: 11, color: MM.blue),
+                  ),
                   const SizedBox(height: 4),
-                  Text('Welcome back',
-                      style: MM.display(size: 24, color: Colors.white)),
+                  Text(
+                    'Welcome back',
+                    style: MM.display(size: 24, color: Colors.white),
+                  ),
                   const SizedBox(height: 6),
-                  Text('Your streaks are waiting.',
-                      style: MM.body(
-                          color: Colors.white.withOpacity(0.6), size: 12)),
+                  Text(
+                    'Your streaks are waiting.',
+                    style: MM.body(
+                      color: Colors.white.withOpacity(0.6),
+                      size: 12,
+                    ),
+                  ),
                   const SizedBox(height: 22),
                   _AuthField(
                     label: 'EMAIL',
@@ -941,11 +1056,14 @@ class _SignInScreenState extends State<SignInScreen> {
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                              content: Text('Password reset coming soon')),
+                            content: Text('Password reset coming soon'),
+                          ),
                         );
                       },
-                      child: Text('Forgot?',
-                          style: MM.body(color: MM.blue, size: 11)),
+                      child: Text(
+                        'Forgot?',
+                        style: MM.body(color: MM.blue, size: 11),
+                      ),
                     ),
                   ),
                   MMPrimaryButton(
@@ -961,14 +1079,17 @@ class _SignInScreenState extends State<SignInScreen> {
                       child: RichText(
                         text: TextSpan(
                           style: MM.body(
-                              color: Colors.white.withOpacity(0.6), size: 12),
+                            color: Colors.white.withOpacity(0.6),
+                            size: 12,
+                          ),
                           children: [
                             const TextSpan(text: 'New here? '),
                             TextSpan(
                               text: 'Create an account',
                               style: TextStyle(
-                                  color: MM.yellow,
-                                  fontWeight: FontWeight.w600),
+                                color: MM.yellow,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
@@ -1009,9 +1130,10 @@ class _AuthField extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: MM.displayX(
-                  size: 9, color: Colors.white.withOpacity(0.55))),
+          Text(
+            label,
+            style: MM.displayX(size: 9, color: Colors.white.withOpacity(0.55)),
+          ),
           const SizedBox(height: 6),
           TextField(
             controller: controller,
@@ -1021,12 +1143,16 @@ class _AuthField extends StatelessWidget {
             style: MM.body(color: Colors.white, size: 14),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle:
-                  MM.body(color: Colors.white.withOpacity(0.4), size: 14),
+              hintStyle: MM.body(
+                color: Colors.white.withOpacity(0.4),
+                size: 14,
+              ),
               filled: true,
               fillColor: MM.navy.withOpacity(0.55),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
                 borderSide: BorderSide(color: MM.blue.withOpacity(0.35)),

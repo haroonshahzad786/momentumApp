@@ -679,6 +679,50 @@ several Stage-1 items are OWNED by the Voiceflow "Nova" agent (Claude can't edit
 
 ---
 
+## PHASE 1 FINALIZATION (started 2026-10-06) — do this before any more Phase 2 work
+
+> Will (2026-10-06): "finalize phase 1 first, then move to phase 2." Spec basis: the 3 core docs —
+> Phase 1&2 Sequence (First-time / Returning players; full Stage 1 + Stage 2 walkthroughs with AI prompts),
+> Phase 1&2 Details (Stage 1/2 "Initial Use", "MBM Shortcut", §4C), Gamification spec (Phase Activation rows).
+> **Will's decisions (2026-10-06):** (1) Stage 2 becomes **Nova-led 5-section MBS** per the Sequence walkthrough
+> (Personal Assistant section stays post-MVP); (2) a returning player earns the **same checkpoint MP for every
+> new Golden Habit** (10/15/20/25/40 + Stage 2's 10/15/25); (3) **#25** (Phase 1 → Phase 2 transition + cockpit
+> tour) is the last Phase 1 item. Reclassification MBMs: flag for review only.
+
+Audit (2026-10-06): first-time Stage 1 HHS ✅ (Nova, 5 sections, MP, forge) · Command Center unlock screen ✅ ·
+Stage 2 ⚠️ deterministic 3-pick + IF-THEN + Cantina (no Nova, no 5 sections) · returning players ❌ — Nova keeps
+ONE conversation per user (`claude_messages` + `hhs_state/progress`); re-entering after a forge resumes the old
+finished transcript, no new session, no MP, no returning script · Stage 2 returning ❌ (no MBM Shortcut) ·
+post-sign-in routing ❌ (everyone lands on the Cockpit; intro shown to every signed-out user).
+
+- [x] **P1-1 Routing (#26)** — **DONE 2026-10-06, browser-verified (new test account opened straight into Stage 1 HHS, not the Cockpit).** Built: `kSignedInBeforeKey` device flag → signed-out returning players start on Sign In (intro skipped); `_landInPhase1IfUnfinished` once per session (brand-new → `hhs`, part-way → resume `lastView`); `Phase1Flow._go` saves `lastView`, reset to hub on Stage 2 completion; CTAs "Ready Player One? →" / "Continue Game 🎮". Not browser-checked: the sign-out → Sign In path (needs a re-login). Found: Nova's chat shows raw `**markdown**` and emoji boxes, and the first-time welcome repeats the intro carousel → fold into P1-2/P1-3.
+  Original: — new player: sign-up → Phase 1 welcome (not the Cockpit); intro carousel skipped
+  for anyone who has signed in before (device flag + `hasSignedInBefore`); Phase 1 resumes at `lastView`.
+  Gamification spec: "Ready Player One?" (new) / "Continue Game 🎮?" (returning) CTAs.
+- [ ] **P1-2 HHS sessions** — each HHS run is its own session (`hhs_sessions/{sid}` with messages + state +
+  `mode`: first_time | returning_voluntary | returning_guided | go_deeper, + `habitId`). Existing
+  `claude_messages` / `hhs_state` read as each player's first session (no data moved). Section MP awarded per
+  session (decision 2).
+- [ ] **P1-3 Returning-player HHS (#32)** — returning system prompt: no tutorial/narrative, opens with a recap
+  of current Golden Habits + Momentum List status (injected server-side), reuses list data, surfaces cross-Core
+  connections, Core Areas / Universal Principles referenced not taught; choice "Help me find my next pain
+  point" (voluntary, discovery) vs "I know my pain point" (guided, checkpoints kept); Command Center update =
+  short progress summary (no full unlock reveal).
+- [ ] **P1-4 Go Deeper session** — flagged habit + its Momentum List context pre-loaded; rework pain point,
+  type, cue/trigger or IF-THEN. (Phase 2 trigger UI + Quick Suggestion / Manual Edit stay in #23.)
+- [ ] **P1-5 Nova-led Stage 2 MBS (first-time)** — Sequence "PHASE 1, STAGE 2 PLAYER WALKTHROUGH": §1 intro +
+  3 MBMs overview ("Level 2"), §2 Obstacle & Opportunity assessment, §3 MBM implementation 3.1 Obvious /
+  3.2 Easy / 3.3 Fun + 3.4 final review, §5 Space Cantina intro (+25💎). §4 Personal Assistant = post-MVP stub.
+  Saves MBMs onto the Golden Habit (same fields), awards 10/15/25.
+- [ ] **P1-6 Stage 2 returning + MBM Shortcut** — after a returning player's new Golden Habit: Full MBS (returning
+  variant, min ONE strategy total, MBM framework referenced not introduced) / Quick Add from Ideas Well /
+  Manual Entry (classify Obvious/Easy/Rewarding). Cantina unlock not repeated.
+- [ ] **P1-7 #30 Phase 1 reward beats** — verify titles + MP vs Gamification spec / Sequence.
+- [ ] **P1-8 #25 Phase 1 → Phase 2 transition** — "mission begins" + ~90 s cockpit tour ending on Daily Check-In.
+- [ ] **P1-9 Verify** — full browser run on the test account (haroon+mmtest@gmail.com): first-time Stage 1 →
+  Stage 2 → transition; second habit as a returning player; Go Deeper; plus the pending routine ↔ non-routine
+  browser check (1c0014c).
+
 ## MASTER docs review (2026-09-25) — updated scope + new tasks #15–#40
 
 _Added after reading the client's full doc set in `design/ref/MASTER/` (52 files, extracted to

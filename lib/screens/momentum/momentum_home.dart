@@ -64,6 +64,9 @@ class _MomentumHomeState extends State<MomentumHome> {
   /// back button returns to.
   String? _habitId;
   String _habitReturn = 'habits';
+
+  /// First-time vs returning landing (#26 / P1-1) runs once per session.
+  bool _landingDone = false;
   bool _menuOpen = false;
   final _auth = AuthService();
   final _adminService = AdminService();
@@ -211,6 +214,7 @@ class _MomentumHomeState extends State<MomentumHome> {
         _streakOverride = null;
         _creditsOverride = null;
       });
+      _landInPhase1IfUnfinished();
       // Compute the Core Balance 5-day alert badges (#8) from real check-ins.
       _loadCoreBalance();
       _evaluateMissState(result.data);
@@ -380,6 +384,24 @@ class _MomentumHomeState extends State<MomentumHome> {
     _screen = key;
     _menuOpen = false;
   });
+
+  /// First-time vs returning landing (#26 / P1-1). Until Phase 1 is finished
+  /// the player opens the app inside it, not on the Cockpit: a brand-new
+  /// player goes straight into Nova's HHS (Sequence: the intro ends "Ready
+  /// Player One?" and the interactive part begins), anyone part-way resumes
+  /// where they left off. A player who has finished Phase 1 lands on the
+  /// Cockpit as before. Once per session, and never over a screen the player
+  /// already navigated to.
+  void _landInPhase1IfUnfinished() {
+    if (_landingDone) return;
+    _landingDone = true;
+    if (_phase1.finished || _screen != 'dashboard') return;
+    setState(() {
+      _phase1Entry = _phase1.landingEntry;
+      _phase1EntryHabitId = null;
+      _screen = 'phase1';
+    });
+  }
 
   /// Phase 1 Re-Entry Bridge (§4C). Routes the player back into Phase 1 from the
   /// Daily Check-In — either proactively (ignite a new Core, [stage] == null) or

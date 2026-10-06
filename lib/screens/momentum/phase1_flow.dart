@@ -99,7 +99,16 @@ class _Phase1FlowState extends State<Phase1Flow> {
     }
   }
 
-  void _go(String view) => setState(() => _view = view);
+  /// Switches screen and saves it as the resume point (#26 / P1-1). [base]
+  /// carries a state change made in the same tap, since [widget.state] only
+  /// updates on the next build.
+  void _go(String view, {Phase1State? base}) {
+    setState(() => _view = view);
+    final from = base ?? widget.state;
+    if (base != null || from.lastView != view) {
+      widget.onStateChange(from.copyWith(lastView: view));
+    }
+  }
 
   void _startStage1() => _go('section');
 
@@ -107,28 +116,30 @@ class _Phase1FlowState extends State<Phase1Flow> {
   /// Never regress — a returning player keeps the higher progress they banked.
   void _onHhsProgress(int completed) {
     if (completed > widget.state.stage1Progress) {
-      widget.onStateChange(
-          widget.state.copyWith(stage1Progress: completed));
+      widget.onStateChange(widget.state.copyWith(stage1Progress: completed));
     }
   }
 
   /// Golden Habit forged + locked in → Stage 1 complete, unlock Command Center.
   void _onHhsComplete() {
-    widget.onStateChange(widget.state.copyWith(
-      stage1Progress: 5,
-      stage1Completed: true,
-    ));
-    _go('command-center');
+    _go(
+      'command-center',
+      base: widget.state.copyWith(stage1Progress: 5, stage1Completed: true),
+    );
   }
 
   void _startStage2() => _go('mbs');
 
   void _completeStage2() {
-    widget.onStateChange(widget.state.copyWith(
-      stage1Completed: true,
-      stage1Progress: 5,
-      stage2Completed: true,
-    ));
+    widget.onStateChange(
+      widget.state.copyWith(
+        stage1Completed: true,
+        stage1Progress: 5,
+        stage2Completed: true,
+        // Phase 1 is done: a later visit opens on the hub, not mid-flow.
+        lastView: 'hub',
+      ),
+    );
     widget.onExitToCockpit();
   }
 
@@ -145,9 +156,7 @@ class _Phase1FlowState extends State<Phase1Flow> {
           onBack: () => _go('hub'),
         );
       case 'command-center':
-        return _CommandCenterUnlockView(
-          onContinue: () => _go('mbs'),
-        );
+        return _CommandCenterUnlockView(onContinue: () => _go('mbs'));
       case 'mbs':
         final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
         return _MBSStage2View(
@@ -184,9 +193,7 @@ class _PhaseScaffold extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           const Positioned.fill(child: StarfieldBackground()),
-          SafeArea(
-            child: SingleChildScrollView(child: child),
-          ),
+          SafeArea(child: SingleChildScrollView(child: child)),
           if (celebrate)
             const Positioned.fill(
               child: ConfettiOverlay(
@@ -220,8 +227,11 @@ class _BackChip extends StatelessWidget {
           border: Border.all(color: Colors.white.withOpacity(0.12)),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: const Icon(Icons.arrow_back_ios_new,
-            size: 14, color: Colors.white),
+        child: const Icon(
+          Icons.arrow_back_ios_new,
+          size: 14,
+          color: Colors.white,
+        ),
       ),
     );
   }
@@ -256,11 +266,15 @@ class _Phase1HubView extends StatelessWidget {
           children: [
             _BackChip(onPressed: onBack),
             const SizedBox(height: 14),
-            Text('PHASE 1 · FOUNDATION',
-                style: MM.displayX(size: 11, color: MM.yellow)),
+            Text(
+              'PHASE 1 · FOUNDATION',
+              style: MM.displayX(size: 11, color: MM.yellow),
+            ),
             const SizedBox(height: 4),
-            Text('Character Build',
-                style: MM.display(size: 24, color: Colors.white)),
+            Text(
+              'Character Build',
+              style: MM.display(size: 24, color: Colors.white),
+            ),
             const SizedBox(height: 8),
             Text(
               'Move from vague pain point → personalized Golden Habit, then '
@@ -290,7 +304,9 @@ class _Phase1HubView extends StatelessWidget {
               child: Text(
                 'UNLOCKS: COMMAND CENTER · SPACE CANTINA · DAILY COCKPIT',
                 style: MM.displayX(
-                    size: 10, color: Colors.white.withOpacity(0.5)),
+                  size: 10,
+                  color: Colors.white.withOpacity(0.5),
+                ),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -338,8 +354,10 @@ class _Stage1Card extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('STAGE 1 · HHS',
-                      style: MM.displayX(size: 10, color: MM.yellow)),
+                  Text(
+                    'STAGE 1 · HHS',
+                    style: MM.displayX(size: 10, color: MM.yellow),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     'Habits Hierarchy',
@@ -352,8 +370,10 @@ class _Stage1Card extends StatelessWidget {
                 ],
               ),
               if (done)
-                Text('✓ COMPLETE',
-                    style: MM.displayX(size: 11, color: MM.teal)),
+                Text(
+                  '✓ COMPLETE',
+                  style: MM.displayX(size: 11, color: MM.teal),
+                ),
             ],
           ),
           const SizedBox(height: 6),
@@ -371,18 +391,19 @@ class _Stage1Card extends StatelessWidget {
           const SizedBox(height: 8),
           done
               ? MMGhostButton(
-                  label: 'Forge another Golden Habit →',
-                  expand: true,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  onPressed: onStart,
-                )
+                label: 'Forge another Golden Habit →',
+                expand: true,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                onPressed: onStart,
+              )
               : MMPrimaryButton(
-                  label: progress > 0
-                      ? 'Continue Stage 1 →'
-                      : 'Begin Stage 1 →',
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  onPressed: onStart,
-                ),
+                // Gamification spec Phase Activation: "Ready Player One?"
+                // and "Continue Game 🎮?" CTAs.
+                label:
+                    progress > 0 ? 'Continue Game 🎮' : 'Ready Player One? →',
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                onPressed: onStart,
+              ),
         ],
       ),
     );
@@ -403,18 +424,20 @@ class _Stage2Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final unlocked = stage1Done;
-    final accent = stage2Done
-        ? MM.teal
-        : unlocked
+    final accent =
+        stage2Done
+            ? MM.teal
+            : unlocked
             ? MM.magenta
             : Colors.white.withOpacity(0.18);
-    final gradient = unlocked
-        ? LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [MM.magenta.withOpacity(0.10), Colors.transparent],
-          )
-        : null;
+    final gradient =
+        unlocked
+            ? LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [MM.magenta.withOpacity(0.10), Colors.transparent],
+            )
+            : null;
 
     return Opacity(
       opacity: unlocked ? 1 : 0.55,
@@ -431,24 +454,32 @@ class _Stage2Card extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('STAGE 2 · MBS',
-                        style: MM.displayX(
-                            size: 10,
-                            color: unlocked
+                    Text(
+                      'STAGE 2 · MBS',
+                      style: MM.displayX(
+                        size: 10,
+                        color:
+                            unlocked
                                 ? MM.magenta
-                                : Colors.white.withOpacity(0.4))),
+                                : Colors.white.withOpacity(0.4),
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text('3 Momentum Methods',
-                        style: MM.body(
-                          size: 15,
-                          color: Colors.white,
-                          weight: FontWeight.w600,
-                        )),
+                    Text(
+                      '3 Momentum Methods',
+                      style: MM.body(
+                        size: 15,
+                        color: Colors.white,
+                        weight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
                 if (stage2Done)
-                  Text('✓ COMPLETE',
-                      style: MM.displayX(size: 11, color: MM.teal))
+                  Text(
+                    '✓ COMPLETE',
+                    style: MM.displayX(size: 11, color: MM.teal),
+                  )
                 else if (!unlocked)
                   Text('🔒', style: MM.display(size: 18, color: MM.yellow)),
               ],
@@ -468,30 +499,32 @@ class _Stage2Card extends StatelessWidget {
               children: [
                 for (var i = 0; i < _mbms.length; i++) ...[
                   if (i > 0) const SizedBox(width: 6),
-                  Expanded(child: _MbmMiniCard(mbm: _mbms[i], active: stage2Done)),
+                  Expanded(
+                    child: _MbmMiniCard(mbm: _mbms[i], active: stage2Done),
+                  ),
                 ],
               ],
             ),
             const SizedBox(height: 12),
             stage2Done
                 ? MMGhostButton(
-                    label: 'Refine MBMs →',
-                    expand: true,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    onPressed: unlocked ? onStart : null,
-                  )
+                  label: 'Refine MBMs →',
+                  expand: true,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  onPressed: unlocked ? onStart : null,
+                )
                 : unlocked
-                    ? MMPrimaryButton(
-                        label: 'Begin Stage 2 →',
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        onPressed: onStart,
-                      )
-                    : MMGhostButton(
-                        label: 'Locked · finish Stage 1 first',
-                        expand: true,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        onPressed: null,
-                      ),
+                ? MMPrimaryButton(
+                  label: 'Begin Stage 2 →',
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  onPressed: onStart,
+                )
+                : MMGhostButton(
+                  label: 'Locked · finish Stage 1 first',
+                  expand: true,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  onPressed: null,
+                ),
           ],
         ),
       ),
@@ -509,11 +542,15 @@ class _MbmMiniCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
       decoration: BoxDecoration(
-        color: active ? mbm.color.withOpacity(0.13) : Colors.white.withOpacity(0.04),
+        color:
+            active
+                ? mbm.color.withOpacity(0.13)
+                : Colors.white.withOpacity(0.04),
         border: Border.all(
-          color: active
-              ? mbm.color.withOpacity(0.4)
-              : Colors.white.withOpacity(0.1),
+          color:
+              active
+                  ? mbm.color.withOpacity(0.4)
+                  : Colors.white.withOpacity(0.1),
         ),
         borderRadius: BorderRadius.circular(6),
       ),
@@ -552,18 +589,20 @@ class _Bubble extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
-            gradient: isMe
-                ? const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0xFF3A8DFF), Color(0xFF1F5FB8)],
-                  )
-                : null,
+            gradient:
+                isMe
+                    ? const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0xFF3A8DFF), Color(0xFF1F5FB8)],
+                    )
+                    : null,
             color: isMe ? null : MM.navy.withOpacity(0.7),
             border: Border.all(
-              color: isMe
-                  ? const Color(0xFF4D9BFF).withOpacity(0.5)
-                  : MM.violet.withOpacity(0.3),
+              color:
+                  isMe
+                      ? const Color(0xFF4D9BFF).withOpacity(0.5)
+                      : MM.violet.withOpacity(0.3),
             ),
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(14),
@@ -572,8 +611,10 @@ class _Bubble extends StatelessWidget {
               bottomRight: Radius.circular(isMe ? 4 : 14),
             ),
           ),
-          child: Text(text,
-              style: MM.body(color: Colors.white, size: 13, height: 1.45)),
+          child: Text(
+            text,
+            style: MM.body(color: Colors.white, size: 13, height: 1.45),
+          ),
         ),
       ),
     );
@@ -606,11 +647,15 @@ class _CommandCenterUnlockView extends StatelessWidget {
           children: [
             const Text('🔓', style: TextStyle(fontSize: 56)),
             const SizedBox(height: 8),
-            Text('COMMAND CENTER UNLOCKED',
-                style: MM.displayX(size: 11, color: MM.yellow)),
+            Text(
+              'COMMAND CENTER UNLOCKED',
+              style: MM.displayX(size: 11, color: MM.yellow),
+            ),
             const SizedBox(height: 4),
-            Text('Your Personal Database',
-                style: MM.display(size: 22, color: Colors.white)),
+            Text(
+              'Your Personal Database',
+              style: MM.display(size: 22, color: Colors.white),
+            ),
             const SizedBox(height: 10),
             Text(
               'Everything you shared has been routed into 7 Momentum Lists. '
@@ -651,8 +696,10 @@ class _CommandCenterUnlockView extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  Text('Level 1 Complete 🚀',
-                      style: MM.display(size: 14, color: Colors.white)),
+                  Text(
+                    'Level 1 Complete 🚀',
+                    style: MM.display(size: 14, color: Colors.white),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     'Lift-off ready. Continue to Stage 2 to engineer your '
@@ -698,10 +745,14 @@ class _RevealRow extends StatefulWidget {
 
 class _RevealRowState extends State<_RevealRow>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _c =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-  late final Animation<double> _opacity =
-      CurvedAnimation(parent: _c, curve: Curves.easeOut);
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 500),
+  );
+  late final Animation<double> _opacity = CurvedAnimation(
+    parent: _c,
+    curve: Curves.easeOut,
+  );
   late final Animation<Offset> _offset = Tween(
     begin: const Offset(0, 0.3),
     end: Offset.zero,
@@ -730,37 +781,42 @@ class _RevealRowState extends State<_RevealRow>
         child: Padding(
           padding: const EdgeInsets.only(bottom: 6),
           child: GlassPanel(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               children: [
-                Text(widget.emoji,
-                    style: const TextStyle(fontSize: 20)),
+                Text(widget.emoji, style: const TextStyle(fontSize: 20)),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(widget.name,
-                          style: MM.body(
-                            size: 12,
-                            color: Colors.white,
-                            weight: FontWeight.w600,
-                          )),
+                      Text(
+                        widget.name,
+                        style: MM.body(
+                          size: 12,
+                          color: Colors.white,
+                          weight: FontWeight.w600,
+                        ),
+                      ),
                       const SizedBox(height: 2),
-                      Text(widget.desc,
-                          style: MM.body(
-                              color: Colors.white.withOpacity(0.55),
-                              size: 10)),
+                      Text(
+                        widget.desc,
+                        style: MM.body(
+                          color: Colors.white.withOpacity(0.55),
+                          size: 10,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                Text('✓',
-                    style: MM.display(
-                      size: 14,
-                      color: MM.teal,
-                      weight: FontWeight.w700,
-                    )),
+                Text(
+                  '✓',
+                  style: MM.display(
+                    size: 14,
+                    color: MM.teal,
+                    weight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
           ),
@@ -816,10 +872,11 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
     // Go-Deeper re-entry targets a specific flagged habit; otherwise momentify
     // the newest forged one.
     final id = widget.habitId;
-    final h = (id != null && id.isNotEmpty)
-        ? (await _onboarding.habitById(widget.userId, id) ??
-            await _onboarding.activeHabit(widget.userId))
-        : await _onboarding.activeHabit(widget.userId);
+    final h =
+        (id != null && id.isNotEmpty)
+            ? (await _onboarding.habitById(widget.userId, id) ??
+                await _onboarding.activeHabit(widget.userId))
+            : await _onboarding.activeHabit(widget.userId);
     if (!mounted) return;
     setState(() {
       _habit = h;
@@ -827,9 +884,10 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
     });
   }
 
-  String get _habitName => (_habit?.habitName.trim().isNotEmpty ?? false)
-      ? _habit!.habitName.trim()
-      : 'your Golden Habit';
+  String get _habitName =>
+      (_habit?.habitName.trim().isNotEmpty ?? false)
+          ? _habit!.habitName.trim()
+          : 'your Golden Habit';
 
   // Momentum-Method suggestions are personalized from the forged habit's real
   // fields (when / where / name / obstacle) rather than a hardcoded catalogue.
@@ -870,7 +928,7 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
     final h = _habit;
     final hasPlan =
         (h?.obstacleIf.trim().isNotEmpty ?? false) ||
-            (h?.obstacleThen.trim().isNotEmpty ?? false);
+        (h?.obstacleThen.trim().isNotEmpty ?? false);
     return [
       if (hasPlan)
         'IF ${h!.obstacleIf.trim().isNotEmpty ? h.obstacleIf.trim() : 'life gets in the way'} '
@@ -891,12 +949,14 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
 
     final ifThen = _picks['ifthen'] ?? '';
     final arrow = ifThen.split('→');
-    final ifPart = (arrow.isNotEmpty ? arrow[0] : '')
-        .replaceFirst(RegExp(r'^\s*IF\s*', caseSensitive: false), '')
-        .trim();
-    final thenPart = (arrow.length > 1 ? arrow[1] : '')
-        .replaceFirst(RegExp(r'^\s*THEN\s*', caseSensitive: false), '')
-        .trim();
+    final ifPart =
+        (arrow.isNotEmpty ? arrow[0] : '')
+            .replaceFirst(RegExp(r'^\s*IF\s*', caseSensitive: false), '')
+            .trim();
+    final thenPart =
+        (arrow.length > 1 ? arrow[1] : '')
+            .replaceFirst(RegExp(r'^\s*THEN\s*', caseSensitive: false), '')
+            .trim();
 
     await _onboarding.saveMomentumMethods(
       userId: widget.userId,
@@ -950,11 +1010,15 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
                   children: [
                     const Text('🛸', style: TextStyle(fontSize: 64)),
                     const SizedBox(height: 14),
-                    Text('SPACE CANTINA UNLOCKED',
-                        style: MM.displayX(size: 11, color: MM.yellow)),
+                    Text(
+                      'SPACE CANTINA UNLOCKED',
+                      style: MM.displayX(size: 11, color: MM.yellow),
+                    ),
                     const SizedBox(height: 6),
-                    Text('Welcome, Captain',
-                        style: MM.display(size: 22, color: Colors.white)),
+                    Text(
+                      'Welcome, Captain',
+                      style: MM.display(size: 22, color: Colors.white),
+                    ),
                     const SizedBox(height: 10),
                     Text(
                       'Your Golden Habit is now Momentified — engineered for '
@@ -976,22 +1040,26 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
                           end: Alignment.bottomRight,
                           colors: [
                             MM.teal.withOpacity(0.18),
-                            Colors.transparent
+                            Colors.transparent,
                           ],
                         ),
                       ),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('✓ MOMENTIFIED HABIT',
-                              style:
-                                  MM.displayX(size: 9, color: MM.teal)),
+                          Text(
+                            '✓ MOMENTIFIED HABIT',
+                            style: MM.displayX(size: 9, color: MM.teal),
+                          ),
                           const SizedBox(height: 6),
-                          Text(_habitName,
-                              style:
-                                  MM.body(color: Colors.white, size: 12)),
+                          Text(
+                            _habitName,
+                            style: MM.body(color: Colors.white, size: 12),
+                          ),
                           const SizedBox(height: 4),
                           Text(
                             '+ Make It Obvious · + Make It Easy · + Make It Rewarding · IF-THEN locked',
@@ -1017,12 +1085,16 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
                         ),
                       ),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('🏅 STAGE 2 BADGES · +50 MP',
-                              style: MM.displayX(size: 9, color: MM.yellow)),
+                          Text(
+                            '🏅 STAGE 2 BADGES · +50 MP',
+                            style: MM.displayX(size: 9, color: MM.yellow),
+                          ),
                           const SizedBox(height: 6),
                           Text(
                             'Friction Hunter +10 · Method Master +15 · Implementation Wizard +25',
@@ -1121,7 +1193,8 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
                   child: MMPrimaryButton(
                     label: _saving ? 'Momentifying…' : 'Lock it in 🔒',
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    onPressed: (fallback != null && !_saving) ? _finishMbs : null,
+                    onPressed:
+                        (fallback != null && !_saving) ? _finishMbs : null,
                   ),
                 ),
               ],
@@ -1151,9 +1224,10 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
                   stepLabel: 'STAGE 2 · STEP ${_step + 1}/4',
                   title: '${mbm.icon} ${mbm.name}',
                   color: mbm.color,
-                  onBack: _step == 0
-                      ? widget.onBack
-                      : () => setState(() => _step--),
+                  onBack:
+                      _step == 0
+                          ? widget.onBack
+                          : () => setState(() => _step--),
                 ),
                 _MbsTrack(step: _step),
                 Expanded(
@@ -1178,8 +1252,7 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
                               label: s,
                               color: mbm.color,
                               selected: isOn,
-                              onTap: () =>
-                                  setState(() => _picks[mbm.id] = s),
+                              onTap: () => setState(() => _picks[mbm.id] = s),
                             ),
                           );
                         }),
@@ -1196,9 +1269,10 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
                     ),
                   ),
                   child: MMPrimaryButton(
-                    label: _step == _mbms.length - 1
-                        ? 'On to IF-THEN →'
-                        : 'Next MBM (${_mbms[_step + 1].name}) →',
+                    label:
+                        _step == _mbms.length - 1
+                            ? 'On to IF-THEN →'
+                            : 'Next MBM (${_mbms[_step + 1].name}) →',
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     onPressed:
                         picked != null ? () => setState(() => _step++) : null,
@@ -1234,9 +1308,7 @@ class _MbsHeader extends StatelessWidget {
           end: Alignment.bottomCenter,
           colors: [color.withOpacity(0.08), Colors.transparent],
         ),
-        border: Border(
-          bottom: BorderSide(color: color.withOpacity(0.2)),
-        ),
+        border: Border(bottom: BorderSide(color: color.withOpacity(0.2))),
       ),
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
       child: Row(
@@ -1274,15 +1346,17 @@ class _MbsTrack extends StatelessWidget {
               child: Container(
                 height: 3,
                 decoration: BoxDecoration(
-                  color: i < step
-                      ? _mbms[i].color
-                      : i == step
+                  color:
+                      i < step
+                          ? _mbms[i].color
+                          : i == step
                           ? _mbms[i].color.withOpacity(0.7)
                           : Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(2),
-                  boxShadow: i == step
-                      ? [BoxShadow(color: _mbms[i].color, blurRadius: 6)]
-                      : null,
+                  boxShadow:
+                      i == step
+                          ? [BoxShadow(color: _mbms[i].color, blurRadius: 6)]
+                          : null,
                 ),
               ),
             ),
@@ -1292,9 +1366,10 @@ class _MbsTrack extends StatelessWidget {
             child: Container(
               height: 3,
               decoration: BoxDecoration(
-                color: step > _mbms.length - 1
-                    ? MM.yellow
-                    : Colors.white.withOpacity(0.1),
+                color:
+                    step > _mbms.length - 1
+                        ? MM.yellow
+                        : Colors.white.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -1326,17 +1401,19 @@ class _RadioRow extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: selected
-              ? color.withOpacity(0.18)
-              : Colors.white.withOpacity(0.04),
+          color:
+              selected
+                  ? color.withOpacity(0.18)
+                  : Colors.white.withOpacity(0.04),
           border: Border.all(
             color: selected ? color : Colors.white.withOpacity(0.12),
             width: selected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(8),
-          boxShadow: selected
-              ? [BoxShadow(color: color.withOpacity(0.33), blurRadius: 14)]
-              : null,
+          boxShadow:
+              selected
+                  ? [BoxShadow(color: color.withOpacity(0.33), blurRadius: 14)]
+                  : null,
         ),
         child: Row(
           children: [
@@ -1347,23 +1424,21 @@ class _RadioRow extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: selected ? color : Colors.transparent,
                 border: Border.all(
-                  color:
-                      selected ? color : Colors.white.withOpacity(0.4),
+                  color: selected ? color : Colors.white.withOpacity(0.4),
                   width: 1.5,
                 ),
               ),
-              child: selected
-                  ? const Icon(Icons.check, size: 10, color: Colors.black)
-                  : null,
+              child:
+                  selected
+                      ? const Icon(Icons.check, size: 10, color: Colors.black)
+                      : null,
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(label,
-                  style: MM.body(
-                    color: Colors.white,
-                    size: 12,
-                    height: 1.5,
-                  )),
+              child: Text(
+                label,
+                style: MM.body(color: Colors.white, size: 12, height: 1.5),
+              ),
             ),
           ],
         ),
@@ -1371,4 +1446,3 @@ class _RadioRow extends StatelessWidget {
     );
   }
 }
-

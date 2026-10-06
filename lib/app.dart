@@ -7,6 +7,7 @@ import 'screens/force_password_reset_page.dart';
 import 'screens/momentum/auth_flow.dart';
 import 'screens/momentum/momentum_home.dart';
 import 'services/access_service.dart';
+import 'services/offline.dart';
 import 'services/notification_service.dart';
 import 'theme/momentum_tokens.dart';
 import 'widgets/momentum/web_shell.dart';
@@ -82,14 +83,15 @@ class _AuthGate extends StatelessWidget {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: MM.pageBg,
-            body: Center(
-              child: CircularProgressIndicator(color: MM.blue),
-            ),
+            body: Center(child: CircularProgressIndicator(color: MM.blue)),
           );
         }
         if (snap.data == null) {
           return const WebCenteredFlow(child: AuthFlow());
         }
+        // Remembered so a returning player who signs out skips the intro
+        // next time (#26 / P1-1).
+        LocalCache.putJson(kSignedInBeforeKey, true);
         return _PostAuthGate(uid: snap.data!.uid);
       },
     );
