@@ -127,6 +127,36 @@ class HabitsService {
     }
   }
 
+  /// #22 Detailed Habit View: saves only the changed [fields] (keys from
+  /// [GoldenHabit.editableKeys]) via `flutterUpdateGoldenHabitDetail`, which
+  /// also renames the Core's list line when the name changes. Throws on
+  /// failure.
+  Future<void> updateHabitDetail({
+    required String userId,
+    required String habitId,
+    required Map<String, String> fields,
+  }) async {
+    final response = await _client.post(
+      Uri.parse('$_baseUrl/flutterUpdateGoldenHabitDetail'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'secret': _secret,
+        'userId': userId,
+        'habitId': habitId,
+        'fields': fields,
+      }),
+    );
+    final decoded = jsonDecode(response.body);
+    if (response.statusCode != 200 ||
+        decoded is! Map<String, dynamic> ||
+        decoded['ok'] != true) {
+      throw Exception(
+        'flutterUpdateGoldenHabitDetail failed '
+        '(${response.statusCode}): ${response.body}',
+      );
+    }
+  }
+
   /// Flags (or un-flags) a Golden Habit for refinement. The flag is data, not
   /// failure — the Co-pilot pattern-matches the reason/note to suggest a tweak.
   /// Persisted by the isolated `flutterFlagGoldenHabit` endpoint (Flutter
@@ -204,10 +234,11 @@ class HabitsService {
     }
   }
 
-  List<GoldenHabit> _parse(List<dynamic> list) => list
-      .whereType<Map>()
-      .map((m) => GoldenHabit.fromJson(m.cast<String, dynamic>()))
-      .toList();
+  List<GoldenHabit> _parse(List<dynamic> list) =>
+      list
+          .whereType<Map>()
+          .map((m) => GoldenHabit.fromJson(m.cast<String, dynamic>()))
+          .toList();
 
   void dispose() => _client.close();
 }

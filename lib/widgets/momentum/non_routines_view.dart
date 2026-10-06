@@ -334,7 +334,7 @@ class _NonRoutinesViewState extends State<NonRoutinesView> {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(6),
-        onTap: () => widget.onNav(h.isGolden ? 'habits:${h.core}' : 'routines'),
+        onTap: () => widget.onNav(h.isGolden ? 'habit:${h.habitId}' : 'routines'),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(

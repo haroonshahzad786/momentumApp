@@ -32,6 +32,7 @@ import 'daily_ritual_step0.dart';
 import 'dashboard_page.dart';
 import 'journey_page.dart';
 import 'phase1_flow.dart';
+import '../../widgets/momentum/habit_detail_view.dart';
 import 'sub_screens.dart';
 import 'summary_page.dart';
 import 'web_cockpit.dart';
@@ -58,6 +59,11 @@ class _MomentumHomeState extends State<MomentumHome> {
 
   /// Locked Core the player chose to fuel — pre-drafts the HHS opener.
   String? _fuelCore;
+
+  /// Detailed Habit View (#22): the open Golden Habit, and the screen its
+  /// back button returns to.
+  String? _habitId;
+  String _habitReturn = 'habits';
   bool _menuOpen = false;
   final _auth = AuthService();
   final _adminService = AdminService();
@@ -232,8 +238,8 @@ class _MomentumHomeState extends State<MomentumHome> {
       if (mounted && seen != true) setState(() => _relaunchOpen = true);
     } else if (p.missState == 'warning') {
       final until = await LocalCache.getJson(_warnSnoozeKey);
-      final snoozed = until is num &&
-          DateTime.now().millisecondsSinceEpoch < until.toInt();
+      final snoozed =
+          until is num && DateTime.now().millisecondsSinceEpoch < until.toInt();
       if (mounted) setState(() => _warnSnoozed = snoozed);
     }
   }
@@ -245,8 +251,10 @@ class _MomentumHomeState extends State<MomentumHome> {
   }
 
   void _snoozeShipWarning() {
-    LocalCache.putJson(_warnSnoozeKey,
-        DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch);
+    LocalCache.putJson(
+      _warnSnoozeKey,
+      DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch,
+    );
     setState(() => _warnSnoozed = true);
   }
 
@@ -288,10 +296,12 @@ class _MomentumHomeState extends State<MomentumHome> {
     final uid = _uid;
     if (p == null || uid == null) return const SizedBox.shrink();
     Future<void> change(bool start, [DateTime? from, int days = 0]) async {
-      await _profileService.setVacationMode(uid,
-          start: start,
-          startDate: from == null ? null : ProfileService.localDateId(from),
-          days: days);
+      await _profileService.setVacationMode(
+        uid,
+        start: start,
+        startDate: from == null ? null : ProfileService.localDateId(from),
+        days: days,
+      );
       await _fetchProfile();
       afterChange?.call();
     }
@@ -315,56 +325,72 @@ class _MomentumHomeState extends State<MomentumHome> {
       isScrollControlled: true,
       // The sheet is its own route, so it closes after a change rather than
       // trying to rebuild from the refetched profile.
-      builder: (sheet) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: _buildStreakProtection(
-              afterChange: () => Navigator.of(sheet).maybePop()),
-        ),
-      ),
+      builder:
+          (sheet) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: _buildStreakProtection(
+                afterChange: () => Navigator.of(sheet).maybePop(),
+              ),
+            ),
+          ),
     );
   }
 
-  Widget _buildShipWarning() => ShipWarningBanner(
-        onCheckIn: _startCheckin,
-        onSnooze: _snoozeShipWarning,
-      );
+  Widget _buildShipWarning() =>
+      ShipWarningBanner(onCheckIn: _startCheckin, onSnooze: _snoozeShipWarning);
 
-  void _go(String key) => setState(() {
-        // The desktop Cockpit already IS the journey stage — no separate map.
-        if (key == 'journey' &&
-            MediaQuery.of(context).size.width >= kWebBreakpoint) {
-          key = 'dashboard';
-        }
-        // Normal navigation always lands Phase 1 on its hub.
-        _phase1Entry = null;
-        _phase1EntryHabitId = null;
-        _fuelCore = null;
-        _habitsCore = null;
-        if (key.startsWith('habits:')) {
-          _habitsCore = key.substring(7);
-          key = 'habits';
-        } else if (key.startsWith('fuel:')) {
-          // A locked Core lights up with its first Golden Habit, which only
-          // the HHS forges — so fuelling one re-enters Stage 1 (§4C bridge).
-          _fuelCore = key.substring(5);
-          _phase1Entry = 'hhs';
-          key = 'phase1';
-        }
-        _screen = key;
-        _menuOpen = false;
-      });
+  void _go(String key) {
+    // Need Help / Rebuild from the Detailed Habit View → the §4C bridge.
+    if (key.startsWith('rebuild:')) {
+      final parts = key.split(':');
+      if (parts.length >= 3) {
+        _returnToPhase1(parts[1], habitId: parts.sublist(2).join(':'));
+      }
+      return;
+    }
+    _goTo(key);
+  }
+
+  void _goTo(String key) => setState(() {
+    // The desktop Cockpit already IS the journey stage — no separate map.
+    if (key == 'journey' &&
+        MediaQuery.of(context).size.width >= kWebBreakpoint) {
+      key = 'dashboard';
+    }
+    // Normal navigation always lands Phase 1 on its hub.
+    _phase1Entry = null;
+    _phase1EntryHabitId = null;
+    _fuelCore = null;
+    _habitsCore = null;
+    if (key.startsWith('habit:')) {
+      _habitId = key.substring(6);
+      if (_screen != 'habit') _habitReturn = _screen;
+      key = 'habit';
+    } else if (key.startsWith('habits:')) {
+      _habitsCore = key.substring(7);
+      key = 'habits';
+    } else if (key.startsWith('fuel:')) {
+      // A locked Core lights up with its first Golden Habit, which only
+      // the HHS forges — so fuelling one re-enters Stage 1 (§4C bridge).
+      _fuelCore = key.substring(5);
+      _phase1Entry = 'hhs';
+      key = 'phase1';
+    }
+    _screen = key;
+    _menuOpen = false;
+  });
 
   /// Phase 1 Re-Entry Bridge (§4C). Routes the player back into Phase 1 from the
   /// Daily Check-In — either proactively (ignite a new Core, [stage] == null) or
   /// reactively via "Go Deeper" (Path A 'hhs' rebuild / Path B 'mbs' MBMs).
   /// [habitId] pre-loads the flagged Golden Habit on re-entry (#7).
   void _returnToPhase1(String? stage, {String? habitId}) => setState(() {
-        _phase1Entry = stage;
-        _phase1EntryHabitId = habitId;
-        _screen = 'phase1';
-        _menuOpen = false;
-      });
+    _phase1Entry = stage;
+    _phase1EntryHabitId = habitId;
+    _screen = 'phase1';
+    _menuOpen = false;
+  });
 
   /// Prefetches the Mission Control context (#7) for the upcoming check-in: each
   /// active Core's Golden Habit + that Core's prior daily scores (most-recent-
@@ -373,22 +399,28 @@ class _MomentumHomeState extends State<MomentumHome> {
   void _prefetchCheckinData() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null || uid.isEmpty) return;
-    _onboarding.goldenHabits(uid).then((list) {
-      final map = <String, GoldenHabitRef>{};
-      for (final h in list) {
-        map.putIfAbsent(h.shortCoreId, () => h); // newest per Core
-      }
-      if (mounted) setState(() => _checkinHabitByCore = map);
-    }).catchError((_) {});
-    _checkin.getRecent(uid, limit: 30).then((recent) {
-      final today = CheckinService.dayId(DateTime.now());
-      final hist = <String, List<int>>{};
-      for (final d in recent) {
-        if (d.date == today) continue; // today's score is the live slider
-        d.scores.forEach((core, sc) => (hist[core] ??= <int>[]).add(sc));
-      }
-      if (mounted) setState(() => _checkinCoreHistory = hist);
-    }).catchError((_) {});
+    _onboarding
+        .goldenHabits(uid)
+        .then((list) {
+          final map = <String, GoldenHabitRef>{};
+          for (final h in list) {
+            map.putIfAbsent(h.shortCoreId, () => h); // newest per Core
+          }
+          if (mounted) setState(() => _checkinHabitByCore = map);
+        })
+        .catchError((_) {});
+    _checkin
+        .getRecent(uid, limit: 30)
+        .then((recent) {
+          final today = CheckinService.dayId(DateTime.now());
+          final hist = <String, List<int>>{};
+          for (final d in recent) {
+            if (d.date == today) continue; // today's score is the live slider
+            d.scores.forEach((core, sc) => (hist[core] ??= <int>[]).add(sc));
+          }
+          if (mounted) setState(() => _checkinCoreHistory = hist);
+        })
+        .catchError((_) {});
   }
 
   /// Loads the Core Balance state (#8): each Core's recent daily scores
@@ -397,43 +429,50 @@ class _MomentumHomeState extends State<MomentumHome> {
   void _loadCoreBalance() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null || uid.isEmpty) return;
-    _checkin.getRecent(uid, limit: 30).then((recent) {
-      // getRecent is date-desc, so per-Core lists come out most-recent-first.
-      final scores = <String, List<int>>{};
-      for (final d in recent) {
-        d.scores.forEach((core, sc) => (scores[core] ??= <int>[]).add(sc));
-      }
-      final atRisk = <String>{};
-      scores.forEach((core, list) {
-        if (isCoreOutOfBalance(list)) atRisk.add(core);
-      });
-      final pct = balancePercent(rollingCoreAverages(recent));
-      if (mounted) {
-        setState(() {
-          _coreScores = scores;
-          _atRiskCores = atRisk;
-          _balancePct = pct;
-        });
-      }
-    }).catchError((_) {});
+    _checkin
+        .getRecent(uid, limit: 30)
+        .then((recent) {
+          // getRecent is date-desc, so per-Core lists come out most-recent-first.
+          final scores = <String, List<int>>{};
+          for (final d in recent) {
+            d.scores.forEach((core, sc) => (scores[core] ??= <int>[]).add(sc));
+          }
+          final atRisk = <String>{};
+          scores.forEach((core, list) {
+            if (isCoreOutOfBalance(list)) atRisk.add(core);
+          });
+          final pct = balancePercent(rollingCoreAverages(recent));
+          if (mounted) {
+            setState(() {
+              _coreScores = scores;
+              _atRiskCores = atRisk;
+              _balancePct = pct;
+            });
+          }
+        })
+        .catchError((_) {});
   }
 
-  void _showCoreAlert(String coreId) =>
-      setState(() => _coreAlertCore = coreId);
+  void _showCoreAlert(String coreId) => setState(() => _coreAlertCore = coreId);
   void _dismissCoreAlert() => setState(() => _coreAlertCore = null);
 
   /// Persists a manual Mission Control flag / experiment onto a Golden Habit.
-  void _flagHabit(String habitId,
-      {required bool flagged, String reason = '', String note = ''}) {
+  void _flagHabit(
+    String habitId, {
+    required bool flagged,
+    String reason = '',
+    String note = '',
+  }) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null || uid.isEmpty || habitId.isEmpty) return;
     _onboarding
         .flagGoldenHabit(
-            userId: uid,
-            habitId: habitId,
-            flagged: flagged,
-            reason: reason,
-            note: note)
+          userId: uid,
+          habitId: habitId,
+          flagged: flagged,
+          reason: reason,
+          note: note,
+        )
         .catchError((_) => false);
   }
 
@@ -470,9 +509,9 @@ class _MomentumHomeState extends State<MomentumHome> {
   /// [draft] pre-fills Nova's input (e.g. from the iCore Alert) — the player
   /// still chooses to send it.
   void _openChat({String? draft}) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => CopilotConsolePage(draft: draft),
-    ));
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => CopilotConsolePage(draft: draft)));
   }
 
   // ── Daily Ritual Step 0 (Mantra & Grateful List) ────────────────────────
@@ -518,12 +557,17 @@ class _MomentumHomeState extends State<MomentumHome> {
   /// is derived from), then advances to the summary. Save failures don't block
   /// the player from finishing their check-in.
   Future<void> _saveCheckin(
-      Map<String, int> scores, Map<String, CaptainsLogEntry> captainsLog) async {
+    Map<String, int> scores,
+    Map<String, CaptainsLogEntry> captainsLog,
+  ) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null && uid.isNotEmpty) {
       try {
         await _checkin.saveCheckin(
-            uid: uid, scores: scores, captainsLog: captainsLog);
+          uid: uid,
+          scores: scores,
+          captainsLog: captainsLog,
+        );
       } catch (_) {
         // Non-fatal: the check-in still completes locally.
       }
@@ -640,9 +684,10 @@ class _MomentumHomeState extends State<MomentumHome> {
         state: _phase1,
         entryStage: _phase1Entry,
         entryHabitId: _phase1EntryHabitId,
-        entryDraft: _fuelCore == null
-            ? null
-            : "I want to fuel my ${_coreMeta[_fuelCore]?.$1 ?? _fuelCore} Core — let's build its first habit.",
+        entryDraft:
+            _fuelCore == null
+                ? null
+                : "I want to fuel my ${_coreMeta[_fuelCore]?.$1 ?? _fuelCore} Core — let's build its first habit.",
         onStateChange: _persistPhase1,
         onBack: () => _go('dashboard'),
         onExitToCockpit: () => _go('dashboard'),
@@ -704,6 +749,22 @@ class _MomentumHomeState extends State<MomentumHome> {
         onBack: () => _go('dashboard'),
         onChat: _openChat,
         onNav: _go,
+      );
+    }
+    if (_screen == 'habit' && _habitId != null) {
+      // Detailed Golden Habit View (#22).
+      return ScreenShell(
+        title: 'Golden Habit',
+        subtitle: 'DETAILED VIEW',
+        accent: MM.magenta,
+        onBack: () => _go(_habitReturn),
+        onChat: _openChat,
+        onNav: _go,
+        child: HabitDetailView(
+          key: ValueKey(_habitId),
+          habitId: _habitId!,
+          onNav: _go,
+        ),
       );
     }
     if (_screen == 'nonroutines') {
@@ -816,32 +877,40 @@ class _MomentumHomeState extends State<MomentumHome> {
       return Scaffold(
         backgroundColor: MM.pageBg,
         body: SafeArea(
-          child: _errorOffline
-              ? OfflineErrorView(
-                  onRetry: _fetchProfile, what: 'your profile')
-              : Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('Could not load profile',
-                            style: MM.display(size: 16, color: Colors.white)),
-                        const SizedBox(height: 8),
-                        Text('Something went wrong. Please try again.',
+          child:
+              _errorOffline
+                  ? OfflineErrorView(
+                    onRetry: _fetchProfile,
+                    what: 'your profile',
+                  )
+                  : Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Could not load profile',
+                            style: MM.display(size: 16, color: Colors.white),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Something went wrong. Please try again.',
                             textAlign: TextAlign.center,
                             style: MM.body(
-                                color: Colors.white.withOpacity(0.6),
-                                size: 12)),
-                        const SizedBox(height: 16),
-                        FilledButton(
-                          onPressed: _fetchProfile,
-                          child: const Text('Retry'),
-                        ),
-                      ],
+                              color: Colors.white.withOpacity(0.6),
+                              size: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            onPressed: _fetchProfile,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
         ),
       );
     }
@@ -851,9 +920,10 @@ class _MomentumHomeState extends State<MomentumHome> {
     // award raised by the Claude agent bursts confetti on any screen.
     return CelebrationHost(
       userId: FirebaseAuth.instance.currentUser?.uid ?? '',
-      child: MediaQuery.of(context).size.width >= kWebBreakpoint
-          ? _buildDesktop()
-          : _buildMobile(),
+      child:
+          MediaQuery.of(context).size.width >= kWebBreakpoint
+              ? _buildDesktop()
+              : _buildMobile(),
     );
   }
 
@@ -873,10 +943,16 @@ class _MomentumHomeState extends State<MomentumHome> {
             ),
           ),
         if (_showShipWarning)
-          Positioned(top: 0, left: 0, right: 0, child: SafeArea(child: _buildShipWarning())),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(child: _buildShipWarning()),
+          ),
         // iCore Alert (#8) — opened by tapping a Core's red ⚠️ badge.
         if (_coreAlertCore != null) Positioned.fill(child: _buildCoreAlert()),
-        if (_relaunchOpen && _profile != null) Positioned.fill(child: _buildRelaunch()),
+        if (_relaunchOpen && _profile != null)
+          Positioned.fill(child: _buildRelaunch()),
       ],
     );
   }
@@ -889,6 +965,7 @@ class _MomentumHomeState extends State<MomentumHome> {
     'routines',
     'habits',
     'allhabits',
+    'habit',
     'nonroutines',
     'tasks',
     'lists',
@@ -901,7 +978,8 @@ class _MomentumHomeState extends State<MomentumHome> {
   /// [WebShell] with the flagship [WebCockpit] for the dashboard; centers the
   /// immersive flows to a phone-width column so nothing stretches.
   Widget _buildDesktop() {
-    final isShell = _shellScreens.contains(_screen) ||
+    final isShell =
+        _shellScreens.contains(_screen) ||
         _screen.startsWith('crew:') ||
         _screen.startsWith('thread:');
 
@@ -916,8 +994,7 @@ class _MomentumHomeState extends State<MomentumHome> {
               child: _buildBody(),
             ),
           ),
-          if (_coreAlertCore != null)
-            Positioned.fill(child: _buildCoreAlert()),
+          if (_coreAlertCore != null) Positioned.fill(child: _buildCoreAlert()),
         ],
       );
     }
@@ -926,9 +1003,10 @@ class _MomentumHomeState extends State<MomentumHome> {
     final idx = MM.planets.indexWhere((e) => e['id'] == (p?.planet ?? 'earth'));
     final planetName = MM.planets[idx < 0 ? 0 : idx]['name'] as String;
     final activeCores = p?.activeCores ?? const <String>[];
-    final name = (p?.displayName.isNotEmpty ?? false)
-        ? p!.displayName
-        : (FirebaseAuth.instance.currentUser?.displayName ?? 'Commander');
+    final name =
+        (p?.displayName.isNotEmpty ?? false)
+            ? p!.displayName
+            : (FirebaseAuth.instance.currentUser?.displayName ?? 'Commander');
     final streak = _streakOverride ?? (p?.streak ?? 0);
     final level = p?.level ?? 'cadet';
 
@@ -969,9 +1047,37 @@ class _MomentumHomeState extends State<MomentumHome> {
         subtitle = 'Golden Habits';
         accent = MM.magenta;
         content = WebHabits(
-            key: ValueKey(_habitsCore),
-            coreFilter: _habitsCore,
-            onClearFilter: () => _go('habits'));
+          key: ValueKey(_habitsCore),
+          coreFilter: _habitsCore,
+          onClearFilter: () => _go('habits'),
+          onOpen: (id) => _go('habit:$id'),
+        );
+        break;
+      case 'habit':
+        title = 'Golden Habit';
+        subtitle = 'Detailed View';
+        accent = MM.magenta;
+        content = SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(40, 4, 40, 56),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              IntrinsicWidth(
+                child: MMGhostButton(
+                  label: '← Back',
+                  onPressed: () => _go(_habitReturn),
+                ),
+              ),
+              const SizedBox(height: 14),
+              HabitDetailView(
+                key: ValueKey(_habitId),
+                habitId: _habitId ?? '',
+                onNav: _go,
+                wide: true,
+              ),
+            ],
+          ),
+        );
         break;
       case 'nonroutines':
         title = 'Non-Routines';
@@ -1081,7 +1187,8 @@ class _MomentumHomeState extends State<MomentumHome> {
         if (_showShipWarning)
           Positioned(top: 76, left: 232, right: 16, child: _buildShipWarning()),
         if (_coreAlertCore != null) Positioned.fill(child: _buildCoreAlert()),
-        if (_relaunchOpen && _profile != null) Positioned.fill(child: _buildRelaunch()),
+        if (_relaunchOpen && _profile != null)
+          Positioned.fill(child: _buildRelaunch()),
       ],
     );
   }
@@ -1102,7 +1209,9 @@ class _MomentumHomeState extends State<MomentumHome> {
       lowScores: info.lowRunScores,
       streakDays: info.lowRunDays,
       recoveryDays: info.recoveryDays,
-      otherStrugglingCores: [for (final c in others) (_coreMeta[c] ?? (c, MM.red)).$1],
+      otherStrugglingCores: [
+        for (final c in others) (_coreMeta[c] ?? (c, MM.red)).$1,
+      ],
       onReviewHabits: () {
         _dismissCoreAlert();
         _go('habits');
@@ -1111,18 +1220,24 @@ class _MomentumHomeState extends State<MomentumHome> {
         _dismissCoreAlert();
         _returnToPhase1(null);
       },
-      onGetAiHelp: () => chat(
-          'My ${meta.$1} Core has been below 3.0 for ${info.lowRunDays} days in a row. '
-          "Can you help me figure out which habits aren't landing and what to change?"),
-      onSimplify: others.isEmpty
-          ? null
-          : () => chat(
-              "Multiple Cores are struggling (${[meta.$1, ...[for (final c in others) (_coreMeta[c] ?? (c, MM.red)).$1]].join(', ')}). "
-              "Let's simplify to keep my momentum alive — which habits should I keep active and which can I pause for now?"),
+      onGetAiHelp:
+          () => chat(
+            'My ${meta.$1} Core has been below 3.0 for ${info.lowRunDays} days in a row. '
+            "Can you help me figure out which habits aren't landing and what to change?",
+          ),
+      onSimplify:
+          others.isEmpty
+              ? null
+              : () => chat(
+                "Multiple Cores are struggling (${[
+                  meta.$1,
+                  ...[for (final c in others) (_coreMeta[c] ?? (c, MM.red)).$1],
+                ].join(', ')}). "
+                "Let's simplify to keep my momentum alive — which habits should I keep active and which can I pause for now?",
+              ),
       onDone: _dismissCoreAlert,
     );
   }
-
 }
 
 /// Shown when the player taps the Cantina tab before completing Phase 1
@@ -1156,24 +1271,32 @@ class _CantinaLockedView extends StatelessWidget {
                         height: 36,
                         decoration: BoxDecoration(
                           color: MM.navy.withOpacity(0.55),
-                          border:
-                              Border.all(color: Colors.white.withOpacity(0.12)),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.12),
+                          ),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.arrow_back_ios_new,
-                            size: 14, color: Colors.white),
+                        child: const Icon(
+                          Icons.arrow_back_ios_new,
+                          size: 14,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
                   const Spacer(),
                   const Text('🔒', style: TextStyle(fontSize: 56)),
                   const SizedBox(height: 14),
-                  Text('SPACE CANTINA LOCKED',
-                      style: MM.displayX(size: 11, color: MM.yellow)),
+                  Text(
+                    'SPACE CANTINA LOCKED',
+                    style: MM.displayX(size: 11, color: MM.yellow),
+                  ),
                   const SizedBox(height: 8),
-                  Text('Momentify your habit first',
-                      textAlign: TextAlign.center,
-                      style: MM.display(size: 20, color: Colors.white)),
+                  Text(
+                    'Momentify your habit first',
+                    textAlign: TextAlign.center,
+                    style: MM.display(size: 20, color: Colors.white),
+                  ),
                   const SizedBox(height: 10),
                   Text(
                     'The Cantina — Ideas Well, Tribes, Leaderboards — opens once '

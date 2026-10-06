@@ -35,6 +35,12 @@ class GoldenHabit {
     this.flagReason = '',
     this.flagNote = '',
     this.formed = false,
+    this.makeObvious = '',
+    this.makeEasy = '',
+    this.makeRewarding = '',
+    this.mbsCompleted = false,
+    this.oneTimeActions = '',
+    this.playerNotes = '',
   });
 
   final String habitId;
@@ -76,6 +82,85 @@ class GoldenHabit {
 
   /// Confirmed formed (#11/#19 — AI-validated, rule, or marked early).
   final bool formed;
+
+  /// Stage 2 (MBS) — the 3 Momentum-Boosting Methods: Make it Obvious /
+  /// Attractive, Make it Easy, Make it Fun / Rewarding.
+  final String makeObvious;
+  final String makeEasy;
+  final String makeRewarding;
+  final bool mbsCompleted;
+
+  /// #22 Detailed Habit View — player-editable setup tasks and notes.
+  final String oneTimeActions;
+  final String playerNotes;
+
+  /// Field keys the Detailed Habit View may edit — the same allowlist as
+  /// `flutterUpdateGoldenHabitDetail` (goldenHabitDetail.js EDITABLE).
+  static const editableKeys = [
+    'habitName',
+    'displayText',
+    'painPoint',
+    'backToFutureIdentity',
+    'where',
+    'when',
+    'what',
+    'trigger',
+    'anchorReminder',
+    'obstacleIf',
+    'obstacleThen',
+    'whyWant',
+    'whyCan',
+    'whyEffective',
+    'startingVersion',
+    'makeObvious',
+    'makeEasy',
+    'makeRewarding',
+    'oneTimeActions',
+    'playerNotes',
+  ];
+
+  Map<String, dynamic> toJson() => {
+    'habitId': habitId,
+    'habitName': habitName,
+    'coreId': coreId,
+    'coreLabel': coreLabel,
+    'painPoint': painPoint,
+    'backToFutureIdentity': backToFutureIdentity,
+    'coreDimension': coreDimension,
+    'habitType': habitType,
+    'where': where,
+    'when': when,
+    'what': what,
+    'cueType': cueType,
+    'trigger': trigger,
+    'anchorReminder': anchorReminder,
+    'obstacleIf': obstacleIf,
+    'obstacleThen': obstacleThen,
+    'whyWant': whyWant,
+    'whyCan': whyCan,
+    'whyEffective': whyEffective,
+    'startingVersion': startingVersion,
+    'displayText': displayText,
+    'stage': stage,
+    'streak': streak,
+    'week': week,
+    'daysFormed': daysFormed,
+    'flagged': flagged,
+    'flagReason': flagReason,
+    'flagNote': flagNote,
+    'formed': formed,
+    'makeObvious': makeObvious,
+    'makeEasy': makeEasy,
+    'makeRewarding': makeRewarding,
+    'mbsCompleted': mbsCompleted,
+    'oneTimeActions': oneTimeActions,
+    'playerNotes': playerNotes,
+  };
+
+  /// This habit with [edits] (keys from [editableKeys]) applied — the local
+  /// mirror of a saved detail-view edit.
+  GoldenHabit applyEdits(Map<String, String> edits) =>
+      GoldenHabit.fromJson({...toJson(), ...edits});
 
   static String _s(dynamic v) => v == null ? '' : v.toString().trim();
 
@@ -130,6 +215,12 @@ class GoldenHabit {
       flagReason: _s(j['flagReason']),
       flagNote: _s(j['flagNote']),
       formed: j['formed'] == true,
+      makeObvious: _s(j['makeObvious']),
+      makeEasy: _s(j['makeEasy']),
+      makeRewarding: _s(j['makeRewarding']),
+      mbsCompleted: j['mbsCompleted'] == true,
+      oneTimeActions: _s(j['oneTimeActions']),
+      playerNotes: _s(j['playerNotes']),
     );
   }
 
@@ -179,6 +270,12 @@ class GoldenHabit {
       flagReason: flagReason ?? this.flagReason,
       flagNote: flagNote ?? this.flagNote,
       formed: formed,
+      makeObvious: makeObvious,
+      makeEasy: makeEasy,
+      makeRewarding: makeRewarding,
+      mbsCompleted: mbsCompleted,
+      oneTimeActions: oneTimeActions,
+      playerNotes: playerNotes,
     );
   }
 }

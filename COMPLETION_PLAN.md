@@ -859,9 +859,24 @@ distances/momentum values (see #40).
   with 6-color system, status counter ("8 🔴 · 12 🟠 · 15 🟢"), day counts ("Day 8/14"), yellow notes;
   Non-Routines List per Core with Mantra + Gratitude locked at #1/#2, drag-to-prioritize, IF-THEN shown;
   non-routine "N/A — not triggered" scoring option.
-- [ ] **#22 Detailed Habit View = living master document** (PRD 8.C/12.C) — Golden Habit output format
+- [x] **#22 Detailed Habit View = living master document** (PRD 8.C/12.C) — Golden Habit output format
   (type/where/when/what, anchor reminder, IF-THEN obstacle plan, why-this-works), MBMs, Triple-Check,
   origin 🔴/⚫, formation progress, active 🧪 experiment, Captain's Log excerpts, edit/delete, ⚠️ flag.
+  **DONE 2026-10-06 (browser-verified on web, will@ account):** shared `HabitDetailView`
+  (`lib/widgets/momentum/habit_detail_view.dart`, route `habit:<id>`, web two-column / phone one-column) replaces
+  the phone-only `_HabitDetail`; opened from the web Habits grid (was read-only), phone Habits, All Habits and
+  Non-Routines rows. Sections in Phase 1&2 Details §4A order: abbreviated version, Core, type, pain point, BTTF,
+  WHERE/WHEN/WHAT, anchor reminder, obstacle IF/THEN, Triple-Check, all 3 MBMs, one-time actions, player notes,
+  Captain's Log (the habit's Core; entries naming the habit first), formation status (same 14-day/80% rule as the
+  Trophy Room). Actions: Mark as Formed (Trophy Room's AI-validated flow), Edit (every field in place),
+  Need Help / Rebuild → Stage 1 or Stage 2 with the habit pre-loaded (`rebuild:<stage>:<id>`), Flag. New
+  `flutterUpdateGoldenHabitDetail` (functions-flutter/goldenHabitDetail.js, deployed): allowlisted patch; a rename
+  also renames the Core's list line and moves its colour tag. Verified: view renders with real data; a note saved,
+  survived a full reload (opened via All Habits), then cleared; Back returns to the opening screen. 6 client + 7
+  backend tests (87 / 53). **Not done here, on purpose:** 🧪 experiment tagging of edits (#23); type
+  reclassification (needs the audit-trail rules in §4E); the Core "Additional Notes" two-way sync (no such Core
+  field exists yet); delete. Mark as Formed and Need Help were not clicked live (they write / start a Nova
+  session) — both reuse existing, tested flows.
 - [ ] **#23 Experiment lifecycle + real AI resolution paths** (PRD 13.C, Sequence Day-5) — ⚠️ Flag button
   in every habit view; Quick Suggestion = Claude call over Momentum Lists + Captain's Log (today a
   placeholder); Go Deeper → HHS/MBS with context pre-loaded (routing exists); Manual Edit → #22; every

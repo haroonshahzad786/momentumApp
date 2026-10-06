@@ -613,6 +613,12 @@ These three come straight from the Gamification Mechanics Specs Reference (§6 S
 - **Step 3 — Non-Routines List (built):** "Organized by Core, Prioritized by Impact … Drag-and-drop to reprioritize anytime"; "Mindset Core Locked Defaults: #1 Mantra and #2 Gratitude"; "Back to the Future Quick Reference"; "Formed habits leave this list entirely". All four are in, plus each habit's IF-THEN. **Verified:** 5 tests; browser-checked on web (5 Oct): opened from the rocket's checklist icon, Mantra/Gratitude locked at #1/#2, dragging a habit to a new position is saved and still there after a full page reload.
 - **Still to come in #21:** "N/A — not triggered" scoring (your Decision 6).
 
+### #22 Detailed Golden Habit View ✅
+- **Spec (Phase 1 & 2 Details §4A "Detailed Golden Habit View"):** "Accessible from multiple points throughout the experience wherever a [Detailed Habit View] button appears". Each view includes the abbreviated habit, Core, pain point, BTTF goal, habit type, WHERE/WHEN/WHAT, anchor reminder, obstacle plan, why this works (Want/Can/Effective), all MBMs, one-time actions, player notes, Captain's Log entries, formation status, and the buttons "Mark as Formed, Edit, Need Help/Rebuild". §4E: "Players can edit any field because life changes and optimization is ongoing." Sequence (Path 3): "Edit anything you need — cue, action, reward, MBMs, IF-THEN backup — all directly."
+- **Built:** one Detailed View for each Golden Habit, on web (two columns) and phone. It opens from the Habits screen (on web this screen was read-only before), All Habits and Non-Routines. Every section above is shown in the spec's order. **Edit** turns every field into a text box at once, and saving updates every screen. Renaming a habit also renames its line in the Routines lists. **Mark as Formed** uses the same Nova check as the Trophy Room. **Need Help / Rebuild** sends you back to Phase 1 Stage 1 (rebuild the habit) or Stage 2 (better MBMs), with the habit already loaded. Flagging still works as before.
+- **Verified:** 13 new tests; browser-checked on web (6 Oct) on your account's "Deep Presence Practice": all sections show your real data; a note was saved, was still there after a full page reload, and was then removed.
+- **Next (#23):** each edit becomes a 🧪 3-day experiment. Changing a habit's type (routine ↔ non-routine) waits for the reclassification rules.
+
 ---
 
 ## 3. Engineering notes (for your technical reviewer)

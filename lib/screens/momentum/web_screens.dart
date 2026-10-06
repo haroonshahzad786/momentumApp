@@ -57,13 +57,14 @@ Color coreHex(String id) => MM.coreColor[id] ?? MM.blue;
 // Shared desktop primitives
 // ═══════════════════════════════════════════════════════════════
 class WebPanel extends StatelessWidget {
-  const WebPanel(
-      {super.key,
-      required this.child,
-      this.padding = const EdgeInsets.all(16),
-      this.borderColor,
-      this.leftAccent,
-      this.background});
+  const WebPanel({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.borderColor,
+    this.leftAccent,
+    this.background,
+  });
   final Widget child;
   final EdgeInsetsGeometry padding;
   final Color? borderColor;
@@ -84,7 +85,8 @@ class WebPanel extends StatelessWidget {
           color: background ?? const Color(0xFF111C4E).withOpacity(0.55),
           borderRadius: radius,
           border: Border.all(
-              color: borderColor ?? Colors.white.withOpacity(0.10)),
+            color: borderColor ?? Colors.white.withOpacity(0.10),
+          ),
         ),
         child: Stack(
           children: [
@@ -105,13 +107,14 @@ class WebPanel extends StatelessWidget {
 }
 
 class WebSection extends StatelessWidget {
-  const WebSection(
-      {super.key,
-      required this.title,
-      this.meta,
-      this.accent = Colors.white,
-      this.action,
-      required this.child});
+  const WebSection({
+    super.key,
+    required this.title,
+    this.meta,
+    this.accent = Colors.white,
+    this.action,
+    required this.child,
+  });
   final String title;
   final String? meta;
   final Color accent;
@@ -133,24 +136,30 @@ class WebSection extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Flexible(
-                      child: Text(title,
-                          style: GoogleFonts.orbitron(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.6,
-                              color: Colors.white)),
+                      child: Text(
+                        title,
+                        style: GoogleFonts.orbitron(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.6,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                     if (meta != null) ...[
                       const SizedBox(width: 10),
                       Flexible(
-                        child: Text(meta!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.orbitron(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.2,
-                                color: accent)),
+                        child: Text(
+                          meta!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.orbitron(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.2,
+                            color: accent,
+                          ),
+                        ),
                       ),
                     ],
                   ],
@@ -168,12 +177,13 @@ class WebSection extends StatelessWidget {
 }
 
 class WebStat extends StatelessWidget {
-  const WebStat(
-      {super.key,
-      required this.label,
-      required this.value,
-      this.accent = Colors.white,
-      this.sub});
+  const WebStat({
+    super.key,
+    required this.label,
+    required this.value,
+    this.accent = Colors.white,
+    this.sub,
+  });
   final String label;
   final String value;
   final Color accent;
@@ -187,18 +197,23 @@ class WebStat extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label.toUpperCase(),
-              style: GoogleFonts.orbitron(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.5,
-                  color: Colors.white.withOpacity(0.5))),
+          Text(
+            label.toUpperCase(),
+            style: GoogleFonts.orbitron(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.5,
+              color: Colors.white.withOpacity(0.5),
+            ),
+          ),
           const SizedBox(height: 6),
           Text(value, style: MM.display(size: 26, color: accent, height: 1)),
           if (sub != null) ...[
             const SizedBox(height: 5),
-            Text(sub!,
-                style: MM.body(size: 11, color: Colors.white.withOpacity(0.5))),
+            Text(
+              sub!,
+              style: MM.body(size: 11, color: Colors.white.withOpacity(0.5)),
+            ),
           ],
         ],
       ),
@@ -207,27 +222,30 @@ class WebStat extends StatelessWidget {
 }
 
 Widget _ghost(String label, VoidCallback onTap) => Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
+  color: Colors.transparent,
+  borderRadius: BorderRadius.circular(8),
+  child: InkWell(
+    borderRadius: BorderRadius.circular(8),
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+      decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            color: Colors.white.withOpacity(0.04),
-            border: Border.all(color: Colors.white.withOpacity(0.18)),
-          ),
-          child: Text(label.toUpperCase(),
-              style: GoogleFonts.orbitron(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1.4,
-                  color: Colors.white)),
+        color: Colors.white.withOpacity(0.04),
+        border: Border.all(color: Colors.white.withOpacity(0.18)),
+      ),
+      child: Text(
+        label.toUpperCase(),
+        style: GoogleFonts.orbitron(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1.4,
+          color: Colors.white,
         ),
       ),
-    );
+    ),
+  ),
+);
 
 /// Shared loading/error/empty wrapper + scroll padding for a desktop screen.
 class _ScreenScaffold extends StatelessWidget {
@@ -252,8 +270,10 @@ class _ScreenScaffold extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Could not load',
-                style: MM.display(size: 16, color: Colors.white)),
+            Text(
+              'Could not load',
+              style: MM.display(size: 16, color: Colors.white),
+            ),
             const SizedBox(height: 12),
             _ghost('Retry', onRetry),
           ],
@@ -324,93 +344,122 @@ class _WebListsState extends State<WebLists> {
       loading: _loading,
       error: _error,
       onRetry: _load,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-       WebSection(
-        title: 'MANIFEST',
-        meta: '${_lists.length} LISTS',
-        accent: MM.blue,
-        child: _lists.isEmpty
-            ? _empty('No lists yet', 'Lists you capture will appear here.')
-            : _Grid(
-                minTileWidth: 280,
-                children: _lists.map((l) {
-                  final open = _expanded.contains(l.name);
-                  return Material(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(8),
-                      onTap: () => setState(() => open
-                          ? _expanded.remove(l.name)
-                          : _expanded.add(l.name)),
-                      child: WebPanel(
-                        padding: const EdgeInsets.all(18),
-                        leftAccent: MM.blue,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              children: [
-                                const Text('🗂️',
-                                    style: TextStyle(fontSize: 22)),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(l.name,
-                                      style: MM.body(
-                                          size: 14,
-                                          color: Colors.white,
-                                          weight: FontWeight.w600)),
-                                ),
-                                _chip('${l.count}', MM.blue),
-                              ],
-                            ),
-                            if (open && l.items.isNotEmpty) ...[
-                              const SizedBox(height: 12),
-                              for (final it in l.items)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 6),
-                                  child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          WebSection(
+            title: 'MANIFEST',
+            meta: '${_lists.length} LISTS',
+            accent: MM.blue,
+            child:
+                _lists.isEmpty
+                    ? _empty(
+                      'No lists yet',
+                      'Lists you capture will appear here.',
+                    )
+                    : _Grid(
+                      minTileWidth: 280,
+                      children:
+                          _lists.map((l) {
+                            final open = _expanded.contains(l.name);
+                            return Material(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(8),
+                                onTap:
+                                    () => setState(
+                                      () =>
+                                          open
+                                              ? _expanded.remove(l.name)
+                                              : _expanded.add(l.name),
+                                    ),
+                                child: WebPanel(
+                                  padding: const EdgeInsets.all(18),
+                                  leftAccent: MM.blue,
+                                  child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                            top: 6, right: 8),
-                                        child: Container(
-                                            width: 5,
-                                            height: 5,
-                                            decoration: BoxDecoration(
-                                                color: MM.blue.withOpacity(0.7),
-                                                shape: BoxShape.circle)),
+                                      Row(
+                                        children: [
+                                          const Text(
+                                            '🗂️',
+                                            style: TextStyle(fontSize: 22),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              l.name,
+                                              style: MM.body(
+                                                size: 14,
+                                                color: Colors.white,
+                                                weight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                          _chip('${l.count}', MM.blue),
+                                        ],
                                       ),
-                                      Expanded(
-                                        child: Text(it,
-                                            style: MM.body(
-                                                size: 12.5,
-                                                color: Colors.white
-                                                    .withOpacity(0.8))),
-                                      ),
+                                      if (open && l.items.isNotEmpty) ...[
+                                        const SizedBox(height: 12),
+                                        for (final it in l.items)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 6,
+                                            ),
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 6,
+                                                        right: 8,
+                                                      ),
+                                                  child: Container(
+                                                    width: 5,
+                                                    height: 5,
+                                                    decoration: BoxDecoration(
+                                                      color: MM.blue
+                                                          .withOpacity(0.7),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                  ),
+                                                ),
+                                                Expanded(
+                                                  child: Text(
+                                                    it,
+                                                    style: MM.body(
+                                                      size: 12.5,
+                                                      color: Colors.white
+                                                          .withOpacity(0.8),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                      ],
                                     ],
                                   ),
                                 ),
-                            ],
-                          ],
-                        ),
-                      ),
+                              ),
+                            );
+                          }).toList(),
                     ),
-                  );
-                }).toList(),
-              ),
-       ),
-       const SizedBox(height: 28),
-       const WebSection(
-         title: "CAPTAIN'S LOG",
-         meta: 'LAST 30 DAYS',
-         accent: MM.teal,
-         child: CaptainsLogArchive(),
-       ),
-      ]),
+          ),
+          const SizedBox(height: 28),
+          const WebSection(
+            title: "CAPTAIN'S LOG",
+            meta: 'LAST 30 DAYS',
+            accent: MM.teal,
+            child: CaptainsLogArchive(),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -445,53 +494,64 @@ class _WebTasksState extends State<WebTasks> {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(40, 4, 40, 56),
-      child: LayoutBuilder(builder: (context, c) {
-        final cols = c.maxWidth >= 820 ? 3 : 1;
-        final entries = _tasks.entries.toList();
-        return Wrap(
-          spacing: 20,
-          runSpacing: 20,
-          children: entries.map((e) {
-            final w = cols == 1
-                ? c.maxWidth
-                : (c.maxWidth - 20 * (cols - 1)) / cols;
-            final open = e.value.where((t) => !(t['done'] as bool)).length;
-            return SizedBox(
-              width: w,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(2, 0, 2, 12),
-                    child: Row(
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final cols = c.maxWidth >= 820 ? 3 : 1;
+          final entries = _tasks.entries.toList();
+          return Wrap(
+            spacing: 20,
+            runSpacing: 20,
+            children:
+                entries.map((e) {
+                  final w =
+                      cols == 1
+                          ? c.maxWidth
+                          : (c.maxWidth - 20 * (cols - 1)) / cols;
+                  final open =
+                      e.value.where((t) => !(t['done'] as bool)).length;
+                  return SizedBox(
+                    width: w,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(e.key.toUpperCase(),
-                            style: GoogleFonts.orbitron(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.6,
-                                color: Colors.white)),
-                        const Spacer(),
-                        Text('$open OPEN',
-                            style: GoogleFonts.orbitron(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                color: MM.yellow)),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(2, 0, 2, 12),
+                          child: Row(
+                            children: [
+                              Text(
+                                e.key.toUpperCase(),
+                                style: GoogleFonts.orbitron(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.6,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '$open OPEN',
+                                style: GoogleFonts.orbitron(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: MM.yellow,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        for (int i = 0; i < e.value.length; i++)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 9),
+                            child: _taskRow(e.key, i, e.value[i]),
+                          ),
+                        _ghost('+ Add task', () {}),
                       ],
                     ),
-                  ),
-                  for (int i = 0; i < e.value.length; i++)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 9),
-                      child: _taskRow(e.key, i, e.value[i]),
-                    ),
-                  _ghost('+ Add task', () {}),
-                ],
-              ),
-            );
-          }).toList(),
-        );
-      }),
+                  );
+                }).toList(),
+          );
+        },
+      ),
     );
   }
 
@@ -507,8 +567,7 @@ class _WebTasksState extends State<WebTasks> {
         child: Opacity(
           opacity: done ? 0.55 : 1,
           child: WebPanel(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             child: Row(
               children: [
                 Container(
@@ -518,20 +577,29 @@ class _WebTasksState extends State<WebTasks> {
                     color: done ? hex : Colors.transparent,
                     borderRadius: BorderRadius.circular(6),
                     border: Border.all(
-                        color: done ? hex : Colors.white.withOpacity(0.3),
-                        width: 1.5),
+                      color: done ? hex : Colors.white.withOpacity(0.3),
+                      width: 1.5,
+                    ),
                   ),
-                  child: done
-                      ? const Icon(Icons.check, size: 12, color: Colors.black)
-                      : null,
+                  child:
+                      done
+                          ? const Icon(
+                            Icons.check,
+                            size: 12,
+                            color: Colors.black,
+                          )
+                          : null,
                 ),
                 const SizedBox(width: 11),
                 Expanded(
-                  child: Text(t['n'] as String,
-                      style: MM.body(size: 13, color: Colors.white).copyWith(
-                          decoration: done
-                              ? TextDecoration.lineThrough
-                              : null)),
+                  child: Text(
+                    t['n'] as String,
+                    style: MM
+                        .body(size: 13, color: Colors.white)
+                        .copyWith(
+                          decoration: done ? TextDecoration.lineThrough : null,
+                        ),
+                  ),
                 ),
                 _chip('+${t['pts']}', hex),
               ],
@@ -547,11 +615,19 @@ class _WebTasksState extends State<WebTasks> {
 // HABITS — real Golden Habits in a lifecycle grid (read-focused)
 // ═══════════════════════════════════════════════════════════════
 class WebHabits extends StatefulWidget {
-  const WebHabits({super.key, this.coreFilter, this.onClearFilter});
+  const WebHabits({
+    super.key,
+    this.coreFilter,
+    this.onClearFilter,
+    this.onOpen,
+  });
 
   /// Short Core id ('physical', …) — a Core tapped on the rocket (#20).
   final String? coreFilter;
   final VoidCallback? onClearFilter;
+
+  /// Opens a habit's Detailed View (#22) by habitId.
+  final void Function(String habitId)? onOpen;
   @override
   State<WebHabits> createState() => _WebHabitsState();
 }
@@ -608,122 +684,173 @@ class _WebHabitsState extends State<WebHabits> {
   @override
   Widget build(BuildContext context) {
     final filter = widget.coreFilter;
-    final shown = filter == null
-        ? _habits
-        : [
-            for (final h in _habits)
-              if (GoldenHabitRef.shortCore(h.coreId) == filter) h
-          ];
+    final shown =
+        filter == null
+            ? _habits
+            : [
+              for (final h in _habits)
+                if (GoldenHabitRef.shortCore(h.coreId) == filter) h,
+            ];
     return _ScreenScaffold(
       loading: _loading,
       error: _error,
       onRetry: _load,
       child: WebSection(
-        title: filter == null
-            ? 'GOLDEN HABITS'
-            : '${kCoreLabel[filter]?.toUpperCase() ?? filter.toUpperCase()} HABITS',
+        title:
+            filter == null
+                ? 'GOLDEN HABITS'
+                : '${kCoreLabel[filter]?.toUpperCase() ?? filter.toUpperCase()} HABITS',
         meta: '${shown.length} IN FORGE',
-        accent: filter == null ? MM.magenta : (MM.coreColor[filter] ?? MM.magenta),
-        action: filter == null
-            ? null
-            : MMGhostButton(
-                label: 'Show all Cores ✕', onPressed: widget.onClearFilter),
-        child: shown.isEmpty
-            ? _empty(
-                filter == null
-                    ? 'No golden habits yet'
-                    : 'No habits in this Core yet',
-                'Forge one in Phase 1 to start building momentum.')
-            : _Grid(
-                minTileWidth: 300,
-                children: shown.map((h) {
-                  final st = _stage[h.stage] ?? _stage['forming']!;
-                  final hex = coreHex(h.coreId);
-                  final note = h.displayText.trim().isNotEmpty
-                      ? h.displayText.trim()
-                      : (h.when.trim().isNotEmpty ? h.when.trim() : '—');
-                  return WebPanel(
-                    padding: const EdgeInsets.all(18),
-                    leftAccent: st.$1,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          children: [
-                            Text(kCoreIcon[h.coreId] ?? '•',
-                                style: const TextStyle(fontSize: 20)),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                      h.habitName.trim().isNotEmpty
-                                          ? h.habitName.trim()
-                                          : 'Golden Habit',
-                                      style: MM.body(
-                                          size: 14.5,
-                                          color: Colors.white,
-                                          weight: FontWeight.w600)),
-                                  const SizedBox(height: 3),
-                                  Text(h.coreLabel.toUpperCase(),
+        accent:
+            filter == null ? MM.magenta : (MM.coreColor[filter] ?? MM.magenta),
+        action:
+            filter == null
+                ? null
+                : MMGhostButton(
+                  label: 'Show all Cores ✕',
+                  onPressed: widget.onClearFilter,
+                ),
+        child:
+            shown.isEmpty
+                ? _empty(
+                  filter == null
+                      ? 'No golden habits yet'
+                      : 'No habits in this Core yet',
+                  'Forge one in Phase 1 to start building momentum.',
+                )
+                : _Grid(
+                  minTileWidth: 300,
+                  children:
+                      shown.map((h) {
+                        final st = _stage[h.stage] ?? _stage['forming']!;
+                        final hex = coreHex(h.coreId);
+                        final note =
+                            h.displayText.trim().isNotEmpty
+                                ? h.displayText.trim()
+                                : (h.when.trim().isNotEmpty
+                                    ? h.when.trim()
+                                    : '—');
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(8),
+                          onTap:
+                              widget.onOpen == null
+                                  ? null
+                                  : () => widget.onOpen!(h.habitId),
+                          child: WebPanel(
+                            padding: const EdgeInsets.all(18),
+                            leftAccent: st.$1,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      kCoreIcon[h.coreId] ?? '•',
+                                      style: const TextStyle(fontSize: 20),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            h.habitName.trim().isNotEmpty
+                                                ? h.habitName.trim()
+                                                : 'Golden Habit',
+                                            style: MM.body(
+                                              size: 14.5,
+                                              color: Colors.white,
+                                              weight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            h.coreLabel.toUpperCase(),
+                                            style: GoogleFonts.orbitron(
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.w700,
+                                              letterSpacing: 1.2,
+                                              color: hex,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Text(
+                                      st.$3,
+                                      style: const TextStyle(fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  note,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: MM.body(
+                                    size: 11.5,
+                                    color: Colors.white.withOpacity(0.6),
+                                    height: 1.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 14),
+                                Container(
+                                  height: 1,
+                                  color: Colors.white.withOpacity(0.07),
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Text(
+                                      st.$2.toUpperCase(),
                                       style: GoogleFonts.orbitron(
-                                          fontSize: 8,
-                                          fontWeight: FontWeight.w700,
-                                          letterSpacing: 1.2,
-                                          color: hex)),
-                                ],
-                              ),
-                            ),
-                            Text(st.$3, style: const TextStyle(fontSize: 16)),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(note,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: MM.body(
-                                size: 11.5,
-                                color: Colors.white.withOpacity(0.6),
-                                height: 1.5)),
-                        const SizedBox(height: 14),
-                        Container(
-                          height: 1,
-                          color: Colors.white.withOpacity(0.07),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Text(st.$2.toUpperCase(),
-                                style: GoogleFonts.orbitron(
-                                    fontSize: 8.5,
+                                        fontSize: 8.5,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 1.2,
+                                        color: st.$1,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      '🔥 ${h.streak}d',
+                                      style: MM.body(
+                                        size: 11,
+                                        color: Colors.white.withOpacity(0.7),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(3),
+                                  child: LinearProgressIndicator(
+                                    value: (h.daysFormed / 14).clamp(0.0, 1.0),
+                                    minHeight: 4,
+                                    backgroundColor: Colors.white.withOpacity(
+                                      0.1,
+                                    ),
+                                    valueColor: AlwaysStoppedAnimation(st.$1),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'DETAILED VIEW →',
+                                  style: GoogleFonts.orbitron(
+                                    fontSize: 8,
                                     fontWeight: FontWeight.w700,
                                     letterSpacing: 1.2,
-                                    color: st.$1)),
-                            const Spacer(),
-                            Text('🔥 ${h.streak}d',
-                                style: MM.body(
-                                    size: 11,
-                                    color: Colors.white.withOpacity(0.7))),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(3),
-                          child: LinearProgressIndicator(
-                            value: (h.daysFormed / 14).clamp(0.0, 1.0),
-                            minHeight: 4,
-                            backgroundColor: Colors.white.withOpacity(0.1),
-                            valueColor: AlwaysStoppedAnimation(st.$1),
+                                    color: Colors.white.withOpacity(0.5),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
+                        );
+                      }).toList(),
+                ),
       ),
     );
   }
@@ -751,8 +878,13 @@ class _WebTrophyState extends State<WebTrophy> {
       ('Habit Forged', 'First formed habit', n >= 1, MM.yellow, '🛠️'),
       ('Momentum x3', '3 formed habits', n >= 3, MM.teal, '⚙️'),
       ('Constellation', '10 formed habits', n >= 10, MM.blue, '✨'),
-      ('In the Forge', 'A habit in progress', _totalHabits >= 1, MM.magenta,
-          '🔥'),
+      (
+        'In the Forge',
+        'A habit in progress',
+        _totalHabits >= 1,
+        MM.magenta,
+        '🔥',
+      ),
     ];
     return _ScreenScaffold(
       loading: false,
@@ -771,10 +903,12 @@ class _WebTrophyState extends State<WebTrophy> {
               userId: uid,
               tileWidth: 330,
               onFormedCount: (c) {
-                if (mounted && c != _formedCount) setState(() => _formedCount = c);
+                if (mounted && c != _formedCount)
+                  setState(() => _formedCount = c);
               },
               onHabitCount: (c) {
-                if (mounted && c != _totalHabits) setState(() => _totalHabits = c);
+                if (mounted && c != _totalHabits)
+                  setState(() => _totalHabits = c);
               },
             ),
           ),
@@ -785,45 +919,56 @@ class _WebTrophyState extends State<WebTrophy> {
             accent: MM.blue,
             child: _Grid(
               minTileWidth: 170,
-              children: badges.map((b) {
-                return Opacity(
-                  opacity: b.$3 ? 1 : 0.42,
-                  child: WebPanel(
-                    padding: const EdgeInsets.all(16),
-                    borderColor: b.$3
-                        ? b.$4.withOpacity(0.33)
-                        : Colors.white.withOpacity(0.1),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(b.$5, style: const TextStyle(fontSize: 30)),
-                        const SizedBox(height: 8),
-                        Text(b.$1,
-                            textAlign: TextAlign.center,
-                            style: MM.body(
+              children:
+                  badges.map((b) {
+                    return Opacity(
+                      opacity: b.$3 ? 1 : 0.42,
+                      child: WebPanel(
+                        padding: const EdgeInsets.all(16),
+                        borderColor:
+                            b.$3
+                                ? b.$4.withOpacity(0.33)
+                                : Colors.white.withOpacity(0.1),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(b.$5, style: const TextStyle(fontSize: 30)),
+                            const SizedBox(height: 8),
+                            Text(
+                              b.$1,
+                              textAlign: TextAlign.center,
+                              style: MM.body(
                                 size: 12.5,
                                 color: Colors.white,
-                                weight: FontWeight.w600)),
-                        const SizedBox(height: 3),
-                        Text(b.$2,
-                            textAlign: TextAlign.center,
-                            style: MM.body(
+                                weight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              b.$2,
+                              textAlign: TextAlign.center,
+                              style: MM.body(
                                 size: 10.5,
-                                color: Colors.white.withOpacity(0.55))),
-                        if (!b.$3) ...[
-                          const SizedBox(height: 8),
-                          Text('LOCKED',
-                              style: GoogleFonts.orbitron(
+                                color: Colors.white.withOpacity(0.55),
+                              ),
+                            ),
+                            if (!b.$3) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                'LOCKED',
+                                style: GoogleFonts.orbitron(
                                   fontSize: 7.5,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: 1.2,
-                                  color: Colors.white.withOpacity(0.4))),
-                        ],
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
+                                  color: Colors.white.withOpacity(0.4),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
             ),
           ),
         ],
@@ -873,7 +1018,7 @@ class _WebRoutinesState extends State<WebRoutines> {
       '${l.coreId}/${l.categoryId}/${l.name}|${itemKey(raw)}';
 
   ({HabitColor? color, FormationProgress? progress, GoldenHabit? golden})
-      _status(CoreList l, String raw) {
+  _status(CoreList l, String raw) {
     final st = lineStatus(l, raw, _golden, _coreScores);
     final k = _tagKey(l, raw);
     return st.golden == null && _tagged.containsKey(k)
@@ -884,22 +1029,30 @@ class _WebRoutinesState extends State<WebRoutines> {
   Future<void> _tag(CoreList l, String raw) async {
     final st = _status(l, raw);
     if (st.golden != null) return; // 🟠/🟢 follow formation
-    final picked =
-        await pickHabitColor(context, st.color,
-            habitName: parseHabitLine(raw).name,
-            allowNeutral: !isNonRoutineList(l));
+    final picked = await pickHabitColor(
+      context,
+      st.color,
+      habitName: parseHabitLine(raw).name,
+      allowNeutral: !isNonRoutineList(l),
+    );
     final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    if (picked == null || picked.color == st.color || uid.isEmpty || !mounted) return;
+    if (picked == null || picked.color == st.color || uid.isEmpty || !mounted)
+      return;
     final k = _tagKey(l, raw);
     setState(() => _tagged[k] = picked.color);
     try {
       await _service.setItemColor(
-          userId: uid, list: l, item: raw, color: picked.color?.name);
+        userId: uid,
+        list: l,
+        item: raw,
+        color: picked.color?.name,
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() => _tagged[k] = st.color);
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't save the colour — try again.")));
+        const SnackBar(content: Text("Couldn't save the colour — try again.")),
+      );
     }
   }
 
@@ -964,16 +1117,20 @@ class _WebRoutinesState extends State<WebRoutines> {
         children: [
           Row(
             children: [
-              Text(kCoreIcon[core] ?? '•',
-                  style: const TextStyle(fontSize: 20)),
+              Text(
+                kCoreIcon[core] ?? '•',
+                style: const TextStyle(fontSize: 20),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                    l.name.trim().isNotEmpty ? l.name.trim() : l.coreLabel,
-                    style: MM.body(
-                        size: 14,
-                        color: Colors.white,
-                        weight: FontWeight.w600)),
+                  l.name.trim().isNotEmpty ? l.name.trim() : l.coreLabel,
+                  style: MM.body(
+                    size: 14,
+                    color: Colors.white,
+                    weight: FontWeight.w600,
+                  ),
+                ),
               ),
               _chip('${l.items.length}', hex),
             ],
@@ -983,9 +1140,10 @@ class _WebRoutinesState extends State<WebRoutines> {
             for (final it in l.items) _line(l, it),
           ] else ...[
             const SizedBox(height: 8),
-            Text('No items yet',
-                style:
-                    MM.body(size: 11, color: Colors.white.withOpacity(0.4))),
+            Text(
+              'No items yet',
+              style: MM.body(size: 11, color: Colors.white.withOpacity(0.4)),
+            ),
           ],
         ],
       ),
@@ -997,15 +1155,17 @@ class _WebRoutinesState extends State<WebRoutines> {
   Widget _line(CoreList l, String raw) {
     final st = _status(l, raw);
     final p = st.progress;
-    final sub = p != null
-        ? 'Day ${p.days.clamp(0, 14)}/14 · ${st.color!.label}'
-        : st.golden != null
+    final sub =
+        p != null
+            ? 'Day ${p.days.clamp(0, 14)}/14 · ${st.color!.label}'
+            : st.golden != null
             ? st.color!.label
             : (st.color?.label ?? 'Tap to tag');
     return Tooltip(
-      message: st.golden != null
-          ? 'Golden Habit — colour follows formation'
-          : 'Tag with the colour key',
+      message:
+          st.golden != null
+              ? 'Golden Habit — colour follows formation'
+              : 'Tag with the colour key',
       child: InkWell(
         borderRadius: BorderRadius.circular(6),
         onTap: st.golden != null ? null : () => _tag(l, raw),
@@ -1022,15 +1182,23 @@ class _WebRoutinesState extends State<WebRoutines> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(raw,
-                        style: MM.body(
-                            size: 12.5, color: Colors.white.withOpacity(0.85))),
-                    Text(sub,
-                        style: MM.body(
-                            size: 10.5,
-                            color: st.color == null
+                    Text(
+                      raw,
+                      style: MM.body(
+                        size: 12.5,
+                        color: Colors.white.withOpacity(0.85),
+                      ),
+                    ),
+                    Text(
+                      sub,
+                      style: MM.body(
+                        size: 10.5,
+                        color:
+                            st.color == null
                                 ? Colors.white.withOpacity(0.35)
-                                : Colors.white.withOpacity(0.5))),
+                                : Colors.white.withOpacity(0.5),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1070,28 +1238,36 @@ class _WebRoutinesState extends State<WebRoutines> {
   }
 
   Widget get _routineSection => WebSection(
-            title: 'ROUTINE',
-            meta: 'DAILY ORBIT · THE SEA OF GREEN',
-            accent: MM.teal,
-            child: _routine.isEmpty
-                ? _empty('No routines yet',
-                    'Routine habits you build appear here, grouped by Core.')
-                : _Grid(
-                    minTileWidth: 300,
-                    children: _routine.map(_coreListCard).toList()),
-          );
+    title: 'ROUTINE',
+    meta: 'DAILY ORBIT · THE SEA OF GREEN',
+    accent: MM.teal,
+    child:
+        _routine.isEmpty
+            ? _empty(
+              'No routines yet',
+              'Routine habits you build appear here, grouped by Core.',
+            )
+            : _Grid(
+              minTileWidth: 300,
+              children: _routine.map(_coreListCard).toList(),
+            ),
+  );
 
   Widget get _nonRoutineSection => WebSection(
-            title: 'NON-ROUTINE',
-            meta: 'IDENTITY HABITS → TROPHY ROOM',
-            accent: MM.yellow,
-            child: _nonRoutine.isEmpty
-                ? _empty('No non-routine habits',
-                    'Identity habits graduate to the Trophy Room when formed.')
-                : _Grid(
-                    minTileWidth: 300,
-                    children: _nonRoutine.map(_coreListCard).toList()),
-          );
+    title: 'NON-ROUTINE',
+    meta: 'IDENTITY HABITS → TROPHY ROOM',
+    accent: MM.yellow,
+    child:
+        _nonRoutine.isEmpty
+            ? _empty(
+              'No non-routine habits',
+              'Identity habits graduate to the Trophy Room when formed.',
+            )
+            : _Grid(
+              minTileWidth: 300,
+              children: _nonRoutine.map(_coreListCard).toList(),
+            ),
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1118,7 +1294,7 @@ class _WebProfileState extends State<WebProfile> {
     'career',
     'relationships',
     'physical',
-    'emotional'
+    'emotional',
   ];
 
   @override
@@ -1194,12 +1370,13 @@ class _WebProfileState extends State<WebProfile> {
       loading: _loading,
       error: _error,
       onRetry: _load,
-      child: LayoutBuilder(builder: (context, c) {
-        final wide = c.maxWidth >= 820;
-        final identity = _identityCard(name, p, planetName);
-        final balance = _balanceCard();
-        return wide
-            ? Row(
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final wide = c.maxWidth >= 820;
+          final identity = _identityCard(name, p, planetName);
+          final balance = _balanceCard();
+          return wide
+              ? Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(flex: 10, child: identity),
@@ -1207,12 +1384,11 @@ class _WebProfileState extends State<WebProfile> {
                   Expanded(flex: 12, child: balance),
                 ],
               )
-            : Column(children: [
-                identity,
-                const SizedBox(height: 24),
-                balance,
-              ]);
-      }),
+              : Column(
+                children: [identity, const SizedBox(height: 24), balance],
+              );
+        },
+      ),
     );
   }
 
@@ -1236,46 +1412,58 @@ class _WebProfileState extends State<WebProfile> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                      color: MM.violet.withOpacity(0.5),
-                      blurRadius: 26,
-                      spreadRadius: -4),
+                    color: MM.violet.withOpacity(0.5),
+                    blurRadius: 26,
+                    spreadRadius: -4,
+                  ),
                 ],
               ),
               alignment: Alignment.center,
-              child: Text(name[0].toUpperCase(),
-                  style: GoogleFonts.orbitron(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white)),
+              child: Text(
+                name[0].toUpperCase(),
+                style: GoogleFonts.orbitron(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 14),
-          Text(name,
-              textAlign: TextAlign.center,
-              style: MM.display(size: 20, color: Colors.white)),
+          Text(
+            name,
+            textAlign: TextAlign.center,
+            style: MM.display(size: 20, color: Colors.white),
+          ),
           const SizedBox(height: 6),
           Text(
-              '${(p?.level ?? 'cadet').toUpperCase()} · ${planetName.toUpperCase()} ORBIT',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.orbitron(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.4,
-                  color: MM.yellow)),
+            '${(p?.level ?? 'cadet').toUpperCase()} · ${planetName.toUpperCase()} ORBIT',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.orbitron(
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.4,
+              color: MM.yellow,
+            ),
+          ),
           const SizedBox(height: 22),
           Row(
             children: [
               Expanded(
-                  child: WebStat(
-                      label: 'Streak',
-                      value: '${p?.streak ?? 0}d',
-                      accent: MM.red)),
+                child: WebStat(
+                  label: 'Streak',
+                  value: '${p?.streak ?? 0}d',
+                  accent: MM.red,
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
-                  child: WebStat(
-                      label: 'Score',
-                      value: _fmt(p?.momentumScore ?? 0),
-                      accent: MM.yellow)),
+                child: WebStat(
+                  label: 'Score',
+                  value: _fmt(p?.momentumScore ?? 0),
+                  accent: MM.yellow,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -1292,65 +1480,76 @@ class _WebProfileState extends State<WebProfile> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('CORE BALANCE',
-              style: GoogleFonts.orbitron(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.6,
-                  color: Colors.white)),
+          Text(
+            'CORE BALANCE',
+            style: GoogleFonts.orbitron(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.6,
+              color: Colors.white,
+            ),
+          ),
           const SizedBox(height: 6),
           Text(
-              'Your momentum across the 5 Cores (last 7 check-ins)'
-              '${_balancePct == null ? '' : ' · Balance $_balancePct%'}',
-              style: MM.body(size: 12, color: Colors.white.withOpacity(0.55))),
+            'Your momentum across the 5 Cores (last 7 check-ins)'
+            '${_balancePct == null ? '' : ' · Balance $_balancePct%'}',
+            style: MM.body(size: 12, color: Colors.white.withOpacity(0.55)),
+          ),
           const SizedBox(height: 16),
-          LayoutBuilder(builder: (context, c) {
-            final radar = SizedBox(
-              width: 240,
-              height: 240,
-              child: CustomPaint(
-                painter: _RadarPainter(_radar, _radarCores),
-              ),
-            );
-            final bars = Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (int i = 0; i < _radarCores.length; i++)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Row(
-                      children: [
-                        SizedBox(
+          LayoutBuilder(
+            builder: (context, c) {
+              final radar = SizedBox(
+                width: 240,
+                height: 240,
+                child: CustomPaint(painter: _RadarPainter(_radar, _radarCores)),
+              );
+              final bars = Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (int i = 0; i < _radarCores.length; i++)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        children: [
+                          SizedBox(
                             width: 22,
-                            child: Text(kCoreIcon[_radarCores[i]] ?? '•',
-                                style: const TextStyle(fontSize: 15))),
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(3),
-                            child: LinearProgressIndicator(
-                              value: _radar[i] / 100,
-                              minHeight: 6,
-                              backgroundColor: Colors.white.withOpacity(0.1),
-                              valueColor: AlwaysStoppedAnimation(
-                                  coreHex(_radarCores[i])),
+                            child: Text(
+                              kCoreIcon[_radarCores[i]] ?? '•',
+                              style: const TextStyle(fontSize: 15),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        SizedBox(
-                          width: 26,
-                          child: Text('${_radar[i]}',
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(3),
+                              child: LinearProgressIndicator(
+                                value: _radar[i] / 100,
+                                minHeight: 6,
+                                backgroundColor: Colors.white.withOpacity(0.1),
+                                valueColor: AlwaysStoppedAnimation(
+                                  coreHex(_radarCores[i]),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            width: 26,
+                            child: Text(
+                              '${_radar[i]}',
                               textAlign: TextAlign.right,
                               style: MM.display(
-                                  size: 12, color: coreHex(_radarCores[i]))),
-                        ),
-                      ],
+                                size: 12,
+                                color: coreHex(_radarCores[i]),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-              ],
-            );
-            return c.maxWidth >= 520
-                ? Row(
+                ],
+              );
+              return c.maxWidth >= 520
+                  ? Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       radar,
@@ -1358,12 +1557,15 @@ class _WebProfileState extends State<WebProfile> {
                       Expanded(child: bars),
                     ],
                   )
-                : Column(children: [
-                    Center(child: radar),
-                    const SizedBox(height: 20),
-                    bars,
-                  ]);
-          }),
+                  : Column(
+                    children: [
+                      Center(child: radar),
+                      const SizedBox(height: 20),
+                      bars,
+                    ],
+                  );
+            },
+          ),
         ],
       ),
     );
@@ -1394,10 +1596,11 @@ class _RadarPainter extends CustomPainter {
       return Offset(cx + r * f * math.cos(a), cy + r * f * math.sin(a));
     }
 
-    final grid = Paint()
-      ..style = PaintingStyle.stroke
-      ..color = Colors.white.withOpacity(0.1)
-      ..strokeWidth = 1;
+    final grid =
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..color = Colors.white.withOpacity(0.1)
+          ..strokeWidth = 1;
     for (final f in [0.25, 0.5, 0.75, 1.0]) {
       final path = Path();
       for (int i = 0; i < 5; i++) {
@@ -1426,16 +1629,18 @@ class _RadarPainter extends CustomPainter {
     }
     dataPath.close();
     canvas.drawPath(
-        dataPath,
-        Paint()
-          ..style = PaintingStyle.fill
-          ..color = MM.blue.withOpacity(0.25));
+      dataPath,
+      Paint()
+        ..style = PaintingStyle.fill
+        ..color = MM.blue.withOpacity(0.25),
+    );
     canvas.drawPath(
-        dataPath,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..color = MM.blue
-          ..strokeWidth = 2);
+      dataPath,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..color = MM.blue
+        ..strokeWidth = 2,
+    );
     for (int i = 0; i < 5; i++) {
       final o = axis(i, (scores[i] / 100).clamp(0.0, 1.0));
       canvas.drawCircle(o, 4, Paint()..color = coreHex(cores[i]));
@@ -1443,21 +1648,26 @@ class _RadarPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _RadarPainter old) =>
-      old.scores != scores;
+  bool shouldRepaint(covariant _RadarPainter old) => old.scores != scores;
 }
 
 // ═══════════════════════════════════════════════════════════════
 // CANTINA — real streamed leaderboard + tribes + ideas well
 // ═══════════════════════════════════════════════════════════════
 class _WebCrew {
-  const _WebCrew(this.id, this.name, this.score, this.streak, this.hex,
-      {this.me = false,
-      this.isReal = false,
-      this.uid,
-      this.cores = const [],
-      this.longestStreak = 0,
-      this.formedHabitsCount = 0});
+  const _WebCrew(
+    this.id,
+    this.name,
+    this.score,
+    this.streak,
+    this.hex, {
+    this.me = false,
+    this.isReal = false,
+    this.uid,
+    this.cores = const [],
+    this.longestStreak = 0,
+    this.formedHabitsCount = 0,
+  });
   final String id;
   final String name;
   final int score;
@@ -1479,38 +1689,70 @@ class _WebCrew {
 }
 
 const _webDemoCrew = <_WebCrew>[
-  _WebCrew('maya', 'Maya R.', 12420, 84, MM.magenta,
-      cores: ['mindset', 'career', 'relationships', 'physical', 'emotional'],
-      longestStreak: 91,
-      formedHabitsCount: 5),
-  _WebCrew('devon', 'Devon T.', 10115, 62, MM.blue,
-      cores: ['mindset', 'career', 'physical', 'emotional'],
-      longestStreak: 62,
-      formedHabitsCount: 4),
-  _WebCrew('me', 'You', 8420, 47, MM.yellow,
-      me: true,
-      cores: ['mindset', 'career', 'physical'],
-      longestStreak: 47,
-      formedHabitsCount: 3),
-  _WebCrew('aisha', 'Aisha K.', 7980, 41, MM.teal,
-      cores: ['mindset', 'career', 'physical'],
-      longestStreak: 41,
-      formedHabitsCount: 3),
-  _WebCrew('leo', 'Leo M.', 3210, 12, MM.violet,
-      cores: ['mindset', 'physical'], longestStreak: 15, formedHabitsCount: 1),
+  _WebCrew(
+    'maya',
+    'Maya R.',
+    12420,
+    84,
+    MM.magenta,
+    cores: ['mindset', 'career', 'relationships', 'physical', 'emotional'],
+    longestStreak: 91,
+    formedHabitsCount: 5,
+  ),
+  _WebCrew(
+    'devon',
+    'Devon T.',
+    10115,
+    62,
+    MM.blue,
+    cores: ['mindset', 'career', 'physical', 'emotional'],
+    longestStreak: 62,
+    formedHabitsCount: 4,
+  ),
+  _WebCrew(
+    'me',
+    'You',
+    8420,
+    47,
+    MM.yellow,
+    me: true,
+    cores: ['mindset', 'career', 'physical'],
+    longestStreak: 47,
+    formedHabitsCount: 3,
+  ),
+  _WebCrew(
+    'aisha',
+    'Aisha K.',
+    7980,
+    41,
+    MM.teal,
+    cores: ['mindset', 'career', 'physical'],
+    longestStreak: 41,
+    formedHabitsCount: 3,
+  ),
+  _WebCrew(
+    'leo',
+    'Leo M.',
+    3210,
+    12,
+    MM.violet,
+    cores: ['mindset', 'physical'],
+    longestStreak: 15,
+    formedHabitsCount: 1,
+  ),
 ];
 
 /// Pillar-3 composite leaderboard scores — same shared formula as mobile,
 /// see `compositeLeaderboardScores` (services/leaderboard_score.dart).
 List<({_WebCrew member, double score})> _webCompositeScores(
-        List<_WebCrew> members) =>
-    compositeLeaderboardScores(
-      members,
-      score: (m) => m.score,
-      streak: (m) => m.streak,
-      longestStreak: (m) => m.longestStreak,
-      formedHabits: (m) => m.formedHabitsCount,
-    );
+  List<_WebCrew> members,
+) => compositeLeaderboardScores(
+  members,
+  score: (m) => m.score,
+  streak: (m) => m.streak,
+  longestStreak: (m) => m.longestStreak,
+  formedHabits: (m) => m.formedHabitsCount,
+);
 
 class WebCantina extends StatefulWidget {
   const WebCantina({super.key, required this.onNav});
@@ -1531,7 +1773,7 @@ class _WebCantinaState extends State<WebCantina> {
     MM.teal,
     MM.violet,
     MM.yellow,
-    MM.red
+    MM.red,
   ];
 
   // Real Space Tribes (Pillar 2), same service the mobile Tribes tab uses.
@@ -1609,7 +1851,9 @@ class _WebCantinaState extends State<WebCantina> {
     setState(() => _apBusy = true);
     try {
       await _apSvc.logCheckIn(
-          uid: uid, at: DateTime.now().millisecondsSinceEpoch);
+        uid: uid,
+        at: DateTime.now().millisecondsSinceEpoch,
+      );
       await _loadPartner();
       if (mounted) _toast('Checked in with ${p.partnerName} ✅');
     } catch (_) {
@@ -1625,26 +1869,31 @@ class _WebCantinaState extends State<WebCantina> {
     if (uid.isEmpty || p == null) return;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: MM.navy,
-        title: Text('End partnership?',
-            style: MM.body(color: Colors.white, size: 15)),
-        content: Text(
-          'You can pair with a new partner right after.',
-          style: MM.body(color: Colors.white.withOpacity(0.7), size: 12),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Keep',
-                style: MM.body(color: Colors.white.withOpacity(0.6))),
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: MM.navy,
+            title: Text(
+              'End partnership?',
+              style: MM.body(color: Colors.white, size: 15),
+            ),
+            content: Text(
+              'You can pair with a new partner right after.',
+              style: MM.body(color: Colors.white.withOpacity(0.7), size: 12),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(
+                  'Keep',
+                  style: MM.body(color: Colors.white.withOpacity(0.6)),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text('End', style: MM.body(color: MM.teal)),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text('End', style: MM.body(color: MM.teal)),
-          ),
-        ],
-      ),
     );
     if (ok != true) return;
     setState(() => _apBusy = true);
@@ -1683,7 +1932,8 @@ class _WebCantinaState extends State<WebCantina> {
   void _toast(String m) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(m), duration: const Duration(seconds: 2)));
+      SnackBar(content: Text(m), duration: const Duration(seconds: 2)),
+    );
   }
 
   Future<void> _joinTribe(Tribe t) async {
@@ -1722,85 +1972,101 @@ class _WebCantinaState extends State<WebCantina> {
   }
 
   final _ideas = const [
-    ('Habit-stack journaling right after coffee — the cue is already there.',
-        'Nova_Rey', 42),
-    ('I moved my check-in to the evening and my streak finally stuck.',
-        'LunaVdB', 31),
-    ('Treat the mystery box like a real reward — no peeking early!',
-        'AstroKai', 27),
+    (
+      'Habit-stack journaling right after coffee — the cue is already there.',
+      'Nova_Rey',
+      42,
+    ),
+    (
+      'I moved my check-in to the evening and my streak finally stuck.',
+      'LunaVdB',
+      31,
+    ),
+    (
+      'Treat the mystery box like a real reward — no peeking early!',
+      'AstroKai',
+      27,
+    ),
   ];
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(40, 4, 40, 56),
-      child: LayoutBuilder(builder: (context, c) {
-        final wide = c.maxWidth >= 900;
-        final left = Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            WebSection(
-              title: 'LEADERBOARD',
-              meta: 'THIS WEEK · MOMENTUM',
-              accent: MM.violet,
-              child: _leaderboard(),
-            ),
-            const SizedBox(height: 30),
-            WebSection(
-              title: 'IDEAS WELL',
-              meta: 'COMMUNITY TIPS',
-              accent: MM.teal,
-              child: Column(
-                children: _ideas.map((i) => _ideaCard(i.$1, i.$2, i.$3)).toList(),
-              ),
-            ),
-          ],
-        );
-        final tribesList = _showDiscover ? _discoverTribes : _myTribes;
-        final tribesSection = WebSection(
-          title: _showDiscover ? 'DISCOVER TRIBES' : 'YOUR TRIBES',
-          meta: _showDiscover
-              ? 'JOIN A CREW'
-              : 'SPACE TRIBES · ${_myTribes.length}',
-          accent: MM.magenta,
-          child: Column(
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final wide = c.maxWidth >= 900;
+          final left = Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (_tribesLoading)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 32),
-                  child: Center(
-                      child: CircularProgressIndicator(color: MM.magenta)),
-                )
-              else if (tribesList.isEmpty)
-                _empty(
+              WebSection(
+                title: 'LEADERBOARD',
+                meta: 'THIS WEEK · MOMENTUM',
+                accent: MM.violet,
+                child: _leaderboard(),
+              ),
+              const SizedBox(height: 30),
+              WebSection(
+                title: 'IDEAS WELL',
+                meta: 'COMMUNITY TIPS',
+                accent: MM.teal,
+                child: Column(
+                  children:
+                      _ideas.map((i) => _ideaCard(i.$1, i.$2, i.$3)).toList(),
+                ),
+              ),
+            ],
+          );
+          final tribesList = _showDiscover ? _discoverTribes : _myTribes;
+          final tribesSection = WebSection(
+            title: _showDiscover ? 'DISCOVER TRIBES' : 'YOUR TRIBES',
+            meta:
+                _showDiscover
+                    ? 'JOIN A CREW'
+                    : 'SPACE TRIBES · ${_myTribes.length}',
+            accent: MM.magenta,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_tribesLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 32),
+                    child: Center(
+                      child: CircularProgressIndicator(color: MM.magenta),
+                    ),
+                  )
+                else if (tribesList.isEmpty)
+                  _empty(
                     _showDiscover ? 'No tribes yet' : 'No tribes joined',
                     _showDiscover
                         ? 'Check back soon.'
-                        : 'Tap “Find a tribe” to join your first crew.')
-              else
-                ...tribesList.map(_tribeCard),
-              const SizedBox(height: 4),
-              _ghost(_showDiscover ? '← Back to my tribes' : '+ Find a tribe',
-                  () => setState(() => _showDiscover = !_showDiscover)),
-            ],
-          ),
-        );
-        final right = Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            WebSection(
-              title: 'ACCOUNTABILITY PARTNER',
-              meta: 'ONE ACTIVE · DAILY OR WEEKLY',
-              accent: MM.teal,
-              child: _partnerSection(),
+                        : 'Tap “Find a tribe” to join your first crew.',
+                  )
+                else
+                  ...tribesList.map(_tribeCard),
+                const SizedBox(height: 4),
+                _ghost(
+                  _showDiscover ? '← Back to my tribes' : '+ Find a tribe',
+                  () => setState(() => _showDiscover = !_showDiscover),
+                ),
+              ],
             ),
-            const SizedBox(height: 30),
-            tribesSection,
-          ],
-        );
-        return wide
-            ? Row(
+          );
+          final right = Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              WebSection(
+                title: 'ACCOUNTABILITY PARTNER',
+                meta: 'ONE ACTIVE · DAILY OR WEEKLY',
+                accent: MM.teal,
+                child: _partnerSection(),
+              ),
+              const SizedBox(height: 30),
+              tribesSection,
+            ],
+          );
+          return wide
+              ? Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(flex: 14, child: left),
@@ -1808,8 +2074,9 @@ class _WebCantinaState extends State<WebCantina> {
                   Expanded(flex: 10, child: right),
                 ],
               )
-            : Column(children: [left, const SizedBox(height: 30), right]);
-      }),
+              : Column(children: [left, const SizedBox(height: 30), right]);
+        },
+      ),
     );
   }
 
@@ -1825,17 +2092,23 @@ class _WebCantinaState extends State<WebCantina> {
     return StreamBuilder<List<CantinaUser>>(
       stream: _users,
       builder: (context, snap) {
-        final real = (snap.data ?? const <CantinaUser>[]).map((u) {
-          final hex = _palette[u.uid.hashCode.abs() % _palette.length];
-          return _WebCrew(u.uid, u.uid == _myUid ? 'You' : u.name, u.score,
-              u.streak, hex,
-              me: u.uid == _myUid,
-              isReal: true,
-              uid: u.uid,
-              cores: u.activeCores,
-              longestStreak: u.longestStreak,
-              formedHabitsCount: u.formedHabitsCount);
-        }).toList();
+        final real =
+            (snap.data ?? const <CantinaUser>[]).map((u) {
+              final hex = _palette[u.uid.hashCode.abs() % _palette.length];
+              return _WebCrew(
+                u.uid,
+                u.uid == _myUid ? 'You' : u.name,
+                u.score,
+                u.streak,
+                hex,
+                me: u.uid == _myUid,
+                isReal: true,
+                uid: u.uid,
+                cores: u.activeCores,
+                longestStreak: u.longestStreak,
+                formedHabitsCount: u.formedHabitsCount,
+              );
+            }).toList();
         final hasMe = real.any((m) => m.me);
         final demo = _webDemoCrew.where((c) => !c.me || !hasMe).toList();
         final all = [...real, ...demo];
@@ -1847,9 +2120,12 @@ class _WebCantinaState extends State<WebCantina> {
         final scored = _webCompositeScores(all)
           ..sort((a, b) => b.score.compareTo(a.score));
 
-        final visible = _lbFilter == 'global'
-            ? scored
-            : scored.where((s) => s.member.cores.contains(_lbFilter)).toList();
+        final visible =
+            _lbFilter == 'global'
+                ? scored
+                : scored
+                    .where((s) => s.member.cores.contains(_lbFilter))
+                    .toList();
 
         return StreamBuilder<Map<String, CantinaInboxEntry>>(
           stream: _inbox,
@@ -1870,8 +2146,12 @@ class _WebCantinaState extends State<WebCantina> {
                   child: Column(
                     children: [
                       for (var i = 0; i < visible.length; i++)
-                        _row(i + 1, visible.length, visible[i].member,
-                            unreadFor(visible[i].member)),
+                        _row(
+                          i + 1,
+                          visible.length,
+                          visible[i].member,
+                          unreadFor(visible[i].member),
+                        ),
                     ],
                   ),
                 ),
@@ -1900,15 +2180,19 @@ class _WebCantinaState extends State<WebCantina> {
               color:
                   on ? color.withOpacity(0.18) : Colors.white.withOpacity(0.05),
               border: Border.all(
-                  color:
-                      on ? color.withOpacity(0.6) : Colors.white.withOpacity(0.1)),
+                color:
+                    on ? color.withOpacity(0.6) : Colors.white.withOpacity(0.1),
+              ),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: Text(label.toUpperCase(),
-                style: MM.display(
-                    size: 9,
-                    color: on ? color : Colors.white.withOpacity(0.5),
-                    letterSpacing: 0.4)),
+            child: Text(
+              label.toUpperCase(),
+              style: MM.display(
+                size: 9,
+                color: on ? color : Colors.white.withOpacity(0.5),
+                letterSpacing: 0.4,
+              ),
+            ),
           ),
         ),
       );
@@ -1916,28 +2200,33 @@ class _WebCantinaState extends State<WebCantina> {
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: Row(children: [
-        chip('global', 'Global', MM.white),
-        for (final entry in _lbCoreLabels.entries)
-          chip(entry.key, entry.value, coreHex(entry.key)),
-        const SizedBox(width: 4),
-        Opacity(
-          opacity: 0.4,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.06),
-              border: Border.all(color: Colors.white.withOpacity(0.12)),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text('TRIBE · FRIENDS SOON',
+      child: Row(
+        children: [
+          chip('global', 'Global', MM.white),
+          for (final entry in _lbCoreLabels.entries)
+            chip(entry.key, entry.value, coreHex(entry.key)),
+          const SizedBox(width: 4),
+          Opacity(
+            opacity: 0.4,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.06),
+                border: Border.all(color: Colors.white.withOpacity(0.12)),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                'TRIBE · FRIENDS SOON',
                 style: TextStyle(
-                    fontSize: 11,
-                    letterSpacing: 0.04 * 11,
-                    color: MM.white)),
+                  fontSize: 11,
+                  letterSpacing: 0.04 * 11,
+                  color: MM.white,
+                ),
+              ),
+            ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 
@@ -1947,33 +2236,41 @@ class _WebCantinaState extends State<WebCantina> {
       total >= 4 && rank > total - (total ~/ 5).clamp(1, total);
 
   Widget _row(int rank, int total, _WebCrew c, int unread) {
-    final rankColor = rank <= 3
-        ? [MM.yellow, const Color(0xFFCFD8E6), const Color(0xFFE8A35C)][rank - 1]
-        : Colors.white.withOpacity(0.5);
+    final rankColor =
+        rank <= 3
+            ? [
+              MM.yellow,
+              const Color(0xFFCFD8E6),
+              const Color(0xFFE8A35C),
+            ][rank - 1]
+            : Colors.white.withOpacity(0.5);
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
-        onTap: () => widget.onNav(c.me
-            ? 'profile'
-            : (c.isReal ? 'crew:dm:${c.uid}' : 'crew:${c.id}')),
+        onTap:
+            () => widget.onNav(
+              c.me
+                  ? 'profile'
+                  : (c.isReal ? 'crew:dm:${c.uid}' : 'crew:${c.id}'),
+            ),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             color: c.me ? MM.violet.withOpacity(0.13) : Colors.transparent,
-            border: c.me
-                ? Border.all(color: MM.violet.withOpacity(0.4))
-                : null,
+            border: c.me ? Border.all(color: MM.violet.withOpacity(0.4)) : null,
           ),
           child: Row(
             children: [
               SizedBox(
                 width: 26,
-                child: Text('$rank',
-                    textAlign: TextAlign.center,
-                    style: MM.display(size: 16, color: rankColor)),
+                child: Text(
+                  '$rank',
+                  textAlign: TextAlign.center,
+                  style: MM.display(size: 16, color: rankColor),
+                ),
               ),
               const SizedBox(width: 12),
               Container(
@@ -1981,19 +2278,24 @@ class _WebCantinaState extends State<WebCantina> {
                 height: 34,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(9),
-                  gradient: c.me
-                      ? const RadialGradient(
-                          center: Alignment(-0.4, -0.4),
-                          colors: [Color(0xFFB58AFF), Color(0xFF6B3DF5)])
-                      : null,
+                  gradient:
+                      c.me
+                          ? const RadialGradient(
+                            center: Alignment(-0.4, -0.4),
+                            colors: [Color(0xFFB58AFF), Color(0xFF6B3DF5)],
+                          )
+                          : null,
                   color: c.me ? null : MM.navy.withOpacity(0.7),
                 ),
                 alignment: Alignment.center,
-                child: Text(c.name.isNotEmpty ? c.name[0].toUpperCase() : '?',
-                    style: GoogleFonts.orbitron(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white)),
+                child: Text(
+                  c.name.isNotEmpty ? c.name[0].toUpperCase() : '?',
+                  style: GoogleFonts.orbitron(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -2004,63 +2306,84 @@ class _WebCantinaState extends State<WebCantina> {
                     Row(
                       children: [
                         Flexible(
-                          child: Text(c.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: MM.body(
-                                  size: 13.5,
-                                  color: Colors.white,
-                                  weight:
-                                      c.me ? FontWeight.w700 : FontWeight.w500)),
+                          child: Text(
+                            c.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: MM.body(
+                              size: 13.5,
+                              color: Colors.white,
+                              weight: c.me ? FontWeight.w700 : FontWeight.w500,
+                            ),
+                          ),
                         ),
                         if (unread > 0) ...[
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 1),
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
                             decoration: BoxDecoration(
                               color: MM.red,
                               borderRadius: BorderRadius.circular(999),
                             ),
-                            child: Text('$unread',
-                                style: MM.mono(size: 9, color: Colors.white)),
+                            child: Text(
+                              '$unread',
+                              style: MM.mono(size: 9, color: Colors.white),
+                            ),
                           ),
                         ],
                         if (_isRisingTier(rank, total)) ...[
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: MM.teal.withOpacity(0.14),
                               borderRadius: BorderRadius.circular(999),
                             ),
                             child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.trending_up,
-                                      size: 10, color: MM.teal),
-                                  const SizedBox(width: 3),
-                                  Text('RISING',
-                                      style: MM.display(
-                                          size: 8,
-                                          color: MM.teal,
-                                          letterSpacing: 0.3)),
-                                ]),
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.trending_up,
+                                  size: 10,
+                                  color: MM.teal,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  'RISING',
+                                  style: MM.display(
+                                    size: 8,
+                                    color: MM.teal,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ],
                     ),
                     const SizedBox(height: 2),
-                    Text('🔥 ${c.streak}-day streak',
-                        style: MM.body(
-                            size: 10.5, color: Colors.white.withOpacity(0.5))),
+                    Text(
+                      '🔥 ${c.streak}-day streak',
+                      style: MM.body(
+                        size: 10.5,
+                        color: Colors.white.withOpacity(0.5),
+                      ),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(width: 10),
-              Text(_fmt(c.score),
-                  style: MM.display(size: 14, color: MM.yellow)),
+              Text(
+                _fmt(c.score),
+                style: MM.display(size: 14, color: MM.yellow),
+              ),
             ],
           ),
         ),
@@ -2081,16 +2404,20 @@ class _WebCantinaState extends State<WebCantina> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('“$txt”',
-                      style: MM.body(
-                          size: 13, color: Colors.white, height: 1.5)),
+                  Text(
+                    '“$txt”',
+                    style: MM.body(size: 13, color: Colors.white, height: 1.5),
+                  ),
                   const SizedBox(height: 8),
-                  Text('— $by',
-                      style: GoogleFonts.orbitron(
-                          fontSize: 8.5,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.2,
-                          color: Colors.white.withOpacity(0.5))),
+                  Text(
+                    '— $by',
+                    style: GoogleFonts.orbitron(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                      color: Colors.white.withOpacity(0.5),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -2136,11 +2463,16 @@ class _WebCantinaState extends State<WebCantina> {
             Text(
               'One partner keeps the momentum honest. Pick a pilot and a daily or weekly check-in cadence.',
               style: MM.body(
-                  size: 12, color: Colors.white.withOpacity(0.6), height: 1.5),
+                size: 12,
+                color: Colors.white.withOpacity(0.6),
+                height: 1.5,
+              ),
             ),
             const SizedBox(height: 14),
-            _ghost(_apBusy ? 'Pairing…' : '+ Find a partner',
-                _apBusy ? () {} : _findPartner),
+            _ghost(
+              _apBusy ? 'Pairing…' : '+ Find a partner',
+              _apBusy ? () {} : _findPartner,
+            ),
           ],
         ),
       );
@@ -2155,50 +2487,64 @@ class _WebCantinaState extends State<WebCantina> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: hex),
-              child: Center(
-                child: Text(p.partnerAvatar,
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: hex),
+                child: Center(
+                  child: Text(
+                    p.partnerAvatar,
                     style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700)),
+                      color: Colors.black,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(p.partnerName,
-                      style: MM.body(
-                          size: 15,
-                          color: Colors.white,
-                          weight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  Row(children: [
-                    _chip(p.isWeekly ? 'WEEKLY' : 'DAILY', hex),
-                    const SizedBox(width: 8),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                        '${p.nudgeCount} check-in${p.nudgeCount == 1 ? '' : 's'}',
-                        style: MM.mono(
-                            size: 11, color: Colors.white.withOpacity(0.5))),
-                  ]),
-                ],
+                      p.partnerName,
+                      style: MM.body(
+                        size: 15,
+                        color: Colors.white,
+                        weight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        _chip(p.isWeekly ? 'WEEKLY' : 'DAILY', hex),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${p.nudgeCount} check-in${p.nudgeCount == 1 ? '' : 's'}',
+                          style: MM.mono(
+                            size: 11,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ]),
+            ],
+          ),
           const SizedBox(height: 16),
           if (due)
             _ghost(
-                _apBusy
-                    ? 'Logging…'
-                    : '✓ Check in with ${p.partnerName.split(' ').first}',
-                _apBusy ? () {} : _partnerCheckIn)
+              _apBusy
+                  ? 'Logging…'
+                  : '✓ Check in with ${p.partnerName.split(' ').first}',
+              _apBusy ? () {} : _partnerCheckIn,
+            )
           else
             Container(
               width: double.infinity,
@@ -2208,9 +2554,10 @@ class _WebCantinaState extends State<WebCantina> {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.white.withOpacity(0.12)),
               ),
-              child: Text('✅ Checked in · ${p.nextDueLabel(now)}',
-                  style:
-                      MM.body(size: 12, color: Colors.white.withOpacity(0.55))),
+              child: Text(
+                '✅ Checked in · ${p.nextDueLabel(now)}',
+                style: MM.body(size: 12, color: Colors.white.withOpacity(0.55)),
+              ),
             ),
           const SizedBox(height: 6),
           Align(
@@ -2218,12 +2565,14 @@ class _WebCantinaState extends State<WebCantina> {
             child: TextButton(
               onPressed: _apBusy ? null : _endPartner,
               style: TextButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-              child: Text('End partnership',
-                  style: MM.body(size: 11, color: Colors.white.withOpacity(0.4))),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                'End partnership',
+                style: MM.body(size: 11, color: Colors.white.withOpacity(0.4)),
+              ),
             ),
           ),
         ],
@@ -2246,26 +2595,34 @@ class _WebCantinaState extends State<WebCantina> {
           children: [
             Row(
               children: [
-                Text(kCoreIcon[t.core] ?? '•',
-                    style: const TextStyle(fontSize: 20)),
+                Text(
+                  kCoreIcon[t.core] ?? '•',
+                  style: const TextStyle(fontSize: 20),
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(t.name,
-                          style: MM.body(
-                              size: 14,
-                              color: Colors.white,
-                              weight: FontWeight.w600)),
+                      Text(
+                        t.name,
+                        style: MM.body(
+                          size: 14,
+                          color: Colors.white,
+                          weight: FontWeight.w600,
+                        ),
+                      ),
                       const SizedBox(height: 2),
-                      Text('${t.memberCount} MEMBERS',
-                          style: GoogleFonts.orbitron(
-                              fontSize: 8,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.2,
-                              color: hex)),
+                      Text(
+                        '${t.memberCount} MEMBERS',
+                        style: GoogleFonts.orbitron(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                          color: hex,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -2273,11 +2630,14 @@ class _WebCantinaState extends State<WebCantina> {
               ],
             ),
             const SizedBox(height: 10),
-            Text(t.description,
-                style: MM.body(
-                    size: 11.5,
-                    color: Colors.white.withOpacity(0.6),
-                    height: 1.5)),
+            Text(
+              t.description,
+              style: MM.body(
+                size: 11.5,
+                color: Colors.white.withOpacity(0.6),
+                height: 1.5,
+              ),
+            ),
           ],
         ),
       ),
@@ -2291,29 +2651,35 @@ class _WebCantinaState extends State<WebCantina> {
       borderRadius: BorderRadius.circular(7),
       child: InkWell(
         borderRadius: BorderRadius.circular(7),
-        onTap: busy || full
-            ? null
-            : () => joined ? _leaveTribe(t) : _joinTribe(t),
+        onTap:
+            busy || full ? null : () => joined ? _leaveTribe(t) : _joinTribe(t),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(7),
             color: joined ? Colors.transparent : hex.withOpacity(0.16),
-            border: Border.all(
-                color: hex.withOpacity(joined ? 0.3 : 0.5)),
+            border: Border.all(color: hex.withOpacity(joined ? 0.3 : 0.5)),
           ),
-          child: busy
-              ? SizedBox(
-                  width: 12,
-                  height: 12,
-                  child:
-                      CircularProgressIndicator(strokeWidth: 2, color: hex))
-              : Text(full ? 'FULL' : (joined ? 'LEAVE' : 'JOIN'),
-                  style: GoogleFonts.orbitron(
+          child:
+              busy
+                  ? SizedBox(
+                    width: 12,
+                    height: 12,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: hex,
+                    ),
+                  )
+                  : Text(
+                    full ? 'FULL' : (joined ? 'LEAVE' : 'JOIN'),
+                    style: GoogleFonts.orbitron(
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1,
-                      color: joined ? Colors.white.withOpacity(0.7) : Colors.white)),
+                      color:
+                          joined ? Colors.white.withOpacity(0.7) : Colors.white,
+                    ),
+                  ),
         ),
       ),
     );
@@ -2366,56 +2732,74 @@ class _WebFindPartnerDialogState extends State<_WebFindPartnerDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('FIND A PARTNER',
-                    style: GoogleFonts.orbitron(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.4,
-                        color: Colors.white)),
+                Text(
+                  'FIND A PARTNER',
+                  style: GoogleFonts.orbitron(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.4,
+                    color: Colors.white,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('One active partner keeps you honest.',
-                    style:
-                        MM.body(size: 12, color: Colors.white.withOpacity(0.55))),
+                Text(
+                  'One active partner keeps you honest.',
+                  style: MM.body(
+                    size: 12,
+                    color: Colors.white.withOpacity(0.55),
+                  ),
+                ),
                 const SizedBox(height: 16),
-                Text('CADENCE',
-                    style: GoogleFonts.orbitron(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
-                        color: Colors.white.withOpacity(0.5))),
+                Text(
+                  'CADENCE',
+                  style: GoogleFonts.orbitron(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                ),
                 const SizedBox(height: 8),
-                Row(children: [
-                  _cadencePill('daily', 'Daily'),
-                  const SizedBox(width: 8),
-                  _cadencePill('weekly', 'Weekly'),
-                ]),
+                Row(
+                  children: [
+                    _cadencePill('daily', 'Daily'),
+                    const SizedBox(width: 8),
+                    _cadencePill('weekly', 'Weekly'),
+                  ],
+                ),
                 const SizedBox(height: 18),
-                Text('CHOOSE A PILOT',
-                    style: GoogleFonts.orbitron(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
-                        color: Colors.white.withOpacity(0.5))),
+                Text(
+                  'CHOOSE A PILOT',
+                  style: GoogleFonts.orbitron(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                ),
                 const SizedBox(height: 10),
                 ...candidates.map(_candidateRow),
                 const SizedBox(height: 14),
-                Row(children: [
-                  Expanded(
-                    child: _ghost('Cancel', () => Navigator.pop(context)),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Opacity(
-                      opacity: _selectedId == null ? 0.4 : 1,
-                      child: _ghost('Pair up →', () {
-                        if (_selectedId == null) return;
-                        final c = candidates
-                            .firstWhere((e) => e.id == _selectedId);
-                        Navigator.pop(context, _WebPartnerDraft(c, _cadence));
-                      }),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ghost('Cancel', () => Navigator.pop(context)),
                     ),
-                  ),
-                ]),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Opacity(
+                        opacity: _selectedId == null ? 0.4 : 1,
+                        child: _ghost('Pair up →', () {
+                          if (_selectedId == null) return;
+                          final c = candidates.firstWhere(
+                            (e) => e.id == _selectedId,
+                          );
+                          Navigator.pop(context, _WebPartnerDraft(c, _cadence));
+                        }),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -2437,13 +2821,20 @@ class _WebFindPartnerDialogState extends State<_WebFindPartnerDialog> {
             borderRadius: BorderRadius.circular(8),
             color: on ? MM.teal.withOpacity(0.16) : Colors.transparent,
             border: Border.all(
-                color: on ? MM.teal.withOpacity(0.6) : Colors.white.withOpacity(0.12)),
+              color:
+                  on
+                      ? MM.teal.withOpacity(0.6)
+                      : Colors.white.withOpacity(0.12),
+            ),
           ),
-          child: Text(label,
-              style: MM.body(
-                  size: 12,
-                  color: on ? Colors.white : Colors.white.withOpacity(0.6),
-                  weight: on ? FontWeight.w600 : FontWeight.w400)),
+          child: Text(
+            label,
+            style: MM.body(
+              size: 12,
+              color: on ? Colors.white : Colors.white.withOpacity(0.6),
+              weight: on ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
         ),
       ),
     );
@@ -2461,44 +2852,62 @@ class _WebFindPartnerDialogState extends State<_WebFindPartnerDialog> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            color: selected ? hex.withOpacity(0.12) : Colors.white.withOpacity(0.03),
+            color:
+                selected
+                    ? hex.withOpacity(0.12)
+                    : Colors.white.withOpacity(0.03),
             border: Border.all(
-                color: selected ? hex.withOpacity(0.6) : Colors.white.withOpacity(0.08)),
+              color:
+                  selected
+                      ? hex.withOpacity(0.6)
+                      : Colors.white.withOpacity(0.08),
+            ),
           ),
-          child: Row(children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(shape: BoxShape.circle, color: hex),
-              child: Center(
-                child: Text(c.avatar,
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: hex),
+                child: Center(
+                  child: Text(
+                    c.avatar,
                     style: const TextStyle(
-                        color: Colors.black,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700)),
+                      color: Colors.black,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(c.name,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      c.name,
                       style: MM.body(
-                          size: 14,
-                          color: Colors.white,
-                          weight: FontWeight.w600)),
-                  const SizedBox(height: 3),
-                  Text(c.blurb,
+                        size: 14,
+                        color: Colors.white,
+                        weight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      c.blurb,
                       style: MM.body(
-                          size: 11, color: Colors.white.withOpacity(0.55))),
-                ],
+                        size: 11,
+                        color: Colors.white.withOpacity(0.55),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            if (selected)
-              Icon(Icons.check_circle, size: 18, color: hex),
-          ]),
+              if (selected) Icon(Icons.check_circle, size: 18, color: hex),
+            ],
+          ),
         ),
       ),
     );
@@ -2509,29 +2918,29 @@ class _WebFindPartnerDialogState extends State<_WebFindPartnerDialog> {
 // Shared bits
 // ═══════════════════════════════════════════════════════════════
 Widget _chip(String text, Color hex) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        color: hex.withOpacity(0.1),
-        border: Border.all(color: hex.withOpacity(0.27)),
-      ),
-      child: Text(text,
-          style: MM.mono(size: 11, color: hex)),
-    );
+  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+  decoration: BoxDecoration(
+    borderRadius: BorderRadius.circular(999),
+    color: hex.withOpacity(0.1),
+    border: Border.all(color: hex.withOpacity(0.27)),
+  ),
+  child: Text(text, style: MM.mono(size: 11, color: hex)),
+);
 
 Widget _empty(String title, String sub) => WebPanel(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-      child: Column(
-        children: [
-          Text(title,
-              style: MM.display(size: 15, color: Colors.white)),
-          const SizedBox(height: 8),
-          Text(sub,
-              textAlign: TextAlign.center,
-              style: MM.body(size: 12, color: Colors.white.withOpacity(0.55))),
-        ],
+  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+  child: Column(
+    children: [
+      Text(title, style: MM.display(size: 15, color: Colors.white)),
+      const SizedBox(height: 8),
+      Text(
+        sub,
+        textAlign: TextAlign.center,
+        style: MM.body(size: 12, color: Colors.white.withOpacity(0.55)),
       ),
-    );
+    ],
+  ),
+);
 
 /// Responsive grid: fills the width with tiles at least [minTileWidth] wide.
 class _Grid extends StatelessWidget {
@@ -2541,17 +2950,18 @@ class _Grid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, c) {
-      const gap = 16.0;
-      final cols = math.max(1, (c.maxWidth / (minTileWidth + gap)).floor());
-      final tileW = (c.maxWidth - gap * (cols - 1)) / cols;
-      return Wrap(
-        spacing: gap,
-        runSpacing: gap,
-        children: children
-            .map((w) => SizedBox(width: tileW, child: w))
-            .toList(),
-      );
-    });
+    return LayoutBuilder(
+      builder: (context, c) {
+        const gap = 16.0;
+        final cols = math.max(1, (c.maxWidth / (minTileWidth + gap)).floor());
+        final tileW = (c.maxWidth - gap * (cols - 1)) / cols;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children:
+              children.map((w) => SizedBox(width: tileW, child: w)).toList(),
+        );
+      },
+    );
   }
 }
