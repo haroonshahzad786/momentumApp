@@ -70,6 +70,30 @@ void main() {
       expect(e.week, [1, 0, 1, 0, 1, 0, 0]);
     });
 
+    test('reclassification audit trail + MBM review flag are read and survive edits', () {
+      final r = GoldenHabit.fromJson({
+        'habitId': 'gh_2',
+        'habitName': 'TEST Pause',
+        'habitType': 'non_routine',
+        'mbmsNeedReview': true,
+        'reclassifiedAt': '2026-10-06',
+        'reclassifications': [
+          {'from': 'routine', 'to': 'non_routine', 'date': '2026-10-06', 'source': 'player', 'reason': 'stress'},
+          'junk',
+        ],
+      });
+      expect(r.mbmsNeedReview, isTrue);
+      expect(r.reclassifiedAt, '2026-10-06');
+      expect(r.reclassifications, hasLength(1));
+      expect(r.reclassifications.single.from, 'routine');
+      expect(r.reclassifications.single.reason, 'stress');
+      final e = r.applyEdits({'playerNotes': 'x'});
+      expect(e.mbmsNeedReview, isTrue);
+      expect(e.reclassifications.single.to, 'non_routine');
+      expect(h.reclassifications, isEmpty);
+      expect(h.mbmsNeedReview, isFalse);
+    });
+
     test('editable keys match the server allowlist (goldenHabitDetail.js)', () {
       final js = File('../../vf-bridge/functions-flutter/goldenHabitDetail.js');
       if (!js.existsSync()) {

@@ -157,6 +157,39 @@ class HabitsService {
     }
   }
 
+  /// Routine ↔ Non-Routine reclassification (§4E) via
+  /// `flutterReclassifyGoldenHabit`: switches the type, records the audit
+  /// entry, flags the MBMs for review and moves the habit's list line.
+  /// [to] is 'routine' or 'non_routine'. Throws on failure.
+  Future<void> reclassifyHabit({
+    required String userId,
+    required String habitId,
+    required String to,
+    String reason = '',
+  }) async {
+    final response = await _client.post(
+      Uri.parse('$_baseUrl/flutterReclassifyGoldenHabit'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'secret': _secret,
+        'userId': userId,
+        'habitId': habitId,
+        'to': to,
+        'source': 'player',
+        'reason': reason,
+      }),
+    );
+    final decoded = jsonDecode(response.body);
+    if (response.statusCode != 200 ||
+        decoded is! Map<String, dynamic> ||
+        decoded['ok'] != true) {
+      throw Exception(
+        'flutterReclassifyGoldenHabit failed '
+        '(${response.statusCode}): ${response.body}',
+      );
+    }
+  }
+
   /// Flags (or un-flags) a Golden Habit for refinement. The flag is data, not
   /// failure — the Co-pilot pattern-matches the reason/note to suggest a tweak.
   /// Persisted by the isolated `flutterFlagGoldenHabit` endpoint (Flutter

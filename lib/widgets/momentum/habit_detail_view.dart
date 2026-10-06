@@ -358,6 +358,132 @@ class _HabitDetailViewState extends State<HabitDetailView> {
     if (stage != null) widget.onNav('rebuild:$stage:${_h!.habitId}');
   }
 
+  /// Routine ↔ Non-Routine (§4E): the habit carries over, its MBMs are
+  /// flagged for review, scores stay, and the switch is logged.
+  Future<void> _changeType() async {
+    final h = _h!;
+    final to = h.habitType == 'non_routine' ? 'routine' : 'non_routine';
+    final toRoutine = to == 'routine';
+    final reason = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: MM.navy2,
+            title: Text(
+              toRoutine ? 'MAKE IT A ROUTINE?' : 'MAKE IT A NON-ROUTINE?',
+              style: MM.displayX(size: 12, color: MM.blue),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${toRoutine ? 'Routines happen at a set time (Morning / Afternoon / Evening).' : 'Non-routines are triggered by a situation or feeling, any time of day.'}'
+                  '\n\nYour Golden Habit and scoring history stay. It moves to your '
+                  '${toRoutine ? 'Routines' : 'Non-Routines'} list, and its MBMs are '
+                  'flagged so you can rework them for the new type.',
+                  style: MM.body(
+                    color: Colors.white.withOpacity(0.8),
+                    size: 13,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reason,
+                  maxLength: 500,
+                  style: MM.body(color: Colors.white, size: 13),
+                  decoration: InputDecoration(
+                    hintText:
+                        'Why? (optional), e.g. "only when I feel stressed"',
+                    hintStyle: MM.body(
+                      color: Colors.white.withOpacity(0.35),
+                      size: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(
+                  'Cancel',
+                  style: MM.body(color: Colors.white70, size: 13),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(
+                  'Change type',
+                  style: MM.body(color: MM.blue, size: 13),
+                ),
+              ),
+            ],
+          ),
+    );
+    final why = reason.text.trim();
+    reason.dispose();
+    if (ok != true || !mounted) return;
+    setState(() => _saving = true);
+    try {
+      await _habits.reclassifyHabit(
+        userId: _uid,
+        habitId: h.habitId,
+        to: to,
+        reason: why,
+      );
+      _toast(
+        'Now a ${toRoutine ? 'routine' : 'non-routine'} — review its MBMs when you can',
+      );
+      await _load();
+    } catch (e) {
+      _toast(
+        isNetworkError(e)
+            ? "You're offline — nothing changed"
+            : "Couldn't change the type — try again",
+        error: true,
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Widget _mbmReview(GoldenHabit h) => Container(
+    margin: const EdgeInsets.only(bottom: 10),
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: MM.yellow.withOpacity(0.08),
+      borderRadius: BorderRadius.circular(6),
+      border: Border.all(color: MM.yellow.withOpacity(0.4)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '⚠️ Review these for a ${_typeName(h.habitType)} habit',
+          style: MM.body(color: MM.yellow, size: 12, weight: FontWeight.w600),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          h.habitType == 'non_routine'
+              ? 'Non-routines work best with IF-THEN plans and emotional awareness anchors.'
+              : 'Routines work best with environment design: cues, time and place.',
+          style: MM.body(color: Colors.white.withOpacity(0.7), size: 11.5),
+        ),
+        const SizedBox(height: 8),
+        IntrinsicWidth(
+          child: MMGhostButton(
+            label: 'Review MBMs · Phase 1 Stage 2',
+            color: MM.yellow,
+            borderColor: MM.yellow.withOpacity(0.5),
+            onPressed: () => widget.onNav('rebuild:mbs:${h.habitId}'),
+          ),
+        ),
+      ],
+    ),
+  );
+
   Future<void> _flag() async {
     final h = _h!;
     final r = await showModalBottomSheet<HabitFlagResult>(
@@ -474,6 +600,7 @@ class _HabitDetailViewState extends State<HabitDetailView> {
     final side = <Widget>[
       _formation(h, progress, accent),
       _section('MOMENTUM-BOOSTING METHODS', MM.blue, [
+        if (h.mbmsNeedReview && !_editing) _mbmReview(h),
         _field(
           'MAKE IT OBVIOUS',
           'makeObvious',
@@ -507,6 +634,19 @@ class _HabitDetailViewState extends State<HabitDetailView> {
         ),
       ]),
       _captainsLog(h, core),
+      if (h.reclassifications.isNotEmpty)
+        _section('TYPE HISTORY', Colors.white70, [
+          for (final r in h.reclassifications.reversed)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                '${r.date} · ${_typeName(r.from)} → ${_typeName(r.to)}'
+                '${r.source == 'ai' ? ' · suggested by Nova' : ''}'
+                '${r.reason.isEmpty ? '' : '\n${r.reason}'}',
+                style: MM.body(color: Colors.white.withOpacity(0.75), size: 12),
+              ),
+            ),
+        ]),
     ];
 
     final body =
@@ -581,9 +721,24 @@ class _HabitDetailViewState extends State<HabitDetailView> {
             style: MM.body(color: MM.yellow.withOpacity(0.85), size: 12),
           ),
         ],
+        if (h.reclassifiedAt.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            'Reclassified on ${h.reclassifiedAt}'
+            '${h.reclassifications.isEmpty ? '' : ' (was ${_typeName(h.reclassifications.last.from)})'}'
+            ' · scoring history kept',
+            style: MM.body(color: Colors.white.withOpacity(0.55), size: 12),
+          ),
+        ],
       ],
     );
   }
+
+  static String _typeName(String t) => switch (t) {
+    'routine' => 'routine',
+    'non_routine' => 'non-routine',
+    _ => 'unclassified',
+  };
 
   Widget _formation(GoldenHabit h, FormationProgress p, Color accent) {
     final String status;
@@ -737,6 +892,15 @@ class _HabitDetailViewState extends State<HabitDetailView> {
         borderColor: accent.withOpacity(0.5),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         onPressed: _saving ? null : _startEdit,
+      ),
+      MMGhostButton(
+        label:
+            h.habitType == 'non_routine'
+                ? '⇄ Make it a routine'
+                : '⇄ Make it a non-routine',
+        color: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        onPressed: _saving ? null : _changeType,
       ),
       MMGhostButton(
         label: '🛠 Need Help / Rebuild',

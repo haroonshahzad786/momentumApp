@@ -41,6 +41,9 @@ class GoldenHabit {
     this.mbsCompleted = false,
     this.oneTimeActions = '',
     this.playerNotes = '',
+    this.mbmsNeedReview = false,
+    this.reclassifiedAt = '',
+    this.reclassifications = const [],
   });
 
   final String habitId;
@@ -93,6 +96,13 @@ class GoldenHabit {
   /// #22 Detailed Habit View — player-editable setup tasks and notes.
   final String oneTimeActions;
   final String playerNotes;
+
+  /// Routine ↔ Non-Routine reclassification (§4E): MBMs await review in
+  /// Phase 1 Stage 2; [reclassifiedAt] is the latest switch (yyyy-MM-dd);
+  /// [reclassifications] is the audit trail, oldest first.
+  final bool mbmsNeedReview;
+  final String reclassifiedAt;
+  final List<Reclassification> reclassifications;
 
   /// Field keys the Detailed Habit View may edit — the same allowlist as
   /// `flutterUpdateGoldenHabitDetail` (goldenHabitDetail.js EDITABLE).
@@ -155,6 +165,9 @@ class GoldenHabit {
     'mbsCompleted': mbsCompleted,
     'oneTimeActions': oneTimeActions,
     'playerNotes': playerNotes,
+    'mbmsNeedReview': mbmsNeedReview,
+    'reclassifiedAt': reclassifiedAt,
+    'reclassifications': [for (final r in reclassifications) r.toJson()],
   };
 
   /// This habit with [edits] (keys from [editableKeys]) applied — the local
@@ -221,6 +234,13 @@ class GoldenHabit {
       mbsCompleted: j['mbsCompleted'] == true,
       oneTimeActions: _s(j['oneTimeActions']),
       playerNotes: _s(j['playerNotes']),
+      mbmsNeedReview: j['mbmsNeedReview'] == true,
+      reclassifiedAt: _s(j['reclassifiedAt']),
+      reclassifications: [
+        if (j['reclassifications'] case final List list)
+          for (final e in list)
+            if (e is Map) Reclassification.fromJson(e.cast<String, dynamic>()),
+      ],
     );
   }
 
@@ -276,6 +296,42 @@ class GoldenHabit {
       mbsCompleted: mbsCompleted,
       oneTimeActions: oneTimeActions,
       playerNotes: playerNotes,
+      mbmsNeedReview: mbmsNeedReview,
+      reclassifiedAt: reclassifiedAt,
+      reclassifications: reclassifications,
     );
   }
+}
+
+/// One Routine ↔ Non-Routine switch in a Golden Habit's audit trail.
+class Reclassification {
+  const Reclassification({
+    required this.from,
+    required this.to,
+    required this.date,
+    this.source = 'player',
+    this.reason = '',
+  });
+
+  final String from; // routine | non_routine | unknown
+  final String to;
+  final String date; // yyyy-MM-dd
+  final String source; // player | ai
+  final String reason;
+
+  factory Reclassification.fromJson(Map<String, dynamic> j) => Reclassification(
+    from: '${j['from'] ?? ''}',
+    to: '${j['to'] ?? ''}',
+    date: '${j['date'] ?? ''}',
+    source: '${j['source'] ?? 'player'}',
+    reason: '${j['reason'] ?? ''}',
+  );
+
+  Map<String, dynamic> toJson() => {
+    'from': from,
+    'to': to,
+    'date': date,
+    'source': source,
+    'reason': reason,
+  };
 }
