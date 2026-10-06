@@ -27,9 +27,14 @@ class HhsChatView extends StatefulWidget {
     required this.onComplete,
     required this.onBack,
     this.initialDraft,
+    this.sessionId,
   });
 
   final String userId;
+
+  /// Null = the player's first-time HHS; otherwise the returning / Go Deeper
+  /// session to show (P1-2). A session already holds Nova's opening turn.
+  final String? sessionId;
 
   /// Put in the input box (not sent) when the chat opens — the player reviews
   /// it and sends it themselves.
@@ -113,9 +118,12 @@ class _HhsChatViewState extends State<HhsChatView> {
   Future<void> _boot() async {
     try {
       // Load any existing transcript; seed the agent if this is a fresh start.
-      final existing = await _chat.getLatestMessages(widget.userId);
+      final existing = await _chat.getLatestMessages(
+        widget.userId,
+        sessionId: widget.sessionId,
+      );
       var msgs = existing.data;
-      if (msgs.isEmpty) {
+      if (msgs.isEmpty && widget.sessionId == null) {
         final seeded = await _chat.launchConversation(widget.userId);
         msgs = seeded;
       }
@@ -143,17 +151,23 @@ class _HhsChatViewState extends State<HhsChatView> {
     _input.clear();
     setState(() {
       _sending = true;
-      _messages.add(ChatMessage(
-        id: 'local-${DateTime.now().microsecondsSinceEpoch}',
-        role: 'user',
-        text: text,
-        imageUrls: const [],
-        createdAt: DateTime.now(),
-      ));
+      _messages.add(
+        ChatMessage(
+          id: 'local-${DateTime.now().microsecondsSinceEpoch}',
+          role: 'user',
+          text: text,
+          imageUrls: const [],
+          createdAt: DateTime.now(),
+        ),
+      );
     });
     _scrollToEnd();
     try {
-      final reply = await _chat.sendMessage(widget.userId, text);
+      final reply = await _chat.sendMessage(
+        widget.userId,
+        text,
+        sessionId: widget.sessionId,
+      );
       if (!mounted) return;
       setState(() => _messages.addAll(reply));
       _scrollToEnd();
@@ -171,7 +185,10 @@ class _HhsChatViewState extends State<HhsChatView> {
   /// (the MP was already awarded by the agent). The first sync just seeds the
   /// baseline so resuming a conversation doesn't replay old overlays.
   Future<void> _syncOnboarding() async {
-    final result = await _onboarding.sync(widget.userId);
+    final result = await _onboarding.sync(
+      widget.userId,
+      sessionId: widget.sessionId,
+    );
     if (!mounted || !result.available) return;
     _applySync(result);
   }
@@ -182,11 +199,14 @@ class _HhsChatViewState extends State<HhsChatView> {
         _prevCompleted = result.completedCount;
         _firstSync = false;
       } else if (result.completedCount > _prevCompleted) {
-        for (var i = _prevCompleted;
-            i < result.completedCount && i < _sectionRewards.length;
-            i++) {
+        for (
+          var i = _prevCompleted;
+          i < result.completedCount && i < _sectionRewards.length;
+          i++
+        ) {
           _rewardQueue.add(
-              _QueuedReward(_sectionRewards[i], CelebrationBus.claim()));
+            _QueuedReward(_sectionRewards[i], CelebrationBus.claim()),
+          );
         }
         _prevCompleted = result.completedCount;
       }
@@ -263,9 +283,7 @@ class _HhsChatViewState extends State<HhsChatView> {
           end: Alignment.bottomCenter,
           colors: [MM.yellow.withOpacity(0.06), Colors.transparent],
         ),
-        border: Border(
-          bottom: BorderSide(color: MM.yellow.withOpacity(0.2)),
-        ),
+        border: Border(bottom: BorderSide(color: MM.yellow.withOpacity(0.2))),
       ),
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
       child: Column(
@@ -283,18 +301,25 @@ class _HhsChatViewState extends State<HhsChatView> {
                     border: Border.all(color: Colors.white.withOpacity(0.12)),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.arrow_back_ios_new,
-                      size: 13, color: Colors.white),
+                  child: const Icon(
+                    Icons.arrow_back_ios_new,
+                    size: 13,
+                    color: Colors.white,
+                  ),
                 ),
               ),
               Expanded(
                 child: Column(
                   children: [
-                    Text('STAGE 1 · HHS',
-                        style: MM.displayX(size: 9, color: MM.yellow)),
+                    Text(
+                      'STAGE 1 · HHS',
+                      style: MM.displayX(size: 9, color: MM.yellow),
+                    ),
                     const SizedBox(height: 2),
-                    Text('${_sync.completedCount}/5 · Forge your Golden Habit',
-                        style: MM.display(size: 13, color: Colors.white)),
+                    Text(
+                      '${_sync.completedCount}/5 · Forge your Golden Habit',
+                      style: MM.display(size: 13, color: Colors.white),
+                    ),
                   ],
                 ),
               ),
@@ -319,12 +344,16 @@ class _HhsChatViewState extends State<HhsChatView> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text("Couldn't reach Nova",
-                  style: MM.display(size: 15, color: Colors.white)),
+              Text(
+                "Couldn't reach Nova",
+                style: MM.display(size: 15, color: Colors.white),
+              ),
               const SizedBox(height: 8),
-              Text('Check your connection and try again.',
-                  textAlign: TextAlign.center,
-                  style: MM.body(color: Colors.white.withOpacity(0.6), size: 12)),
+              Text(
+                'Check your connection and try again.',
+                textAlign: TextAlign.center,
+                style: MM.body(color: Colors.white.withOpacity(0.6), size: 12),
+              ),
               const SizedBox(height: 14),
               MMPrimaryButton(label: 'Retry', onPressed: _boot),
             ],
@@ -367,8 +396,10 @@ class _HhsChatViewState extends State<HhsChatView> {
                 hintStyle: MM.body(color: Colors.white.withOpacity(0.4)),
                 filled: true,
                 fillColor: MM.navy.withOpacity(0.55),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 11,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(22),
                   borderSide: BorderSide(color: MM.blue.withOpacity(0.33)),
@@ -438,21 +469,25 @@ class _ChatBubble extends StatelessWidget {
             children: [
               if (hasText)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
                   decoration: BoxDecoration(
-                    gradient: isMe
-                        ? const LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0xFF3A8DFF), Color(0xFF1F5FB8)],
-                          )
-                        : null,
+                    gradient:
+                        isMe
+                            ? const LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Color(0xFF3A8DFF), Color(0xFF1F5FB8)],
+                            )
+                            : null,
                     color: isMe ? null : MM.navy.withOpacity(0.7),
                     border: Border.all(
-                      color: isMe
-                          ? const Color(0xFF4D9BFF).withOpacity(0.5)
-                          : MM.violet.withOpacity(0.3),
+                      color:
+                          isMe
+                              ? const Color(0xFF4D9BFF).withOpacity(0.5)
+                              : MM.violet.withOpacity(0.3),
                     ),
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(14),
@@ -461,9 +496,10 @@ class _ChatBubble extends StatelessWidget {
                       bottomRight: Radius.circular(isMe ? 4 : 14),
                     ),
                   ),
-                  child: Text(message.text,
-                      style:
-                          MM.body(color: Colors.white, size: 13, height: 1.45)),
+                  child: Text(
+                    message.text,
+                    style: MM.body(color: Colors.white, size: 13, height: 1.45),
+                  ),
                 ),
               for (final url in message.imageUrls)
                 Padding(
@@ -502,8 +538,10 @@ class _TypingBubble extends StatelessWidget {
             border: Border.all(color: MM.violet.withOpacity(0.3)),
             borderRadius: BorderRadius.circular(14),
           ),
-          child: Text('Nova is typing…',
-              style: MM.body(color: Colors.white.withOpacity(0.6), size: 12)),
+          child: Text(
+            'Nova is typing…',
+            style: MM.body(color: Colors.white.withOpacity(0.6), size: 12),
+          ),
         ),
       ),
     );
@@ -535,12 +573,16 @@ class _RewardOverlay extends StatelessWidget {
                     children: [
                       Text(reward.emoji, style: const TextStyle(fontSize: 56)),
                       const SizedBox(height: 10),
-                      Text('ACHIEVEMENT UNLOCKED',
-                          style: MM.displayX(size: 10, color: reward.color)),
+                      Text(
+                        'ACHIEVEMENT UNLOCKED',
+                        style: MM.displayX(size: 10, color: reward.color),
+                      ),
                       const SizedBox(height: 6),
-                      Text(reward.label,
-                          textAlign: TextAlign.center,
-                          style: MM.display(size: 22, color: Colors.white)),
+                      Text(
+                        reward.label,
+                        textAlign: TextAlign.center,
+                        style: MM.display(size: 22, color: Colors.white),
+                      ),
                       const SizedBox(height: 10),
                       // The MP figure is the payoff — pop it in.
                       PointsPopBadge(
@@ -549,9 +591,13 @@ class _RewardOverlay extends StatelessWidget {
                         delay: const Duration(milliseconds: 120),
                       ),
                       const SizedBox(height: 18),
-                      Text('Tap to continue',
-                          style: MM.body(
-                              color: Colors.white.withOpacity(0.5), size: 11)),
+                      Text(
+                        'Tap to continue',
+                        style: MM.body(
+                          color: Colors.white.withOpacity(0.5),
+                          size: 11,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -583,12 +629,18 @@ class _ForgeConfirmOverlay extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: RichText(
-        text: TextSpan(children: [
-          TextSpan(text: '$label  ', style: MM.displayX(size: 9, color: color)),
-          TextSpan(
+        text: TextSpan(
+          children: [
+            TextSpan(
+              text: '$label  ',
+              style: MM.displayX(size: 9, color: color),
+            ),
+            TextSpan(
               text: value,
-              style: MM.body(color: Colors.white.withOpacity(0.85), size: 12)),
-        ]),
+              style: MM.body(color: Colors.white.withOpacity(0.85), size: 12),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -607,8 +659,10 @@ class _ForgeConfirmOverlay extends StatelessWidget {
                 children: [
                   const Text('✨', style: TextStyle(fontSize: 48)),
                   const SizedBox(height: 6),
-                  Text('GOLDEN HABIT FORGED',
-                      style: MM.displayX(size: 11, color: MM.yellow)),
+                  Text(
+                    'GOLDEN HABIT FORGED',
+                    style: MM.displayX(size: 11, color: MM.yellow),
+                  ),
                   const SizedBox(height: 12),
                   if (fields != null)
                     GlassPanel(
@@ -619,7 +673,7 @@ class _ForgeConfirmOverlay extends StatelessWidget {
                           end: Alignment.bottomRight,
                           colors: [
                             MM.teal.withOpacity(0.13),
-                            Colors.transparent
+                            Colors.transparent,
                           ],
                         ),
                       ),
@@ -628,17 +682,20 @@ class _ForgeConfirmOverlay extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                              fields!.habitName.isEmpty
-                                  ? 'Your Golden Habit'
-                                  : fields!.habitName,
-                              style:
-                                  MM.display(size: 17, color: Colors.white)),
+                            fields!.habitName.isEmpty
+                                ? 'Your Golden Habit'
+                                : fields!.habitName,
+                            style: MM.display(size: 17, color: Colors.white),
+                          ),
                           if (fields!.coreLabel.isNotEmpty) ...[
                             const SizedBox(height: 2),
-                            Text(fields!.coreLabel.toUpperCase(),
-                                style: MM.displayX(
-                                    size: 10,
-                                    color: Colors.white.withOpacity(0.5))),
+                            Text(
+                              fields!.coreLabel.toUpperCase(),
+                              style: MM.displayX(
+                                size: 10,
+                                color: Colors.white.withOpacity(0.5),
+                              ),
+                            ),
                           ],
                           const SizedBox(height: 12),
                           _row('WHEN', fields!.when, MM.blue),
@@ -655,15 +712,20 @@ class _ForgeConfirmOverlay extends StatelessWidget {
                       'Momentum Lists.',
                       textAlign: TextAlign.center,
                       style: MM.body(
-                          color: Colors.white.withOpacity(0.75),
-                          size: 13,
-                          height: 1.5),
+                        color: Colors.white.withOpacity(0.75),
+                        size: 13,
+                        height: 1.5,
+                      ),
                     ),
                   const SizedBox(height: 10),
                   if (fields != null)
-                    Text('Saved to your Momentum Lists.',
-                        style: MM.body(
-                            color: Colors.white.withOpacity(0.55), size: 11)),
+                    Text(
+                      'Saved to your Momentum Lists.',
+                      style: MM.body(
+                        color: Colors.white.withOpacity(0.55),
+                        size: 11,
+                      ),
+                    ),
                   const SizedBox(height: 16),
                   MMPrimaryButton(
                     label: 'Lock it in 🔓 Unlock Command Center',

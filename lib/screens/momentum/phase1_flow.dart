@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/phase1_state.dart';
+import '../../services/chat_service.dart';
 import '../../services/onboarding_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/confetti_overlay.dart';
@@ -80,7 +81,17 @@ class Phase1Flow extends StatefulWidget {
 }
 
 class _Phase1FlowState extends State<Phase1Flow> {
-  late String _view; // hub | section | command-center | mbs
+  late String _view; // hub | section | new-habit | command-center | mbs
+
+  /// Returning / Go Deeper session to start when the chat opens (P1-2); null
+  /// with a returning player = resume their unfinished session.
+  ({String mode, String? habitId})? _start;
+
+  /// The session the chat is showing (null = first-time conversation).
+  HhsSession? _session;
+
+  /// Has forged a Golden Habit before — new habits use returning sessions.
+  bool get _returning => widget.state.stage1Completed;
 
   @override
   void initState() {
@@ -91,8 +102,15 @@ class _Phase1FlowState extends State<Phase1Flow> {
         _view = 'mbs';
         break;
       case 'hhs':
-        // Path A — rebuild the Golden Habit by re-entering the HHS chat.
-        _view = 'section';
+        final id = widget.entryHabitId;
+        if (id != null && id.isNotEmpty) {
+          // Go Deeper / Need Help → rebuild this habit in its own session.
+          _start = (mode: 'go_deeper', habitId: id);
+          _view = 'section';
+        } else {
+          // A returning player picks how to find the next habit first.
+          _view = _returning ? 'new-habit' : 'section';
+        }
         break;
       default:
         _view = widget.state.lastView ?? 'hub';
@@ -110,7 +128,15 @@ class _Phase1FlowState extends State<Phase1Flow> {
     }
   }
 
-  void _startStage1() => _go('section');
+  /// A returning player starts a new Golden Habit from the chooser; a
+  /// first-timer goes straight into their HHS.
+  void _startStage1() => _returning ? _go('new-habit') : _go('section');
+
+  void _startReturning(String mode) {
+    _start = (mode: mode, habitId: null);
+    _session = null;
+    _go('section');
+  }
 
   /// Live HHS progress from the Claude agent (0–5 sections complete).
   /// Never regress — a returning player keeps the higher progress they banked.
@@ -122,10 +148,24 @@ class _Phase1FlowState extends State<Phase1Flow> {
 
   /// Golden Habit forged + locked in → Stage 1 complete, unlock Command Center.
   void _onHhsComplete() {
-    _go(
-      'command-center',
-      base: widget.state.copyWith(stage1Progress: 5, stage1Completed: true),
+    final done = widget.state.copyWith(
+      stage1Progress: 5,
+      stage1Completed: true,
     );
+    final session = _session;
+    _start = null;
+    _session = null;
+    if (session == null) {
+      // First-time: the Command Center unlock is the Stage 1 reward.
+      _go('command-center', base: done);
+    } else if (session.isGoDeeper) {
+      // Rebuilt in place — back to the hub; tracking picks it up.
+      _go('hub', base: done);
+    } else {
+      // Returning: Nova already summarised the progress (no unlock reveal);
+      // straight on to this habit's MBMs.
+      _go('mbs', base: done);
+    }
   }
 
   void _startStage2() => _go('mbs');
@@ -148,11 +188,37 @@ class _Phase1FlowState extends State<Phase1Flow> {
     switch (_view) {
       case 'section':
         final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-        return HhsChatView(
+        if (!_returning && _start == null) {
+          return HhsChatView(
+            userId: uid,
+            initialDraft: widget.entryDraft,
+            onProgress: _onHhsProgress,
+            onComplete: _onHhsComplete,
+            onBack: () => _go('hub'),
+          );
+        }
+        final session = _session;
+        if (session != null) {
+          return HhsChatView(
+            key: ValueKey(session.id),
+            userId: uid,
+            sessionId: session.id,
+            initialDraft: widget.entryDraft,
+            onProgress: _onHhsProgress,
+            onComplete: _onHhsComplete,
+            onBack: () => _go('hub'),
+          );
+        }
+        return _HhsSessionGate(
           userId: uid,
-          initialDraft: widget.entryDraft,
-          onProgress: _onHhsProgress,
-          onComplete: _onHhsComplete,
+          start: _start,
+          onSession: (s) => setState(() => _session = s),
+          onNone: () => _go('new-habit'),
+          onBack: () => _go('hub'),
+        );
+      case 'new-habit':
+        return _NewHabitChooser(
+          onPick: _startReturning,
           onBack: () => _go('hub'),
         );
       case 'command-center':
@@ -178,6 +244,215 @@ class _Phase1FlowState extends State<Phase1Flow> {
 }
 
 // ─── Reusable: starfield-backed scaffold ─────────────────────────────────
+/// Resolves which returning / Go Deeper session the chat shows (P1-2):
+/// starts [start] (resuming an unfinished one of the same kind), or with no
+/// [start] resumes the player's unfinished session — [onNone] if there is
+/// none. Starting runs Nova's opening recap, so it can take a few seconds.
+class _HhsSessionGate extends StatefulWidget {
+  const _HhsSessionGate({
+    required this.userId,
+    required this.start,
+    required this.onSession,
+    required this.onNone,
+    required this.onBack,
+  });
+
+  final String userId;
+  final ({String mode, String? habitId})? start;
+  final ValueChanged<HhsSession> onSession;
+  final VoidCallback onNone;
+  final VoidCallback onBack;
+
+  @override
+  State<_HhsSessionGate> createState() => _HhsSessionGateState();
+}
+
+class _HhsSessionGateState extends State<_HhsSessionGate> {
+  final _chat = ChatService();
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolve();
+  }
+
+  @override
+  void dispose() {
+    _chat.dispose();
+    super.dispose();
+  }
+
+  Future<void> _resolve() async {
+    setState(() => _error = null);
+    try {
+      final start = widget.start;
+      final session =
+          start == null
+              ? await _chat.currentSession(widget.userId)
+              : await _chat.startSession(
+                widget.userId,
+                mode: start.mode,
+                habitId: start.habitId,
+              );
+      if (!mounted) return;
+      if (session == null) {
+        widget.onNone();
+      } else {
+        widget.onSession(session);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = '$e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rebuilding = widget.start?.mode == 'go_deeper';
+    return _PhaseScaffold(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_error == null) ...[
+                const CircularProgressIndicator(color: MM.blue),
+                const SizedBox(height: 16),
+                Text(
+                  rebuilding
+                      ? 'Nova is loading everything about this habit…'
+                      : 'Nova is reviewing your habits and lists…',
+                  textAlign: TextAlign.center,
+                  style: MM.body(
+                    color: Colors.white.withOpacity(0.8),
+                    size: 13,
+                  ),
+                ),
+              ] else ...[
+                Text(
+                  "Couldn't reach Nova",
+                  style: MM.display(size: 15, color: Colors.white),
+                ),
+                const SizedBox(height: 12),
+                MMGhostButton(label: 'Try again', onPressed: _resolve),
+                const SizedBox(height: 8),
+                MMGhostButton(label: 'Back', onPressed: widget.onBack),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Returning player, new Golden Habit (Phase 1&2 Sequence "RETURNING
+/// PLAYERS"): voluntary discovery vs guided ("I know my pain point").
+class _NewHabitChooser extends StatelessWidget {
+  const _NewHabitChooser({required this.onPick, required this.onBack});
+
+  final ValueChanged<String> onPick;
+  final VoidCallback onBack;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget option(String emoji, String title, String body, String mode) =>
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () => onPick(mode),
+            child: GlassPanel(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 26)),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: MM.body(
+                            color: Colors.white,
+                            size: 14,
+                            weight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          body,
+                          style: MM.body(
+                            color: Colors.white.withOpacity(0.65),
+                            size: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: Colors.white54),
+                ],
+              ),
+            ),
+          ),
+        );
+
+    return _PhaseScaffold(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: _BackChip(onPressed: onBack),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'NEW GOLDEN HABIT',
+                  style: MM.displayX(size: 11, color: MM.yellow),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Welcome back, Captain. How do you want to start?',
+                  style: MM.display(size: 18, color: Colors.white),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Nova already knows your habits and Momentum Lists — no tutorial this time.',
+                  style: MM.body(
+                    color: Colors.white.withOpacity(0.6),
+                    size: 12,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                option(
+                  '🧭',
+                  'Help me find my next pain point',
+                  "Nova recaps where you are and guides you to what's holding you back next.",
+                  'returning_voluntary',
+                ),
+                option(
+                  '🎯',
+                  'I know my pain point',
+                  'Name it and the Core — the full Habits Hierarchy, checkpoints and Momentum Points included.',
+                  'returning_guided',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _PhaseScaffold extends StatelessWidget {
   const _PhaseScaffold({required this.child, this.celebrate = false});
   final Widget child;

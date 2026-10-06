@@ -42,7 +42,13 @@ class ChatService {
     return _parseAssistantParts(data);
   }
 
-  Future<List<ChatMessage>> sendMessage(String userId, String text) async {
+  /// [sessionId] null = the player's first-time HHS conversation; otherwise a
+  /// returning / Go Deeper session (P1-2).
+  Future<List<ChatMessage>> sendMessage(
+    String userId,
+    String text, {
+    String? sessionId,
+  }) async {
     const endpoint = 'claudeSendMessage';
     final response = await _client.post(
       _uri(endpoint),
@@ -51,6 +57,7 @@ class ChatService {
         'secret': _secret,
         'userId': userId,
         'text': text,
+        if (sessionId != null) 'sessionId': sessionId,
       }),
     );
     final data = _decode(response, endpoint);
@@ -59,22 +66,25 @@ class ChatService {
 
   List<ChatMessage> _parseAssistantParts(Map<String, dynamic> data) {
     final parts = data['assistantParts'] as List? ?? const [];
-    final ids = (data['assistantMessageIds'] as List? ?? const [])
-        .map((e) => e.toString())
-        .toList();
+    final ids =
+        (data['assistantMessageIds'] as List? ?? const [])
+            .map((e) => e.toString())
+            .toList();
     final messages = <ChatMessage>[];
     final now = DateTime.now();
     int idIdx = 0;
 
-    String nextId() => idIdx < ids.length
-        ? ids[idIdx++]
-        : 'local-${now.microsecondsSinceEpoch}-${idIdx++}';
+    String nextId() =>
+        idIdx < ids.length
+            ? ids[idIdx++]
+            : 'local-${now.microsecondsSinceEpoch}-${idIdx++}';
 
     for (final raw in parts) {
       if (raw is! Map) continue;
       final part = raw.cast<String, dynamic>();
       final type = part['type']?.toString();
-      final urls = (part['imageUrls'] as List?)
+      final urls =
+          (part['imageUrls'] as List?)
               ?.map((e) => e.toString())
               .where((s) => s.isNotEmpty)
               .toList() ??
@@ -83,35 +93,41 @@ class ChatService {
       if (type == 'text') {
         final text = (part['text']?.toString() ?? '').trim();
         if (text.isEmpty) continue;
-        messages.add(ChatMessage(
-          id: nextId(),
-          role: 'assistant',
-          text: text,
-          imageUrls: urls,
-          createdAt: now,
-        ));
+        messages.add(
+          ChatMessage(
+            id: nextId(),
+            role: 'assistant',
+            text: text,
+            imageUrls: urls,
+            createdAt: now,
+          ),
+        );
       } else if (type == 'image') {
         if (urls.isEmpty) continue;
         if (messages.isNotEmpty) {
           // Attach image to the most recent text message so the bubble
           // and the visual stage stay in sync.
           final last = messages.removeLast();
-          messages.add(ChatMessage(
-            id: last.id,
-            role: last.role,
-            text: last.text,
-            imageUrls: [...last.imageUrls, ...urls],
-            createdAt: last.createdAt,
-          ));
+          messages.add(
+            ChatMessage(
+              id: last.id,
+              role: last.role,
+              text: last.text,
+              imageUrls: [...last.imageUrls, ...urls],
+              createdAt: last.createdAt,
+            ),
+          );
         } else {
           // Image-only part with no preceding text — emit as standalone.
-          messages.add(ChatMessage(
-            id: nextId(),
-            role: 'assistant',
-            text: '',
-            imageUrls: urls,
-            createdAt: now,
-          ));
+          messages.add(
+            ChatMessage(
+              id: nextId(),
+              role: 'assistant',
+              text: '',
+              imageUrls: urls,
+              createdAt: now,
+            ),
+          );
         }
       }
     }
@@ -123,9 +139,11 @@ class ChatService {
   Future<Fetched<List<ChatMessage>>> getLatestMessages(
     String userId, {
     int limit = 50,
+    String? sessionId,
   }) async {
     const endpoint = 'claudeGetLatestMessages';
-    final cacheKey = 'cache:claude_messages:$userId';
+    final cacheKey =
+        'cache:claude_messages:$userId${sessionId == null ? '' : ':$sessionId'}';
     try {
       final response = await _client.post(
         _uri(endpoint),
@@ -134,6 +152,7 @@ class ChatService {
           'secret': _secret,
           'userId': userId,
           'limit': limit,
+          if (sessionId != null) 'sessionId': sessionId,
         }),
       );
       final data = _decode(response, endpoint);
@@ -151,10 +170,53 @@ class ChatService {
     }
   }
 
-  List<ChatMessage> _parseMessages(List<dynamic> raw) => raw
-      .whereType<Map>()
-      .map((m) => ChatMessage.fromJson(m.cast<String, dynamic>()))
-      .toList();
+  /// The unfinished returning / Go Deeper session to resume, or null.
+  Future<HhsSession?> currentSession(String userId) async {
+    const endpoint = 'claudeHhsSession';
+    final response = await _client.post(
+      _uri(endpoint),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'secret': _secret,
+        'userId': userId,
+        'action': 'current',
+      }),
+    );
+    final s = _decode(response, endpoint)['session'];
+    return s is Map ? HhsSession.fromJson(s.cast<String, dynamic>()) : null;
+  }
+
+  /// Resumes an unfinished session of [mode] (and [habitId] for Go Deeper) or
+  /// starts one — Nova's opening turn (the recap) runs server-side, so this
+  /// can take a few seconds. [mode]: returning_voluntary | returning_guided |
+  /// go_deeper.
+  Future<HhsSession> startSession(
+    String userId, {
+    required String mode,
+    String? habitId,
+  }) async {
+    const endpoint = 'claudeHhsSession';
+    final response = await _client.post(
+      _uri(endpoint),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'secret': _secret,
+        'userId': userId,
+        'action': 'start',
+        'mode': mode,
+        if (habitId != null) 'habitId': habitId,
+      }),
+    );
+    final s = _decode(response, endpoint)['session'];
+    if (s is! Map) throw Exception('$endpoint returned no session');
+    return HhsSession.fromJson(s.cast<String, dynamic>());
+  }
+
+  List<ChatMessage> _parseMessages(List<dynamic> raw) =>
+      raw
+          .whereType<Map>()
+          .map((m) => ChatMessage.fromJson(m.cast<String, dynamic>()))
+          .toList();
 
   Map<String, dynamic> _decode(http.Response response, String fnName) {
     if (response.statusCode != 200) {
@@ -173,4 +235,21 @@ class ChatService {
   }
 
   void dispose() => _client.close();
+}
+
+/// A returning / Go Deeper HHS session (P1-2).
+class HhsSession {
+  const HhsSession({required this.id, required this.mode, this.habitId = ''});
+
+  final String id;
+  final String mode; // returning_voluntary | returning_guided | go_deeper
+  final String habitId;
+
+  bool get isGoDeeper => mode == 'go_deeper';
+
+  factory HhsSession.fromJson(Map<String, dynamic> j) => HhsSession(
+    id: '${j['id'] ?? ''}',
+    mode: '${j['mode'] ?? ''}',
+    habitId: '${j['habitId'] ?? ''}',
+  );
 }

@@ -27,15 +27,15 @@ class OnboardingFields {
   final String why;
 
   factory OnboardingFields.fromJson(Map<String, dynamic> j) => OnboardingFields(
-        core: (j['core'] ?? '').toString(),
-        coreLabel: (j['coreLabel'] ?? '').toString(),
-        habitName: (j['habitName'] ?? '').toString(),
-        when: (j['when'] ?? '').toString(),
-        where: (j['where'] ?? '').toString(),
-        what: (j['what'] ?? '').toString(),
-        ifThen: (j['ifThen'] ?? '').toString(),
-        why: (j['why'] ?? '').toString(),
-      );
+    core: (j['core'] ?? '').toString(),
+    coreLabel: (j['coreLabel'] ?? '').toString(),
+    habitName: (j['habitName'] ?? '').toString(),
+    when: (j['when'] ?? '').toString(),
+    where: (j['where'] ?? '').toString(),
+    what: (j['what'] ?? '').toString(),
+    ifThen: (j['ifThen'] ?? '').toString(),
+    why: (j['why'] ?? '').toString(),
+  );
 }
 
 /// Read-only snapshot of HHS Stage 1 progress.
@@ -65,16 +65,18 @@ class OnboardingSync {
   bool get stage1Done => forged || reachedForge;
 
   factory OnboardingSync.fromJson(Map<String, dynamic> j) => OnboardingSync(
-        available: j['available'] == true,
-        completedCount: (j['completedCount'] as num? ?? 0).toInt().clamp(0, 5),
-        forged: j['forged'] == true,
-        reachedForge: j['reachedForge'] == true,
-        totalPoints: (j['totalPoints'] as num? ?? 0).toInt(),
-        fields: j['fields'] is Map
+    available: j['available'] == true,
+    completedCount: (j['completedCount'] as num? ?? 0).toInt().clamp(0, 5),
+    forged: j['forged'] == true,
+    reachedForge: j['reachedForge'] == true,
+    totalPoints: (j['totalPoints'] as num? ?? 0).toInt(),
+    fields:
+        j['fields'] is Map
             ? OnboardingFields.fromJson(
-                (j['fields'] as Map).cast<String, dynamic>())
+              (j['fields'] as Map).cast<String, dynamic>(),
+            )
             : null,
-      );
+  );
 
   static const empty = OnboardingSync(
     available: false,
@@ -111,15 +113,15 @@ class ActiveHabit {
   final String obstacleThen;
 
   factory ActiveHabit.fromJson(Map<String, dynamic> j) => ActiveHabit(
-        habitId: (j['habitId'] ?? '').toString(),
-        habitName: (j['habitName'] ?? '').toString(),
-        coreLabel: (j['coreLabel'] ?? '').toString(),
-        when: (j['when'] ?? '').toString(),
-        where: (j['where'] ?? '').toString(),
-        what: (j['what'] ?? '').toString(),
-        obstacleIf: (j['obstacleIf'] ?? '').toString(),
-        obstacleThen: (j['obstacleThen'] ?? '').toString(),
-      );
+    habitId: (j['habitId'] ?? '').toString(),
+    habitName: (j['habitName'] ?? '').toString(),
+    coreLabel: (j['coreLabel'] ?? '').toString(),
+    when: (j['when'] ?? '').toString(),
+    where: (j['where'] ?? '').toString(),
+    what: (j['what'] ?? '').toString(),
+    obstacleIf: (j['obstacleIf'] ?? '').toString(),
+    obstacleThen: (j['obstacleThen'] ?? '').toString(),
+  );
 }
 
 /// Lightweight reference to a Golden Habit, keyed to the SHORT core id the
@@ -166,7 +168,11 @@ class GoldenHabitRef {
     'relationships_core': 'relationships',
   };
   static const _validShort = {
-    'mindset', 'career', 'physical', 'emotional', 'relationships'
+    'mindset',
+    'career',
+    'physical',
+    'emotional',
+    'relationships',
   };
 
   static String shortCore(String raw) {
@@ -177,22 +183,23 @@ class GoldenHabitRef {
   }
 
   factory GoldenHabitRef.fromJson(Map<String, dynamic> j) => GoldenHabitRef(
-        habitId: (j['habitId'] ?? '').toString(),
-        shortCoreId: shortCore((j['coreId'] ?? '').toString()),
-        habitName: (j['habitName'] ?? '').toString(),
-        flagged: j['flagged'] == true,
-        flagReason: (j['flagReason'] ?? '').toString(),
-        formed: j['formed'] == true,
-        formedAt: (j['formedAt'] ?? '').toString(),
-        createdAt: (j['createdAt'] ?? '').toString(),
-        formedVia: (j['formedVia'] ?? '').toString(),
-        reviews: j['reviews'] is Map
+    habitId: (j['habitId'] ?? '').toString(),
+    shortCoreId: shortCore((j['coreId'] ?? '').toString()),
+    habitName: (j['habitName'] ?? '').toString(),
+    flagged: j['flagged'] == true,
+    flagReason: (j['flagReason'] ?? '').toString(),
+    formed: j['formed'] == true,
+    formedAt: (j['formedAt'] ?? '').toString(),
+    createdAt: (j['createdAt'] ?? '').toString(),
+    formedVia: (j['formedVia'] ?? '').toString(),
+    reviews:
+        j['reviews'] is Map
             ? {
-                for (final e in (j['reviews'] as Map).entries)
-                  '${e.key}': '${e.value}'
-              }
+              for (final e in (j['reviews'] as Map).entries)
+                '${e.key}': '${e.value}',
+            }
             : const {},
-      );
+  );
 }
 
 /// Reads HHS Stage 1 progress (`claudeSyncOnboarding`, "flutter" codebase).
@@ -207,12 +214,16 @@ class OnboardingService {
 
   /// Safe to call after every turn — returns [OnboardingSync.empty] on any
   /// failure so a transient error never blocks the conversation.
-  Future<OnboardingSync> sync(String userId) async {
+  Future<OnboardingSync> sync(String userId, {String? sessionId}) async {
     try {
       final response = await _client.post(
         Uri.parse('$_baseUrl/claudeSyncOnboarding'),
         headers: const {'Content-Type': 'application/json'},
-        body: jsonEncode({'secret': _secret, 'userId': userId}),
+        body: jsonEncode({
+          'secret': _secret,
+          'userId': userId,
+          if (sessionId != null) 'sessionId': sessionId,
+        }),
       );
       if (response.statusCode != 200) return OnboardingSync.empty;
       final decoded = jsonDecode(response.body);
@@ -239,7 +250,9 @@ class OnboardingService {
       if (decoded is! Map || decoded['ok'] != true) return null;
       final habits = decoded['habits'];
       if (habits is! List || habits.isEmpty) return null;
-      return ActiveHabit.fromJson((habits.first as Map).cast<String, dynamic>());
+      return ActiveHabit.fromJson(
+        (habits.first as Map).cast<String, dynamic>(),
+      );
     } catch (_) {
       return null;
     }
@@ -314,8 +327,11 @@ class OnboardingService {
       final response = await _client.post(
         Uri.parse('$_baseUrl/flutterGetGoldenHabits'),
         headers: const {'Content-Type': 'application/json'},
-        body: jsonEncode(
-            {'secret': _secret, 'userId': userId, 'habitId': habitId}),
+        body: jsonEncode({
+          'secret': _secret,
+          'userId': userId,
+          'habitId': habitId,
+        }),
       );
       if (response.statusCode != 200) return null;
       final decoded = jsonDecode(response.body);
@@ -394,8 +410,10 @@ class OnboardingService {
     required String userId,
     required String habitId,
   }) async {
-    final j = await _post('flutterConfirmHabitFormation',
-        {'userId': userId, 'habitId': habitId});
+    final j = await _post('flutterConfirmHabitFormation', {
+      'userId': userId,
+      'habitId': habitId,
+    });
     return FormationConfirmResult(
       eligible: j['eligible'] == true,
       confirmed: j['confirmed'] == true,
@@ -412,14 +430,13 @@ class OnboardingService {
     required String habitId,
     required bool keep,
     int? milestone,
-  }) =>
-      _post('flutterReviewFormedHabit', {
-        'userId': userId,
-        'habitId': habitId,
-        'action': keep ? 'keep' : 'unform',
-        if (milestone != null) 'milestone': milestone,
-        'today': _today(),
-      });
+  }) => _post('flutterReviewFormedHabit', {
+    'userId': userId,
+    'habitId': habitId,
+    'action': keep ? 'keep' : 'unform',
+    if (milestone != null) 'milestone': milestone,
+    'today': _today(),
+  });
 
   /// #19 — set the first Habit Formation Goal (7–21 days) or advance to the
   /// next rung after hitting one. Returns the raw goal map.
@@ -443,7 +460,10 @@ class OnboardingService {
         '${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
   }
 
-  Future<Map<String, dynamic>> _post(String fn, Map<String, dynamic> body) async {
+  Future<Map<String, dynamic>> _post(
+    String fn,
+    Map<String, dynamic> body,
+  ) async {
     final response = await _client.post(
       Uri.parse('$_baseUrl/$fn'),
       headers: const {'Content-Type': 'application/json'},
@@ -453,9 +473,13 @@ class OnboardingService {
     try {
       decoded = jsonDecode(response.body);
     } catch (_) {}
-    if (response.statusCode != 200 || decoded is! Map || decoded['ok'] != true) {
+    if (response.statusCode != 200 ||
+        decoded is! Map ||
+        decoded['ok'] != true) {
       final msg = decoded is Map ? decoded['error'] : null;
-      throw Exception((msg ?? '$fn failed (${response.statusCode})').toString());
+      throw Exception(
+        (msg ?? '$fn failed (${response.statusCode})').toString(),
+      );
     }
     return decoded.cast<String, dynamic>();
   }
