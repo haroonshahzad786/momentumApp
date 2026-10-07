@@ -33,6 +33,7 @@ import 'dashboard_page.dart';
 import 'journey_page.dart';
 import 'phase1_flow.dart';
 import '../../widgets/momentum/habit_detail_view.dart';
+import '../../widgets/momentum/core_unlock_overlay.dart';
 import 'sub_screens.dart';
 import 'summary_page.dart';
 import 'web_cockpit.dart';
@@ -67,6 +68,9 @@ class _MomentumHomeState extends State<MomentumHome> {
 
   /// First-time vs returning landing (#26 / P1-1) runs once per session.
   bool _landingDone = false;
+
+  /// Cores that just lit up, waiting for their "CORE UNLOCKED" moment (#30).
+  final List<String> _coreUnlocks = [];
   bool _menuOpen = false;
   final _auth = AuthService();
   final _adminService = AdminService();
@@ -215,6 +219,7 @@ class _MomentumHomeState extends State<MomentumHome> {
         _creditsOverride = null;
       });
       _landInPhase1IfUnfinished();
+      _checkCoreUnlocks(result.data.activeCores);
       // Compute the Core Balance 5-day alert badges (#8) from real check-ins.
       _loadCoreBalance();
       _evaluateMissState(result.data);
@@ -393,6 +398,49 @@ class _MomentumHomeState extends State<MomentumHome> {
     _screen = key;
     _menuOpen = false;
   });
+
+  /// Queues a "CORE UNLOCKED" celebration for each Core that became active
+  /// since this device last saw the rocket (#30 / P1-7). The first look only
+  /// records what's active — the moment belongs to the first habit, not login.
+  Future<void> _checkCoreUnlocks(List<String> active) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return;
+    final key = 'cores:seen:$uid';
+    final seen = await LocalCache.getJson(key);
+    final fresh = newlyUnlockedCores(
+      seen is List ? seen.map((e) => '$e').toList() : null,
+      active,
+    );
+    await LocalCache.putJson(key, active);
+    if (fresh.isNotEmpty && mounted) {
+      setState(
+        () =>
+            _coreUnlocks.addAll(fresh.where((c) => !_coreUnlocks.contains(c))),
+      );
+    }
+  }
+
+  static const _coreEmoji = {
+    'mindset': '🧠',
+    'career': '💰',
+    'relationships': '👥',
+    'physical': '💪',
+    'emotional': '🧘',
+  };
+
+  /// Shown on the rocket, not over Phase 1's own reward screens.
+  Widget? _buildCoreUnlock() {
+    if (_coreUnlocks.isEmpty || _screen == 'phase1') return null;
+    final core = _coreUnlocks.first;
+    final meta = _coreMeta[core];
+    return CoreUnlockOverlay(
+      key: ValueKey(core),
+      emoji: _coreEmoji[core] ?? '✨',
+      name: meta?.$1 ?? core,
+      color: meta?.$2 ?? MM.teal,
+      onContinue: () => setState(() => _coreUnlocks.removeAt(0)),
+    );
+  }
 
   /// Web Cockpit banner back into an unfinished Phase 1 (P1-10 #5).
   Widget _phase1Banner() {
@@ -1017,6 +1065,8 @@ class _MomentumHomeState extends State<MomentumHome> {
         if (_coreAlertCore != null) Positioned.fill(child: _buildCoreAlert()),
         if (_relaunchOpen && _profile != null)
           Positioned.fill(child: _buildRelaunch()),
+        if (_buildCoreUnlock() case final unlock?)
+          Positioned.fill(child: unlock),
       ],
     );
   }
@@ -1254,6 +1304,8 @@ class _MomentumHomeState extends State<MomentumHome> {
         if (_coreAlertCore != null) Positioned.fill(child: _buildCoreAlert()),
         if (_relaunchOpen && _profile != null)
           Positioned.fill(child: _buildRelaunch()),
+        if (_buildCoreUnlock() case final unlock?)
+          Positioned.fill(child: unlock),
       ],
     );
   }

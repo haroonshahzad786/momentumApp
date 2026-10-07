@@ -734,7 +734,7 @@ post-sign-in routing ❌ (everyone lands on the Cockpit; intro shown to every si
   Original: — after a returning player's new Golden Habit: Full MBS (returning
   variant, min ONE strategy total, MBM framework referenced not introduced) / Quick Add from Ideas Well /
   Manual Entry (classify Obvious/Easy/Rewarding). Cantina unlock not repeated.
-- [ ] **P1-7 #30 Phase 1 reward beats** — verify titles + MP vs Gamification spec / Sequence.
+- [x] **P1-7 #30 Phase 1 reward beats** — **DONE 2026-10-07.** The Gamification spec's "Phase 1 achievement titles" lists are empty in the source docx, so the Sequence walkthrough is the reference: Stage 1 Truth Seeker 10 · Core Confirmed 15 · Principle Decoder 20 · Keystone Forger 25 · Golden Habit Architect 40; Stage 2 Friction Hunter 10 · Method Master 15 · Implementation Wizard 25; Cantina welcome 25 credits — server tables + app reward cards all match. **Fixed:** Nova's Stage 1 script said "Truth Seeker" at checkpoint 2/5 (deployed). **Built:** "CORE UNLOCKED" celebration the first time a Core lights up (`CoreUnlockOverlay`, once per Core per device, never on a first look/login; shown on the rocket, not over Phase 1). Progress lock→✅ already verified live. 2 tests (98).
 - [ ] **P1-8 #25 Phase 1 → Phase 2 transition** — "mission begins" + ~90 s cockpit tour ending on Daily Check-In.
 - [ ] **P1-9 Verify** — full browser run on the test account (haroon+mmtest@gmail.com): first-time Stage 1 →
   Stage 2 → transition; second habit as a returning player; Go Deeper; plus the pending routine ↔ non-routine
