@@ -619,6 +619,16 @@ These three come straight from the Gamification Mechanics Specs Reference (§6 S
 - **Verified:** 13 new tests; browser-checked on web (6 Oct) on your account's "Deep Presence Practice": all sections show your real data; a note was saved, was still there after a full page reload, and was then removed.
 - **Next (#23):** each edit becomes a 🧪 3-day experiment. Changing a habit's type (routine ↔ non-routine) waits for the reclassification rules.
 
+### Phase 1 finalization (Will, 6 Oct: "finalize phase 1 first") 🟡
+- **Spec:** Phase 1&2 Sequence — "FIRST-TIME PLAYERS" / "RETURNING PLAYERS" ("Returning players bypass all tutorial and narrative onboarding and go directly into the HHS for their next pain point"), the full Stage 2 walkthrough, and "PHASE 2 LAUNCH SEQUENCE"; Phase 1&2 Details "MBM Shortcut".
+- **Built:**
+  - **First-time vs returning:** a player who has signed in before skips the intro. Until Phase 1 is finished, the app opens inside it (a brand-new player goes straight into Nova; anyone part-way resumes where they left off). The web Cockpit shows a "Continue Game 🎮" banner.
+  - **Returning players:** each new Golden Habit gets a fresh Nova conversation. Nova opens with a recap of the player's habits and lists (no tutorial), and the checkpoint points pay out again. **Go Deeper** rebuilds a struggling habit with all its details loaded.
+  - **Stage 2 is now a Nova conversation** ("Level 2"): obstacle & opportunity → the 3 methods → a guided setup plan → Friction Hunter +10 / Method Master +15 / Implementation Wizard +25 → the Space Cantina unlock. Returning players need only one method, or use the **MBM Shortcut** (Ideas Well quick-add, or their own).
+  - **Rewards** checked against the doc. A wrong checkpoint title was fixed, and a "CORE UNLOCKED" celebration added.
+  - **Phase 1 → Phase 2:** "The Mission Begins" screen, then a Next/Back cockpit tour ending "Ready to launch Day 1?".
+- **Verified:** first-time and returning conversations and Go Deeper were checked in the browser (6 Oct). The new Stage 2, the MBM Shortcut, the launch tour and the 7 Oct fixes still need a browser run.
+
 ---
 
 ## 3. Engineering notes (for your technical reviewer)

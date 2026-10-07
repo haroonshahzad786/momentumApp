@@ -34,6 +34,7 @@ import 'journey_page.dart';
 import 'phase1_flow.dart';
 import '../../widgets/momentum/habit_detail_view.dart';
 import '../../widgets/momentum/core_unlock_overlay.dart';
+import '../../widgets/momentum/phase2_launch.dart';
 import 'sub_screens.dart';
 import 'summary_page.dart';
 import 'web_cockpit.dart';
@@ -71,6 +72,10 @@ class _MomentumHomeState extends State<MomentumHome> {
 
   /// Cores that just lit up, waiting for their "CORE UNLOCKED" moment (#30).
   final List<String> _coreUnlocks = [];
+
+  /// Phase 1 → Phase 2 hand-off right after Stage 2 (#25 / P1-8):
+  /// 'mission' ("The Mission Begins") then 'tour' (cockpit tour); null = none.
+  String? _launch;
   bool _menuOpen = false;
   final _auth = AuthService();
   final _adminService = AdminService();
@@ -442,6 +447,30 @@ class _MomentumHomeState extends State<MomentumHome> {
     );
   }
 
+  /// "The Mission Begins" → cockpit tour, on the Cockpit once any Core-unlock
+  /// moment is done (#25 / P1-8).
+  Widget? _buildLaunch() {
+    if (_launch == null || _screen != 'dashboard' || _coreUnlocks.isNotEmpty) {
+      return null;
+    }
+    if (_launch == 'mission') {
+      return MissionBeginsOverlay(
+        onReady: () => setState(() => _launch = 'tour'),
+      );
+    }
+    return CockpitTourOverlay(
+      steps: cockpitTourSteps(
+        web: MediaQuery.of(context).size.width >= kWebBreakpoint,
+        activeCores: _profile?.activeCores ?? const [],
+      ),
+      onLaunch: () {
+        setState(() => _launch = null);
+        _startCheckin();
+      },
+      onClose: () => setState(() => _launch = null),
+    );
+  }
+
   /// Web Cockpit banner back into an unfinished Phase 1 (P1-10 #5).
   Widget _phase1Banner() {
     final s = _phase1;
@@ -597,7 +626,10 @@ class _MomentumHomeState extends State<MomentumHome> {
         next.stage1Completed && !_phase1.stage1Completed;
     final justCompletedStage2 =
         next.stage2Completed && !_phase1.stage2Completed;
-    setState(() => _phase1 = next);
+    setState(() {
+      _phase1 = next;
+      if (justCompletedStage2) _launch = 'mission';
+    });
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null || uid.isEmpty) return;
     final save = _profileService.savePhase1State(uid, next);
@@ -1067,6 +1099,7 @@ class _MomentumHomeState extends State<MomentumHome> {
           Positioned.fill(child: _buildRelaunch()),
         if (_buildCoreUnlock() case final unlock?)
           Positioned.fill(child: unlock),
+        if (_buildLaunch() case final launch?) Positioned.fill(child: launch),
       ],
     );
   }
@@ -1306,6 +1339,7 @@ class _MomentumHomeState extends State<MomentumHome> {
           Positioned.fill(child: _buildRelaunch()),
         if (_buildCoreUnlock() case final unlock?)
           Positioned.fill(child: unlock),
+        if (_buildLaunch() case final launch?) Positioned.fill(child: launch),
       ],
     );
   }
