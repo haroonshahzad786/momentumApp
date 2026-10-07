@@ -1320,7 +1320,7 @@ class _MomentumHomeState extends State<MomentumHome> {
         title = 'Routines';
         subtitle = 'Daily Orbit';
         accent = MM.teal;
-        content = const WebRoutines();
+        content = WebRoutines(onOpen: (id) => _go('habit:$id'));
         break;
       case 'habits':
         title = 'Habits';

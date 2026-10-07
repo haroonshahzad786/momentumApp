@@ -990,7 +990,10 @@ class _Formed {
 // ROUTINES — real routine / non-routine core lists
 // ═══════════════════════════════════════════════════════════════
 class WebRoutines extends StatefulWidget {
-  const WebRoutines({super.key});
+  const WebRoutines({super.key, this.onOpen});
+
+  /// Opens a Golden Habit's Detailed View (`habit:<id>`).
+  final void Function(String habitId)? onOpen;
   @override
   State<WebRoutines> createState() => _WebRoutinesState();
 }
@@ -1158,7 +1161,8 @@ class _WebRoutinesState extends State<WebRoutines> {
   }
 
   /// One stored line: its colour dot, text, and Day X/14 for a Golden Habit.
-  /// Tapping a player's own line opens the colour picker.
+  /// Tapping a Golden Habit opens its Detailed View; tapping a player's own
+  /// line opens the colour picker.
   Widget _line(CoreList l, String raw) {
     final st = _status(l, raw);
     final p = st.progress;
@@ -1168,14 +1172,20 @@ class _WebRoutinesState extends State<WebRoutines> {
             : st.golden != null
             ? st.color!.label
             : (st.color?.label ?? 'Tap to tag');
+    final detail = st.golden != null && widget.onOpen != null;
     return Tooltip(
       message:
           st.golden != null
-              ? 'Golden Habit — colour follows formation'
+              ? 'Golden Habit — open its Detailed View'
               : 'Tag with the colour key',
       child: InkWell(
         borderRadius: BorderRadius.circular(6),
-        onTap: st.golden != null ? null : () => _tag(l, raw),
+        onTap:
+            st.golden != null
+                ? (widget.onOpen == null
+                    ? null
+                    : () => widget.onOpen!(st.golden!.habitId))
+                : () => _tag(l, raw),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
@@ -1190,14 +1200,15 @@ class _WebRoutinesState extends State<WebRoutines> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      raw,
+                      '$raw${st.golden?.flagged == true ? '  ⚠️' : ''}'
+                      '${st.golden?.experiment != null ? '  🧪' : ''}',
                       style: MM.body(
                         size: 12.5,
                         color: Colors.white.withOpacity(0.85),
                       ),
                     ),
                     Text(
-                      sub,
+                      detail ? '$sub · Detailed view →' : sub,
                       style: MM.body(
                         size: 10.5,
                         color:
