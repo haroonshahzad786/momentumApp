@@ -31,7 +31,11 @@ class HhsChatView extends StatefulWidget {
     this.sessionId,
     this.title,
     this.stage2 = false,
+    this.lockInLabel = 'Lock it in 🔓 Unlock Command Center',
   });
+
+  /// The forge card's button — names where locking in takes the player.
+  final String lockInLabel;
 
   /// Phase 1 Stage 2 (MBS, "Level 2") session — P1-5: its 3 checkpoints, a
   /// Level 2 header, and a reward button instead of the forge card.
@@ -265,8 +269,10 @@ class _HhsChatViewState extends State<HhsChatView> {
 
   void _refocusInput() {
     if (_rewardQueue.isNotEmpty || _showForge) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
+    // After a tap (reward card dismissed) the browser's own blur lands after
+    // the next frame and undid a post-frame refocus — so wait a beat.
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (!mounted || _rewardQueue.isNotEmpty || _showForge) return;
       // Unfocus first: on web Flutter can still think the field is focused
       // after the browser moved focus away, making requestFocus a no-op.
       _inputFocus.unfocus();
@@ -319,6 +325,7 @@ class _HhsChatViewState extends State<HhsChatView> {
           if (_showForge && _rewardQueue.isEmpty && !widget.stage2)
             _ForgeConfirmOverlay(
               fields: _sync.fields,
+              label: widget.lockInLabel,
               onLockIn: widget.onComplete,
             ),
         ],
@@ -734,7 +741,13 @@ class _RewardOverlay extends StatelessWidget {
 
 // ─── Forge confirm overlay ───────────────────────────────────────────────
 class _ForgeConfirmOverlay extends StatelessWidget {
-  const _ForgeConfirmOverlay({required this.fields, required this.onLockIn});
+  const _ForgeConfirmOverlay({
+    required this.fields,
+    required this.label,
+    required this.onLockIn,
+  });
+
+  final String label;
   final OnboardingFields? fields;
   final VoidCallback onLockIn;
 
@@ -842,7 +855,7 @@ class _ForgeConfirmOverlay extends StatelessWidget {
                     ),
                   const SizedBox(height: 16),
                   MMPrimaryButton(
-                    label: 'Lock it in 🔓 Unlock Command Center',
+                    label: label,
                     pulse: true,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     onPressed: onLockIn,

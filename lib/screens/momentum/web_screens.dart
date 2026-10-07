@@ -32,6 +32,7 @@ import '../../widgets/momentum/captains_log_archive.dart';
 import '../../services/all_habits.dart';
 import '../../services/formation.dart' show FormationProgress;
 import '../../widgets/momentum/formation_room.dart';
+import '../../widgets/momentum/habit_detail_view.dart' show abbreviatedVersion;
 import '../../widgets/momentum/habit_color.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 
@@ -724,9 +725,10 @@ class _WebHabitsState extends State<WebHabits> {
                       shown.map((h) {
                         final st = _stage[h.stage] ?? _stage['forming']!;
                         final hex = coreHex(h.coreId);
+                        final short = abbreviatedVersion(h);
                         final note =
-                            h.displayText.trim().isNotEmpty
-                                ? h.displayText.trim()
+                            short.isNotEmpty
+                                ? short
                                 : (h.when.trim().isNotEmpty
                                     ? h.when.trim()
                                     : '—');

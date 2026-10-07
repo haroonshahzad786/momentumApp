@@ -619,7 +619,7 @@ These three come straight from the Gamification Mechanics Specs Reference (§6 S
 - **Verified:** 13 new tests; browser-checked on web (6 Oct) on your account's "Deep Presence Practice": all sections show your real data; a note was saved, was still there after a full page reload, and was then removed.
 - **Next (#23):** each edit becomes a 🧪 3-day experiment. Changing a habit's type (routine ↔ non-routine) waits for the reclassification rules.
 
-### Phase 1 finalization (Will, 6 Oct: "finalize phase 1 first") 🟡
+### Phase 1 finalization (Will, 6 Oct: "finalize phase 1 first") ✅
 - **Spec:** Phase 1&2 Sequence — "FIRST-TIME PLAYERS" / "RETURNING PLAYERS" ("Returning players bypass all tutorial and narrative onboarding and go directly into the HHS for their next pain point"), the full Stage 2 walkthrough, and "PHASE 2 LAUNCH SEQUENCE"; Phase 1&2 Details "MBM Shortcut".
 - **Built:**
   - **First-time vs returning:** a player who has signed in before skips the intro. Until Phase 1 is finished, the app opens inside it (a brand-new player goes straight into Nova; anyone part-way resumes where they left off). The web Cockpit shows a "Continue Game 🎮" banner.
@@ -627,7 +627,8 @@ These three come straight from the Gamification Mechanics Specs Reference (§6 S
   - **Stage 2 is now a Nova conversation** ("Level 2"): obstacle & opportunity → the 3 methods → a guided setup plan → Friction Hunter +10 / Method Master +15 / Implementation Wizard +25 → the Space Cantina unlock. Returning players need only one method, or use the **MBM Shortcut** (Ideas Well quick-add, or their own).
   - **Rewards** checked against the doc. A wrong checkpoint title was fixed, and a "CORE UNLOCKED" celebration added.
   - **Phase 1 → Phase 2:** "The Mission Begins" screen, then a Next/Back cockpit tour ending "Ready to launch Day 1?".
-- **Verified:** first-time and returning conversations and Go Deeper were checked in the browser (6 Oct). The new Stage 2, the MBM Shortcut, the launch tour and the 7 Oct fixes still need a browser run.
+- **Verified (browser, test account, 6–7 Oct):** a first-time Stage 1; the new Stage 2 end to end (3 checkpoints, MBMs saved, Cantina unlocked, +25 credits); the launch screen and tour, where "Let's go" opens the Daily Ritual; a second habit as a returning player (recap, all 5 checkpoints paid again, so the points ledger totals 270), then the MBM Shortcut with your own MBM saved to the habit, then **CORE UNLOCKED: Relationships** on the Cockpit; Go Deeper; switching a habit routine ↔ non-routine. Four small issues found in this run are fixed but not yet re-checked in the browser: a button label, chat focus after reward cards, Nova's closing line for returning players, and the web Habits card text.
+- **Open question for Will:** should the MBM Shortcut's quick paths (Ideas Well / your own) earn any Stage 2 points? Currently they don't.
 
 ---
 

@@ -226,6 +226,10 @@ class _Phase1FlowState extends State<Phase1Flow> {
             userId: uid,
             sessionId: session.id,
             title: session.isGoDeeper ? 'Rebuild your Golden Habit' : null,
+            lockInLabel:
+                session.isGoDeeper
+                    ? 'Lock it in 🔒 Save my rebuild'
+                    : 'Lock it in 🔒 Make it automatic',
             initialDraft: _draft,
             onProgress: _onHhsProgress,
             onComplete: _onHhsComplete,
