@@ -212,7 +212,15 @@ class _HhsChatViewState extends State<HhsChatView> {
       widget.userId,
       sessionId: widget.sessionId,
     );
-    if (!mounted || !result.available) return;
+    if (!mounted) return;
+    if (!result.available) {
+      // Nothing awarded yet — that IS the baseline. Returning early without
+      // recording it made the first checkpoint count as the baseline, so its
+      // reward card never showed (Stage 1's Truth Seeker, Stage 2's Friction
+      // Hunter).
+      _firstSync = false;
+      return;
+    }
     _applySync(result);
   }
 
@@ -258,7 +266,11 @@ class _HhsChatViewState extends State<HhsChatView> {
   void _refocusInput() {
     if (_rewardQueue.isNotEmpty || _showForge) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _inputFocus.requestFocus();
+      if (!mounted) return;
+      // Unfocus first: on web Flutter can still think the field is focused
+      // after the browser moved focus away, making requestFocus a no-op.
+      _inputFocus.unfocus();
+      _inputFocus.requestFocus();
     });
   }
 
@@ -449,6 +461,9 @@ class _HhsChatViewState extends State<HhsChatView> {
               maxLines: 4,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _send(),
+              // A "send" field drops focus on submit by default; keep it so
+              // the player can type the next answer straight away.
+              onEditingComplete: () {},
               style: MM.body(color: Colors.white, size: 13),
               decoration: InputDecoration(
                 hintText: 'Message Nova…',
