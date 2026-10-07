@@ -730,7 +730,8 @@ post-sign-in routing ❌ (everyone lands on the Cockpit; intro shown to every si
   3 MBMs overview ("Level 2"), §2 Obstacle & Opportunity assessment, §3 MBM implementation 3.1 Obvious /
   3.2 Easy / 3.3 Fun + 3.4 final review, §5 Space Cantina intro (+25💎). §4 Personal Assistant = post-MVP stub.
   Saves MBMs onto the Golden Habit (same fields), awards 10/15/25.
-- [ ] **P1-6 Stage 2 returning + MBM Shortcut** — after a returning player's new Golden Habit: Full MBS (returning
+- [~] **P1-6 Stage 2 returning + MBM Shortcut** — **BUILT 2026-10-07; browser run pending.** After a returning player's new Golden Habit, `MbmShortcutChooser` (lib/widgets/momentum/mbm_shortcut.dart): 🚀 Full MBS with Nova (P1-5 `mbs_returning`) · 🛸 Quick add from the Ideas Well (MBM posts, the habit's Core first, most-upvoted first; adopt → edit → choose Obvious/Easy/Rewarding; counts as an adoption) · ✍️ Enter my own (type + classify) · Later. Saves via `flutterUpdateGoldenHabitDetail`, appended to any existing MBM; now also clears the reclassification review flag (deployed). Shortcut paths award no Stage 2 checkpoint MP (no MBS sections were done) — decide with Will if they should. 3 client tests (96).
+  Original: — after a returning player's new Golden Habit: Full MBS (returning
   variant, min ONE strategy total, MBM framework referenced not introduced) / Quick Add from Ideas Well /
   Manual Entry (classify Obvious/Easy/Rewarding). Cantina unlock not repeated.
 - [ ] **P1-7 #30 Phase 1 reward beats** — verify titles + MP vs Gamification spec / Sequence.

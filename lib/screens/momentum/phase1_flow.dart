@@ -8,6 +8,7 @@ import '../../widgets/momentum/glass_panel.dart';
 import '../../widgets/momentum/hhs_pyramid.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 import '../../widgets/momentum/starfield.dart';
+import '../../widgets/momentum/mbm_shortcut.dart';
 import 'hhs_chat_view.dart';
 
 // ─── MBM catalogue ───────────────────────────────────────────────────────
@@ -171,9 +172,9 @@ class _Phase1FlowState extends State<Phase1Flow> {
       // Rebuilt in place — back to the hub; tracking picks it up.
       _go('hub', base: done);
     } else {
-      // Returning: Nova already summarised the progress (no unlock reveal);
-      // straight on to this habit's MBMs.
-      _go('mbs', base: done);
+      // Returning: Nova already summarised the progress (no unlock reveal).
+      // The MBM Shortcut offers Full MBS / Ideas Well / manual entry (P1-6).
+      _go('mbm-shortcut', base: done);
     }
   }
 
@@ -271,6 +272,25 @@ class _Phase1FlowState extends State<Phase1Flow> {
         );
       case 'cantina':
         return _CantinaUnlockView(onEnter: _completeStage2);
+      case 'mbm-shortcut':
+        return _ShortcutScaffold(
+          child: MbmShortcutChooser(
+            onFull: () => _go('mbs'),
+            onIdeas: () => _go('mbm-ideas'),
+            onManual: () => _go('mbm-manual'),
+            onLater: () => _go('hub'),
+          ),
+        );
+      case 'mbm-ideas':
+      case 'mbm-manual':
+        return _ShortcutScaffold(
+          child: MbmAttachView(
+            key: ValueKey(_view),
+            fromIdeas: _view == 'mbm-ideas',
+            onDone: () => _go('hub'),
+            onBack: () => _go('mbm-shortcut'),
+          ),
+        );
       case 'hub':
       default:
         return _Phase1HubView(
@@ -527,6 +547,22 @@ class _PhaseScaffold extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Centred, width-capped page for the MBM Shortcut screens (P1-6).
+class _ShortcutScaffold extends StatelessWidget {
+  const _ShortcutScaffold({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => _PhaseScaffold(
+    child: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: Padding(padding: const EdgeInsets.all(20), child: child),
+      ),
+    ),
+  );
 }
 
 // ─── Back-button (rounded chip) ──────────────────────────────────────────
