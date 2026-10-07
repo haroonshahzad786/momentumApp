@@ -637,6 +637,10 @@ These three come straight from the Gamification Mechanics Specs Reference (§6 S
 - **To confirm with you:** you decide keep or retire, and the app only recommends. "Working" means the Core's average rose by at least half a point.
 - **Next:** a real Nova Quick Suggestion from a ⚠️ flag (step 2), then Go Deeper rebuilds tracked as experiments with a "what changed" summary (step 3).
 
+### Fix: Routines empty for new players ✅
+- **Problem:** a player whose habits were all made with Nova saw an empty Routines screen. Nova saved the habit but not its line in the Core's Routines / Non-Routines list, which is what that screen reads.
+- **Fixed (7 Oct):** Nova now adds the line when it forges a habit (and renames it after a Go Deeper rebuild), and the Routines screens (web + phone) also show any Golden Habit that is missing a line. That covers players who already have habits. Checked in the browser on the test account.
+
 ---
 
 ## 3. Engineering notes (for your technical reviewer)

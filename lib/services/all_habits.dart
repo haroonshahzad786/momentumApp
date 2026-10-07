@@ -207,6 +207,60 @@ Map<String, GoldenHabit> goldenIndex(List<GoldenHabit> golden) => {
         _key(GoldenHabitRef.shortCore(g.coreId), _goldenName(g)): g,
     };
 
+/// The Routines / Non-Routine lists with a line added for every Golden Habit
+/// that has none in its Core yet. Nova's forge never wrote these per-Core lines
+/// (only the flat Momentum Lists), so a new player's Routines screen was empty
+/// while their Golden Habits existed. Added lines are plain names; the screens
+/// colour them 🟠 / 🟢 by formation like any Golden Habit line.
+({List<CoreList> routine, List<CoreList> nonRoutine}) withGoldenLines({
+  required List<CoreList> routine,
+  required List<CoreList> nonRoutine,
+  required List<GoldenHabit> golden,
+}) {
+  // A line names a habit when any of its `·` / `|` parts is that name (as
+  // the backend's reclassify / rename match lines).
+  final have = <String>{
+    for (final l in [...routine, ...nonRoutine])
+      for (final raw in l.items) ...[
+        _key(GoldenHabitRef.shortCore(l.coreId), parseHabitLine(raw).name),
+        for (final t in raw.split(RegExp(r'\s*[·|]\s*')))
+          _key(GoldenHabitRef.shortCore(l.coreId), t),
+      ],
+  };
+  final r = [...routine];
+  final n = [...nonRoutine];
+  for (final g in golden) {
+    final name = _goldenName(g);
+    final core = GoldenHabitRef.shortCore(g.coreId);
+    if (!have.add(_key(core, name))) continue;
+    final isRoutine = g.habitType != 'non_routine';
+    final lists = isRoutine ? r : n;
+    final i = lists.indexWhere(
+      (l) => GoldenHabitRef.shortCore(l.coreId) == core,
+    );
+    if (i >= 0) {
+      final l = lists[i];
+      lists[i] = CoreList(
+        coreId: l.coreId,
+        coreLabel: l.coreLabel,
+        categoryId: l.categoryId,
+        name: l.name,
+        items: [...l.items, name],
+        colors: l.colors,
+      );
+    } else {
+      lists.add(CoreList(
+        coreId: g.coreId,
+        coreLabel: g.coreLabel,
+        categoryId: 'golden_habit',
+        name: isRoutine ? 'Routines List' : 'Non-Routine',
+        items: [name],
+      ));
+    }
+  }
+  return (routine: r, nonRoutine: n);
+}
+
 String _goldenName(GoldenHabit g) => g.habitName.trim().isNotEmpty
     ? g.habitName.trim()
     : (g.displayText.trim().isNotEmpty ? g.displayText.trim() : 'Golden Habit');

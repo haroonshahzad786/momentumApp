@@ -1089,9 +1089,14 @@ class _WebRoutinesState extends State<WebRoutines> {
         checkins = await _checkins.getRecent(uid, limit: 30);
       } catch (_) {}
       if (!mounted) return;
+      final lists = withGoldenLines(
+        routine: res.data.routine,
+        nonRoutine: res.data.nonRoutine,
+        golden: golden,
+      );
       setState(() {
-        _routine = res.data.routine;
-        _nonRoutine = res.data.nonRoutine;
+        _routine = lists.routine;
+        _nonRoutine = lists.nonRoutine;
         _golden = goldenIndex(golden);
         _coreScores = coreScoreSeries(checkins);
         _tagged.clear();

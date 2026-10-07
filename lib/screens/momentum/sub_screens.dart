@@ -745,9 +745,14 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
       final byCore = coreScoreSeries(checkins);
       final goldenByKey = goldenIndex(golden);
       if (!mounted) return;
+      final lists = withGoldenLines(
+        routine: data.routine,
+        nonRoutine: data.nonRoutine,
+        golden: golden,
+      );
       setState(() {
-        _routine = _expand(data.routine, byCore, goldenByKey);
-        _nonRoutine = _expand(data.nonRoutine, byCore, goldenByKey);
+        _routine = _expand(lists.routine, byCore, goldenByKey);
+        _nonRoutine = _expand(lists.nonRoutine, byCore, goldenByKey);
         _offline = result.fromCache;
         _loading = false;
       });
