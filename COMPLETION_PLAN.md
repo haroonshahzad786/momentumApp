@@ -955,11 +955,11 @@ distances/momentum values (see #40).
   change = 🧪 experiment with a 3-day check-in → convert or retire (retired ones never re-suggested).
 - [ ] **#24 Today's Focus (AI) + score validation** — 3–5 bullets generated from *this* session's scores,
   log, flags and experiments; private nudge when Captain's Log tone contradicts the score. Needs #15.
-- [ ] **#25 Phase 2 first-time launch** (Sequence §0) — "Phase 1 complete → mission begins" transition +
+- [x] **#25 Phase 2 first-time launch** — **DONE as P1-8 (2026-10-07, browser-verified).** (Sequence §0) — "Phase 1 complete → mission begins" transition +
   90-second cockpit tour with Next/Back, ending on the Daily Check-In button.
-- [ ] **#26 First-time vs returning routing** (PRD 4, calls 7/22) — "Press Start to Begin" intro → welcome
-  screens for new players; returning players skip intro and resume where they left off; post-refinement
-  re-entry shows what changed + 🧪 tag.
+- [x] **#26 First-time vs returning routing** (PRD 4, calls 7/22) — **DONE as P1-1 (2026-10-06, browser-verified).**
+  "Press Start to Begin" intro → welcome screens for new players; returning players skip intro and resume
+  where they left off. The "post-refinement re-entry shows what changed + 🧪 tag" part moves to #23.
 - [ ] **#27 Progress Summary polish** (PRD 12.C, Sequence) — one-by-one stat reveal, planet progress bar
   "% to next planet", ship-status teaser, first-mission challenge card, quick actions (Trophy · Command
   Center · Cantina · All Habits).
@@ -968,16 +968,17 @@ distances/momentum values (see #40).
 - [ ] **#29 Manual habit creation guardrails** (PRD 7/12.C) — `add_habit_page.dart` exists; verify it
   suggests Triple-Check + MBMs, classifies routine/non-routine and time block, flags new habits for 14 days.
 **P1 — Phase 1**
-- [ ] **#30 Phase 1 reward beats** — verify Stage 1 checkpoints award 10/15/20/25/40 MP (Truth Seeker →
+- [x] **#30 Phase 1 reward beats** — **DONE as P1-7 (2026-10-07, browser-verified incl. CORE UNLOCKED).** — verify Stage 1 checkpoints award 10/15/20/25/40 MP (Truth Seeker →
   Core Confirmed → Principle Decoder → Keystone Forger → Golden Habit Architect) and Stage 2 10/15/25
   (Friction Hunter → Method Master → Implementation Wizard) with the lock→✅ progress bar; Core icon unlock
   animation on first habit in a Core.
 - [ ] **#31 Command Center MVP rules** (PRD 10.C) — locked lists shown greyed with unlock hint; each entry
   shows its source (Phase 1 / manual / AI / quest); archive instead of delete; search across lists;
   celebratory first reveal; One-Time Actions list with done/pending.
-- [ ] **#32 Returning-player HHS/MBS flows** (Sequence) — voluntary new habit / guided gamified / flag-
-  triggered, each with context pre-loaded; MBS shortcuts: Quick Add from Ideas Well + manual MBM entry;
-  MBM version history. (Absorbs BG-F8.)
+- [x] **#32 Returning-player HHS/MBS flows** (Sequence) — **DONE as P1-2…P1-6 (2026-10-07, browser-verified).**
+  Voluntary new habit / guided gamified / flag-triggered (Go Deeper), each with context pre-loaded; MBS
+  shortcuts: Quick Add from Ideas Well + manual MBM entry. (Absorbs BG-F8.) Not done: MBM version history
+  → tracked with #23 (each MBM change becomes an experiment).
 **P2 — data, AI safety, admin (Will's "never cut" list + call asks)**
 - [ ] **#33 Behavioral data capture + aggregates** (AI-First Implementation Guide M1/M4, "NEVER CUT") —
   `sessions` (timing, skips, backtracks, exit point), `/aggregates/` (pain-point patterns, habit success
