@@ -949,10 +949,27 @@ distances/momentum values (see #40).
   reclassification (needs the audit-trail rules in §4E); the Core "Additional Notes" two-way sync (no such Core
   field exists yet); delete. Mark as Formed and Need Help were not clicked live (they write / start a Nova
   session) — both reuse existing, tested flows.
-- [ ] **#23 Experiment lifecycle + real AI resolution paths** (PRD 13.C, Sequence Day-5) — ⚠️ Flag button
+- [~] **#23 Experiment lifecycle + real AI resolution paths** (PRD 13.C, Sequence Day-5) — ⚠️ Flag button
   in every habit view; Quick Suggestion = Claude call over Momentum Lists + Captain's Log (today a
   placeholder); Go Deeper → HHS/MBS with context pre-loaded (routing exists); Manual Edit → #22; every
   change = 🧪 experiment with a 3-day check-in → convert or retire (retired ones never re-suggested).
+  **Step 1 DONE 2026-10-07 (browser-verified on the test account):** experiment records
+  (`functions-flutter/experiments.js`: `golden_habits/{id}/experiments/{eid}` + an `experiment` mirror on the
+  habit + `retiredStrategies`). A Detailed View edit to the habit's mechanics (where/when/what, cue, anchor,
+  obstacle IF/THEN, starting version, the 3 MBMs; not notes/names/one-time actions) becomes a 🧪 experiment;
+  a second edit folds into it and restarts the window; starting one resolves an open ⚠️ flag (logged in
+  `flag_history`). The window is the Core's next 3 check-ins after the start day; the baseline is up to 3
+  before. Once due, Nova's check-in shows on the Cockpit (before/during averages, a recommendation, ✅ Keep /
+  ♻️ Retire / 🔬 Go Deeper / Decide later). The Detailed View has the same card. Retire restores the old
+  values, saves the player's learnings and remembers the strategy. 🧪 badges: Detailed View header, web
+  Habits cards, All Habits, Non-Routines. New `flutterResolveExperiment`; `flutterUpdateGoldenHabitDetail` +
+  `flutterGetGoldenHabits` updated (deployed). 10 backend + 5 app tests (78 / 107). **Choices to confirm with
+  Will:** the player decides keep/retire (the app only recommends, since the docs' AI-autonomy gates are TBD);
+  "improved" = a 0.5+ lift in the Core average (or 4+ with no earlier scores).
+  **Next:** step 2, a real Quick Suggestion (Claude over Momentum Lists + Captain's Log + retired strategies;
+  ~1 small call per use) from the ⚠️ Flag and the check-in intervention, which today only set a flag. Step 3:
+  Go Deeper rebuilds become experiments + the "what changed" re-entry summary (moved from #26), and Manual
+  Edit from the check-in intervention opens the Detailed View.
 - [ ] **#24 Today's Focus (AI) + score validation** — 3–5 bullets generated from *this* session's scores,
   log, flags and experiments; private nudge when Captain's Log tone contradicts the score. Needs #15.
 - [x] **#25 Phase 2 first-time launch** — **DONE as P1-8 (2026-10-07, browser-verified).** (Sequence §0) — "Phase 1 complete → mission begins" transition +

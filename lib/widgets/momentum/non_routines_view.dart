@@ -371,6 +371,7 @@ class _NonRoutinesViewState extends State<NonRoutinesView> {
                       TextSpan(children: [
                         TextSpan(text: h.name),
                         if (h.flagged) const TextSpan(text: '  ⚠️'),
+                        if (h.experiment) const TextSpan(text: '  🧪'),
                       ]),
                       style: MM.body(
                           size: 13, color: Colors.white, weight: FontWeight.w600),

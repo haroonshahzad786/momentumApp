@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/golden_habit.dart';
+import 'checkin_service.dart';
 import 'offline.dart';
 
 /// Reads the user's Golden Habits from Firebase Functions (codebase "flutter").
@@ -131,10 +132,15 @@ class HabitsService {
   /// [GoldenHabit.editableKeys]) via `flutterUpdateGoldenHabitDetail`, which
   /// also renames the Core's list line when the name changes. Throws on
   /// failure.
-  Future<void> updateHabitDetail({
+  ///
+  /// [experiment] (`source`, optional `title` / `hypothesis`) makes a change
+  /// to the habit's mechanics a 🧪 experiment (#23) starting today; the
+  /// returned [HabitExperiment] is the habit's active one (null when none).
+  Future<HabitExperiment?> updateHabitDetail({
     required String userId,
     required String habitId,
     required Map<String, String> fields,
+    Map<String, String>? experiment,
   }) async {
     final response = await _client.post(
       Uri.parse('$_baseUrl/flutterUpdateGoldenHabitDetail'),
@@ -144,6 +150,11 @@ class HabitsService {
         'userId': userId,
         'habitId': habitId,
         'fields': fields,
+        if (experiment != null)
+          'experiment': {
+            ...experiment,
+            'day': CheckinService.dayId(DateTime.now()),
+          },
       }),
     );
     final decoded = jsonDecode(response.body);
@@ -152,6 +163,39 @@ class HabitsService {
         decoded['ok'] != true) {
       throw Exception(
         'flutterUpdateGoldenHabitDetail failed '
+        '(${response.statusCode}): ${response.body}',
+      );
+    }
+    return HabitExperiment.tryParse(decoded['experiment']);
+  }
+
+  /// Keeps (`keep`) or retires (`retire`) the habit's active 🧪 experiment
+  /// via `flutterResolveExperiment`. Retiring restores the old values.
+  Future<void> resolveExperiment({
+    required String userId,
+    required String habitId,
+    required String experimentId,
+    required String outcome,
+    String learnings = '',
+  }) async {
+    final response = await _client.post(
+      Uri.parse('$_baseUrl/flutterResolveExperiment'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'secret': _secret,
+        'userId': userId,
+        'habitId': habitId,
+        'experimentId': experimentId,
+        'outcome': outcome,
+        'learnings': learnings,
+      }),
+    );
+    final decoded = jsonDecode(response.body);
+    if (response.statusCode != 200 ||
+        decoded is! Map<String, dynamic> ||
+        decoded['ok'] != true) {
+      throw Exception(
+        'flutterResolveExperiment failed '
         '(${response.statusCode}): ${response.body}',
       );
     }

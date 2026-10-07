@@ -44,6 +44,8 @@ class GoldenHabit {
     this.mbmsNeedReview = false,
     this.reclassifiedAt = '',
     this.reclassifications = const [],
+    this.experiment,
+    this.retiredStrategies = const [],
   });
 
   final String habitId;
@@ -103,6 +105,12 @@ class GoldenHabit {
   final bool mbmsNeedReview;
   final String reclassifiedAt;
   final List<Reclassification> reclassifications;
+
+  /// The active 🧪 experiment (#23), or null.
+  final HabitExperiment? experiment;
+
+  /// Strategies retired from past experiments — never suggested again.
+  final List<String> retiredStrategies;
 
   /// Field keys the Detailed Habit View may edit — the same allowlist as
   /// `flutterUpdateGoldenHabitDetail` (goldenHabitDetail.js EDITABLE).
@@ -168,6 +176,8 @@ class GoldenHabit {
     'mbmsNeedReview': mbmsNeedReview,
     'reclassifiedAt': reclassifiedAt,
     'reclassifications': [for (final r in reclassifications) r.toJson()],
+    'experiment': experiment?.toJson(),
+    'retiredStrategies': retiredStrategies,
   };
 
   /// This habit with [edits] (keys from [editableKeys]) applied — the local
@@ -241,6 +251,12 @@ class GoldenHabit {
           for (final e in list)
             if (e is Map) Reclassification.fromJson(e.cast<String, dynamic>()),
       ],
+      experiment: HabitExperiment.tryParse(j['experiment']),
+      retiredStrategies: [
+        if (j['retiredStrategies'] case final List list)
+          for (final e in list)
+            if ('$e'.trim().isNotEmpty) '$e'.trim(),
+      ],
     );
   }
 
@@ -259,6 +275,8 @@ class GoldenHabit {
     bool? flagged,
     String? flagReason,
     String? flagNote,
+    HabitExperiment? experiment,
+    bool clearExperiment = false,
   }) {
     return GoldenHabit(
       habitId: habitId,
@@ -299,8 +317,71 @@ class GoldenHabit {
       mbmsNeedReview: mbmsNeedReview,
       reclassifiedAt: reclassifiedAt,
       reclassifications: reclassifications,
+      experiment: clearExperiment ? null : (experiment ?? this.experiment),
+      retiredStrategies: retiredStrategies,
     );
   }
+}
+
+/// One field's change in a 🧪 experiment.
+typedef FieldChange = ({String from, String to});
+
+/// A habit's active 🧪 experiment (#23): what changed, from which day, and
+/// why. Stored at golden_habits/{id}.experiment by the backend.
+class HabitExperiment {
+  const HabitExperiment({
+    required this.id,
+    required this.source,
+    required this.title,
+    required this.startDay,
+    this.hypothesis = '',
+    this.changes = const {},
+  });
+
+  final String id;
+
+  /// manual | quick | go_deeper_hhs | go_deeper_mbs
+  final String source;
+  final String title;
+  final String hypothesis;
+
+  /// yyyy-MM-dd — the check-ins AFTER this day are the experiment's.
+  final String startDay;
+  final Map<String, FieldChange> changes;
+
+  static HabitExperiment? tryParse(Object? v) {
+    if (v is! Map) return null;
+    final id = '${v['id'] ?? ''}'.trim();
+    if (id.isEmpty) return null;
+    final changes = <String, FieldChange>{};
+    if (v['changes'] case final Map m) {
+      m.forEach((k, c) {
+        if (c is Map) {
+          changes['$k'] = (from: '${c['from'] ?? ''}', to: '${c['to'] ?? ''}');
+        }
+      });
+    }
+    return HabitExperiment(
+      id: id,
+      source: '${v['source'] ?? 'manual'}',
+      title: '${v['title'] ?? ''}'.trim(),
+      hypothesis: '${v['hypothesis'] ?? ''}'.trim(),
+      startDay: '${v['startDay'] ?? ''}',
+      changes: changes,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'source': source,
+    'title': title,
+    'hypothesis': hypothesis,
+    'startDay': startDay,
+    'changes': {
+      for (final e in changes.entries)
+        e.key: {'from': e.value.from, 'to': e.value.to},
+    },
+  };
 }
 
 /// One Routine ↔ Non-Routine switch in a Golden Habit's audit trail.

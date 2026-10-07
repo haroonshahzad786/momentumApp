@@ -162,6 +162,7 @@ class AllHabit {
     this.progress,
     this.habitId,
     this.flagged = false,
+    this.experiment = false,
     this.ifText = '',
     this.thenText = '',
   });
@@ -182,6 +183,9 @@ class AllHabit {
   /// Set when the row is (or matched) a Golden Habit.
   final String? habitId;
   final bool flagged;
+
+  /// Has an active 🧪 experiment (#23).
+  final bool experiment;
 
   /// IF-THEN (PRD §11): IF [internal trigger], THEN [growth-owner response].
   /// Empty when the habit doesn't carry one.
@@ -294,6 +298,7 @@ List<AllHabit> mergeAllHabits({
       progress: g.formed ? null : progress,
       habitId: g.habitId,
       flagged: g.flagged,
+      experiment: g.experiment != null,
       // Non-routines: the trigger → the response; else the obstacle plan.
       ifText: g.trigger.trim().isNotEmpty ? g.trigger.trim() : g.obstacleIf.trim(),
       thenText: g.trigger.trim().isNotEmpty && g.what.trim().isNotEmpty

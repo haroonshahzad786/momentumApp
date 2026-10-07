@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import '../../models/golden_habit.dart';
 import '../../services/all_habits.dart' show coreScoreSeries;
 import '../../services/checkin_service.dart';
+import '../../services/experiments.dart';
 import '../../services/formation.dart';
 import '../../services/habits_service.dart';
 import '../../services/offline.dart';
 import '../../services/onboarding_service.dart';
 import '../../theme/momentum_tokens.dart';
+import 'experiment_card.dart';
 import 'formation_room.dart' show FormationCelebration;
 import 'glass_panel.dart';
 import 'mm_buttons.dart';
@@ -206,17 +208,36 @@ class _HabitDetailViewState extends State<HabitDetailView> {
     }
     setState(() => _saving = true);
     try {
-      await _habits.updateHabitDetail(
+      // Manual Edit = a 🧪 experiment when it changes the habit's mechanics
+      // (#23); the server decides which fields count.
+      final exp = await _habits.updateHabitDetail(
         userId: _uid,
         habitId: h.habitId,
         fields: changed,
+        experiment: const {'source': 'manual'},
       );
       if (!mounted) return;
+      final started = exp != null && exp.id != h.experiment?.id;
       setState(() {
-        _h = h.applyEdits(changed);
+        var next = h.applyEdits(changed);
+        if (exp != null) {
+          next = next.copyWith(
+            experiment: exp,
+            flagged: false,
+            flagReason: '',
+            flagNote: '',
+          );
+        }
+        _h = next;
         _editing = false;
       });
-      _toast('Saved — every view now shows the update');
+      _toast(
+        exp == null
+            ? 'Saved — every view now shows the update'
+            : started
+            ? "Saved as a 🧪 Experiment — try it for $experimentLength days and Nova checks in"
+            : 'Saved — added to your running 🧪 experiment (its 3 days restart)',
+      );
     } catch (e) {
       _toast(
         isNetworkError(e)
@@ -228,6 +249,56 @@ class _HabitDetailViewState extends State<HabitDetailView> {
       if (mounted) setState(() => _saving = false);
     }
   }
+
+  // ── 🧪 experiments (#23) ──────────────────────────────────────────────
+
+  Future<void> _resolveExperiment(String outcome) async {
+    final h = _h!;
+    final e = h.experiment;
+    if (e == null) return;
+    var learnings = '';
+    if (outcome == 'retire') {
+      final r = await askRetireLearnings(context);
+      if (r == null || !mounted) return;
+      learnings = r;
+    }
+    setState(() => _saving = true);
+    try {
+      await _habits.resolveExperiment(
+        userId: _uid,
+        habitId: h.habitId,
+        experimentId: e.id,
+        outcome: outcome,
+        learnings: learnings,
+      );
+      if (!mounted) return;
+      _toast(
+        outcome == 'keep'
+            ? '✅ Kept — that tweak is now part of the habit'
+            : "♻️ Retired — the old version is back, and Nova won't suggest it again",
+      );
+      await _load(); // a retire restores the old values
+    } catch (e) {
+      _toast(
+        isNetworkError(e)
+            ? "You're offline — nothing changed"
+            : "Couldn't update the experiment — try again",
+        error: true,
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Widget _experiment(GoldenHabit h, String core) => ExperimentCard(
+    experiment: h.experiment!,
+    progress: experimentProgress(h.experiment!, core, _recent),
+    coreName: _coreTitle[core] ?? h.coreLabel,
+    busy: _saving,
+    onKeep: () => _resolveExperiment('keep'),
+    onRetire: () => _resolveExperiment('retire'),
+    onGoDeeper: () => widget.onNav('rebuild:mbs:${h.habitId}'),
+  );
 
   // ── actions ───────────────────────────────────────────────────────────
 
@@ -607,6 +678,7 @@ class _HabitDetailViewState extends State<HabitDetailView> {
     ];
 
     final side = <Widget>[
+      if (h.experiment != null && !_editing) _experiment(h, core),
       _formation(h, progress, accent),
       _section('MOMENTUM-BOOSTING METHODS', MM.blue, [
         if (h.mbmsNeedReview && !_editing) _mbmReview(h),
@@ -668,7 +740,14 @@ class _HabitDetailViewState extends State<HabitDetailView> {
                 Expanded(flex: 5, child: Column(children: side)),
               ],
             )
-            : Column(children: [side.first, ...spec, ...side.skip(1)]);
+            : Column(
+              children: [
+                // Phone: the experiment and formation status lead.
+                ...side.take(h.experiment != null && !_editing ? 2 : 1),
+                ...spec,
+                ...side.skip(h.experiment != null && !_editing ? 2 : 1),
+              ],
+            );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -715,6 +794,11 @@ class _HabitDetailViewState extends State<HabitDetailView> {
               Text(
                 '· ⚠️ FLAGGED',
                 style: MM.displayX(size: 10, color: MM.yellow),
+              ),
+            if (h.experiment != null)
+              Text(
+                '· 🧪 EXPERIMENT',
+                style: MM.displayX(size: 10, color: MM.violet),
               ),
           ],
         ),
@@ -855,7 +939,7 @@ class _HabitDetailViewState extends State<HabitDetailView> {
 
   Widget _actions(GoldenHabit h, Color accent) {
     if (_editing) {
-      return Row(
+      final row = Row(
         children: [
           Expanded(
             child: MMGhostButton(
@@ -875,6 +959,21 @@ class _HabitDetailViewState extends State<HabitDetailView> {
               onPressed: _saving ? null : _save,
             ),
           ),
+        ],
+      );
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            h.experiment != null
+                ? '🧪 Changes to the habit, cue, obstacle plan or MBMs join your '
+                    'running experiment and restart its $experimentLength days.'
+                : '🧪 Changes to the habit, cue, obstacle plan or MBMs start a '
+                    '$experimentLength-day experiment. Notes and names don\'t.',
+            style: MM.body(color: MM.violet.withOpacity(0.9), size: 11.5),
+          ),
+          const SizedBox(height: 10),
+          row,
         ],
       );
     }

@@ -759,9 +759,9 @@ class _WebHabitsState extends State<WebHabits> {
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Text(
-                                            h.habitName.trim().isNotEmpty
-                                                ? h.habitName.trim()
-                                                : 'Golden Habit',
+                                            '${h.habitName.trim().isNotEmpty ? h.habitName.trim() : 'Golden Habit'}'
+                                            '${h.flagged ? '  ⚠️' : ''}'
+                                            '${h.experiment != null ? '  🧪' : ''}',
                                             style: MM.body(
                                               size: 14.5,
                                               color: Colors.white,

@@ -5,7 +5,10 @@ import '../../models/phase1_state.dart';
 import '../../models/user_profile.dart';
 import '../../services/admin_service.dart';
 import '../../services/auth_service.dart';
+import '../../models/golden_habit.dart';
 import '../../services/checkin_service.dart';
+import '../../services/experiments.dart';
+import '../../services/habits_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/offline.dart';
 import '../../services/onboarding_service.dart';
@@ -34,6 +37,7 @@ import 'journey_page.dart';
 import 'phase1_flow.dart';
 import '../../widgets/momentum/habit_detail_view.dart';
 import '../../widgets/momentum/core_unlock_overlay.dart';
+import '../../widgets/momentum/experiment_card.dart';
 import '../../widgets/momentum/phase2_launch.dart';
 import 'sub_screens.dart';
 import 'summary_page.dart';
@@ -82,6 +86,13 @@ class _MomentumHomeState extends State<MomentumHome> {
   bool _isAdmin = false;
   final _profileService = ProfileService();
   final _checkin = CheckinService();
+  final _habitsService = HabitsService();
+
+  /// Golden Habits whose 🧪 experiment has run its 3 check-ins (#23) — Nova
+  /// asks keep / retire on the Cockpit — and the check-ins behind them.
+  List<GoldenHabit> _dueExperiments = const [];
+  List<DailyCheckin> _expCheckins = const [];
+  bool _expBusy = false;
   final _onboarding = OnboardingService();
   final _points = PointsService();
 
@@ -225,6 +236,7 @@ class _MomentumHomeState extends State<MomentumHome> {
       });
       _landInPhase1IfUnfinished();
       _checkCoreUnlocks(result.data.activeCores);
+      _checkExperiments();
       // Compute the Core Balance 5-day alert badges (#8) from real check-ins.
       _loadCoreBalance();
       _evaluateMissState(result.data);
@@ -444,6 +456,122 @@ class _MomentumHomeState extends State<MomentumHome> {
       name: meta?.$1 ?? core,
       color: meta?.$2 ?? MM.teal,
       onContinue: () => setState(() => _coreUnlocks.removeAt(0)),
+    );
+  }
+
+  /// Loads experiments whose 3 check-ins are in (#23), minus any the player
+  /// put off until later today.
+  Future<void> _checkExperiments() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return;
+    try {
+      final habits = await _habitsService.getGoldenHabits(uid);
+      if (!habits.data.any((h) => h.experiment != null)) {
+        if (mounted) setState(() => _dueExperiments = const []);
+        return;
+      }
+      final recent = await _checkin.getRecent(uid, limit: 30);
+      final today = CheckinService.dayId(DateTime.now());
+      final due = <GoldenHabit>[];
+      for (final h in dueExperiments(
+        habits.data,
+        recent,
+        GoldenHabitRef.shortCore,
+      )) {
+        final later = await LocalCache.getJson('exp:later:${h.experiment!.id}');
+        if (later != today) due.add(h);
+      }
+      if (mounted) {
+        setState(() {
+          _dueExperiments = due;
+          _expCheckins = recent;
+        });
+      }
+    } catch (_) {
+      // Best-effort: the Detailed View still shows the experiment.
+    }
+  }
+
+  Future<void> _resolveDueExperiment(GoldenHabit h, String outcome) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final e = h.experiment;
+    if (uid == null || e == null) return;
+    var learnings = '';
+    if (outcome == 'retire') {
+      final r = await askRetireLearnings(context);
+      if (r == null || !mounted) return;
+      learnings = r;
+    }
+    setState(() => _expBusy = true);
+    try {
+      await _habitsService.resolveExperiment(
+        userId: uid,
+        habitId: h.habitId,
+        experimentId: e.id,
+        outcome: outcome,
+        learnings: learnings,
+      );
+      if (!mounted) return;
+      setState(
+        () =>
+            _dueExperiments = [
+              for (final d in _dueExperiments)
+                if (d.habitId != h.habitId) d,
+            ],
+      );
+      _snack(
+        outcome == 'keep'
+            ? '✅ Kept — that tweak is now part of ${h.habitName}'
+            : "♻️ Retired — the old version is back, and Nova won't suggest it again",
+      );
+    } catch (_) {
+      _snack("Couldn't update the experiment — check your connection");
+    } finally {
+      if (mounted) setState(() => _expBusy = false);
+    }
+  }
+
+  void _snack(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg, style: MM.body(color: Colors.white, size: 12)),
+        backgroundColor: MM.navy2,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  /// On the Cockpit, after any Core-unlock / launch moment.
+  Widget? _buildExperimentReview() {
+    if (_dueExperiments.isEmpty ||
+        _screen != 'dashboard' ||
+        _coreUnlocks.isNotEmpty ||
+        _launch != null) {
+      return null;
+    }
+    final h = _dueExperiments.first;
+    final core = GoldenHabitRef.shortCore(h.coreId);
+    return ExperimentReviewOverlay(
+      key: ValueKey(h.experiment!.id),
+      habitName: h.habitName,
+      experiment: h.experiment!,
+      progress: experimentProgress(h.experiment!, core, _expCheckins),
+      coreName: _coreMeta[core]?.$1 ?? h.coreLabel,
+      busy: _expBusy,
+      onKeep: () => _resolveDueExperiment(h, 'keep'),
+      onRetire: () => _resolveDueExperiment(h, 'retire'),
+      onGoDeeper: () {
+        setState(() => _dueExperiments = _dueExperiments.skip(1).toList());
+        _returnToPhase1('mbs', habitId: h.habitId);
+      },
+      onLater: () {
+        LocalCache.putJson(
+          'exp:later:${h.experiment!.id}',
+          CheckinService.dayId(DateTime.now()),
+        );
+        setState(() => _dueExperiments = _dueExperiments.skip(1).toList());
+      },
     );
   }
 
@@ -748,6 +876,8 @@ class _MomentumHomeState extends State<MomentumHome> {
     // Today's scores may newly tip a Core in/out of balance — refresh badges.
     _loadCoreBalance();
     if (mounted) _go('summary');
+    // Today's check-in may complete an experiment's 3-day window.
+    _checkExperiments();
   }
 
   /// Flags each active Core's Golden Habit whose real pattern is 3+ consecutive
@@ -1100,6 +1230,8 @@ class _MomentumHomeState extends State<MomentumHome> {
         if (_buildCoreUnlock() case final unlock?)
           Positioned.fill(child: unlock),
         if (_buildLaunch() case final launch?) Positioned.fill(child: launch),
+        if (_buildExperimentReview() case final review?)
+          Positioned.fill(child: review),
       ],
     );
   }
@@ -1340,6 +1472,8 @@ class _MomentumHomeState extends State<MomentumHome> {
         if (_buildCoreUnlock() case final unlock?)
           Positioned.fill(child: unlock),
         if (_buildLaunch() case final launch?) Positioned.fill(child: launch),
+        if (_buildExperimentReview() case final review?)
+          Positioned.fill(child: review),
       ],
     );
   }
