@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../services/onboarding_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/mm_buttons.dart';
+import '../../widgets/momentum/quick_suggestion_sheet.dart';
 import '../../widgets/momentum/starfield.dart';
 import '../../services/checkin_service.dart';
 
@@ -166,6 +168,14 @@ class _CheckInPageState extends State<CheckInPage> {
   /// real Golden Habit (anti-shame: a flag means "needs adjusting").
   void _logExperiment(String tag) {
     final coreId = _flagCoreId;
+    // PATH 1 — a real Quick Suggestion when the Core has a Golden Habit
+    // (#23 step 2); otherwise the old flag-only fallback below.
+    final quickRef = coreId == null ? null : _refFor(coreId);
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (tag == 'Quick tweak' && quickRef != null && uid.isNotEmpty) {
+      _quickSuggestion(coreId!, quickRef, uid);
+      return;
+    }
     _toastTimer?.cancel();
     if (coreId != null) {
       final ref = _refFor(coreId);
@@ -177,6 +187,44 @@ class _CheckInPageState extends State<CheckInPage> {
       _flagCoreId = null;
       _expToast = '🧪 $tag · 3-day experiment logged';
     });
+    _toastTimer = Timer(const Duration(milliseconds: 2400), () {
+      if (mounted) setState(() => _expToast = null);
+    });
+  }
+
+  Future<void> _quickSuggestion(
+    String coreId,
+    GoldenHabitRef ref,
+    String uid,
+  ) async {
+    final low = _consecutiveLow(coreId);
+    setState(() => _flagCoreId = null);
+    final r = await showQuickSuggestion(
+      context,
+      userId: uid,
+      habitId: ref.habitId,
+      habitName: _flagLabel(coreId),
+      note: '$low check-ins in a row at or below 3.0 on this Core',
+    );
+    if (!mounted) return;
+    switch (r.outcome) {
+      case QuickSuggestionOutcome.added:
+        _showToast('🧪 Experiment activated · Day 1 of 3');
+      case QuickSuggestionOutcome.goDeeper:
+        widget.onReturnToPhase1('mbs', habitId: ref.habitId);
+      case QuickSuggestionOutcome.skipped:
+        // Keep the ⚠️ so the habit can be tuned later.
+        widget.onFlagHabit(
+          ref.habitId,
+          flagged: true,
+          reason: 'Mission Control: $low check-ins at or below 3.0',
+        );
+    }
+  }
+
+  void _showToast(String msg) {
+    _toastTimer?.cancel();
+    setState(() => _expToast = msg);
     _toastTimer = Timer(const Duration(milliseconds: 2400), () {
       if (mounted) setState(() => _expToast = null);
     });

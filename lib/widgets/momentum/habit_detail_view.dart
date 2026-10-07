@@ -15,6 +15,7 @@ import 'formation_room.dart' show FormationCelebration;
 import 'glass_panel.dart';
 import 'mm_buttons.dart';
 import 'offline_banner.dart';
+import 'quick_suggestion_sheet.dart';
 
 /// Detailed Golden Habit View (#22) — "the living master document for that
 /// habit" (Phase 1 & 2 Details §4A, §4E). Every field the spec lists, in its
@@ -298,6 +299,65 @@ class _HabitDetailViewState extends State<HabitDetailView> {
     onKeep: () => _resolveExperiment('keep'),
     onRetire: () => _resolveExperiment('retire'),
     onGoDeeper: () => widget.onNav('rebuild:mbs:${h.habitId}'),
+  );
+
+  /// PATH 1 — 🚀 Quick Suggestion (#23 step 2): Nova proposes 1–2 tweaks;
+  /// accepting one starts a 🧪 experiment (and clears the flag).
+  Future<void> _quick() async {
+    final h = _h!;
+    final r = await showQuickSuggestion(
+      context,
+      userId: _uid,
+      habitId: h.habitId,
+      habitName: h.habitName,
+      note: [h.flagReason, h.flagNote].where((t) => t.isNotEmpty).join(' — '),
+    );
+    if (!mounted) return;
+    switch (r.outcome) {
+      case QuickSuggestionOutcome.added:
+        _toast(
+          '🧪 Experiment activated — try it for $experimentLength days and Nova checks in',
+        );
+        await _load();
+      case QuickSuggestionOutcome.goDeeper:
+        await _rebuild();
+      case QuickSuggestionOutcome.skipped:
+        break;
+    }
+  }
+
+  /// The three resolution paths, shown while the habit is flagged.
+  Widget _flagPaths() => Padding(
+    padding: const EdgeInsets.only(top: 8),
+    child: Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final b in [
+          MMGhostButton(
+            label: '🚀 Quick Suggestion',
+            color: MM.yellow,
+            borderColor: MM.yellow.withOpacity(0.6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            onPressed: _saving ? null : _quick,
+          ),
+          MMGhostButton(
+            label: '🔬 Go Deeper',
+            color: MM.blue,
+            borderColor: MM.blue.withOpacity(0.5),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            onPressed: _saving ? null : _rebuild,
+          ),
+          MMGhostButton(
+            label: '✏️ Manual Edit',
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            onPressed: _saving ? null : _startEdit,
+          ),
+        ])
+          IntrinsicWidth(child: b),
+      ],
+    ),
   );
 
   // ── actions ───────────────────────────────────────────────────────────
@@ -591,7 +651,11 @@ class _HabitDetailViewState extends State<HabitDetailView> {
               flagNote: r.flagged ? r.note : '',
             ),
       );
-      _toast(r.flagged ? "Flagged — that's data, not failure" : 'Flag removed');
+      _toast(
+        r.flagged
+            ? "Flagged — that's data, not failure. Pick a path above to tune it."
+            : 'Flag removed',
+      );
     } catch (_) {
       _toast("Couldn't update the flag — check your connection", error: true);
     } finally {
@@ -807,12 +871,18 @@ class _HabitDetailViewState extends State<HabitDetailView> {
           _input('habitName', lines: 1, big: true)
         else
           Text(h.habitName, style: MM.display(size: 20, color: Colors.white)),
-        if (h.flagged && h.flagReason.isNotEmpty) ...[
+        if (h.flagged && !_editing) ...[
           const SizedBox(height: 6),
+          if (h.flagReason.isNotEmpty)
+            Text(
+              'Flagged: ${h.flagReason}${h.flagNote.isEmpty ? '' : ' — ${h.flagNote}'}',
+              style: MM.body(color: MM.yellow.withOpacity(0.85), size: 12),
+            ),
           Text(
-            'Flagged: ${h.flagReason}${h.flagNote.isEmpty ? '' : ' — ${h.flagNote}'}',
-            style: MM.body(color: MM.yellow.withOpacity(0.85), size: 12),
+            "That's data, not failure. How would you like to tackle it?",
+            style: MM.body(color: Colors.white.withOpacity(0.6), size: 12),
           ),
+          _flagPaths(),
         ],
         if (h.reclassifiedAt.isNotEmpty) ...[
           const SizedBox(height: 6),

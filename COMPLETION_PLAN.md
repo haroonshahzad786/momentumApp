@@ -966,8 +966,20 @@ distances/momentum values (see #40).
   `flutterGetGoldenHabits` updated (deployed). 10 backend + 5 app tests (78 / 107). **Choices to confirm with
   Will:** the player decides keep/retire (the app only recommends, since the docs' AI-autonomy gates are TBD);
   "improved" = a 0.5+ lift in the Core average (or 4+ with no earlier scores).
-  **Next:** step 2, a real Quick Suggestion (Claude over Momentum Lists + Captain's Log + retired strategies;
-  ~1 small call per use) from the ⚠️ Flag and the check-in intervention, which today only set a flag. Step 3:
+  **Step 2 DONE 2026-10-07 (browser-verified on the test account):** 🚀 Quick Suggestion is real.
+  `functions-flutter/quickSuggestion.js` + `flutterQuickSuggestion` (deployed; 1 Sonnet call per use, ~1–3¢,
+  60 s timeout, one retry). Nova reads the habit's setup, the flag reason/note, the Core's last 21 check-ins
+  (scores + Captain's Log), every Momentum List (flat + the Core's lists) and the retired strategies. It returns
+  what it saw, a diagnosis and 1–2 tweaks, each a full new value for one habit-mechanics field. The server drops
+  unknown fields, no-op changes and retired strategies. App: `QuickSuggestionSheet`. While a habit is flagged,
+  its Detailed View shows the three paths (🚀 Quick Suggestion / 🔬 Go Deeper / ✏️ Manual Edit). In the
+  check-in intervention, Quick Suggestion now opens the sheet: Add → 🧪 experiment; Go Deeper → Stage 2; Skip →
+  keeps the ⚠️. Accepting applies the tweaks via `flutterUpdateGoldenHabitDetail` (experiment source `quick`,
+  Nova's title + hypothesis) and clears the flag. Verified: flagged Energy Reset Ritual, got a cue + Make it
+  Obvious tweak drawn from the player's own note and lists, added it, and 🧪 Day 1 of 3 showed. The first live
+  call hit the shared 30 s client timeout, hence the 60 s. 5 backend + 1 app test (85 / 111). Not clicked live:
+  the check-in intervention route (it needs 3 low check-ins; same sheet).
+  **Next:** Step 3:
   Go Deeper rebuilds become experiments + the "what changed" re-entry summary (moved from #26), and Manual
   Edit from the check-in intervention opens the Detailed View.
 - [ ] **#24 Today's Focus (AI) + score validation** — 3–5 bullets generated from *this* session's scores,

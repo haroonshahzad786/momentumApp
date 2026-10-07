@@ -169,6 +169,37 @@ class HabitsService {
     return HabitExperiment.tryParse(decoded['experiment']);
   }
 
+  /// 🚀 Quick Suggestion (#23): Nova reads the habit, its Momentum Lists,
+  /// Captain's Log and retired strategies (`flutterQuickSuggestion`) and
+  /// proposes 1–2 tweaks. Nothing is saved — accept one with
+  /// [updateHabitDetail] + `experiment: {'source': 'quick', …}`.
+  Future<QuickSuggestion> quickSuggestion({
+    required String userId,
+    required String habitId,
+    String note = '',
+  }) async {
+    final response = await _client.post(
+      Uri.parse('$_baseUrl/flutterQuickSuggestion'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'secret': _secret,
+        'userId': userId,
+        'habitId': habitId,
+        'note': note,
+      }),
+    );
+    final decoded = jsonDecode(response.body);
+    if (response.statusCode != 200 ||
+        decoded is! Map<String, dynamic> ||
+        decoded['ok'] != true) {
+      throw Exception(
+        'flutterQuickSuggestion failed '
+        '(${response.statusCode}): ${response.body}',
+      );
+    }
+    return QuickSuggestion.fromJson(decoded);
+  }
+
   /// Keeps (`keep`) or retires (`retire`) the habit's active 🧪 experiment
   /// via `flutterResolveExperiment`. Retiring restores the old values.
   Future<void> resolveExperiment({
@@ -318,4 +349,61 @@ class HabitsService {
           .toList();
 
   void dispose() => _client.close();
+}
+
+/// One proposed change in a [QuickSuggestion].
+class SuggestedTweak {
+  const SuggestedTweak({
+    required this.field,
+    required this.label,
+    required this.from,
+    required this.to,
+    this.why = '',
+  });
+
+  final String field;
+  final String label;
+  final String from;
+  final String to;
+  final String why;
+}
+
+/// Nova's Quick Suggestion: what it saw, the friction point, and 1–2 tweaks.
+class QuickSuggestion {
+  const QuickSuggestion({
+    required this.diagnosis,
+    required this.title,
+    required this.hypothesis,
+    required this.dataPoints,
+    required this.tweaks,
+  });
+
+  final String diagnosis;
+  final String title;
+  final String hypothesis;
+  final List<({String source, String text})> dataPoints;
+  final List<SuggestedTweak> tweaks;
+
+  factory QuickSuggestion.fromJson(Map<String, dynamic> j) => QuickSuggestion(
+    diagnosis: '${j['diagnosis'] ?? ''}',
+    title: '${j['title'] ?? ''}',
+    hypothesis: '${j['hypothesis'] ?? ''}',
+    dataPoints: [
+      if (j['dataPoints'] case final List list)
+        for (final d in list)
+          if (d is Map) (source: '${d['source'] ?? ''}', text: '${d['text'] ?? ''}'),
+    ],
+    tweaks: [
+      if (j['tweaks'] case final List list)
+        for (final t in list)
+          if (t is Map)
+            SuggestedTweak(
+              field: '${t['field'] ?? ''}',
+              label: '${t['label'] ?? t['field'] ?? ''}',
+              from: '${t['from'] ?? ''}',
+              to: '${t['to'] ?? ''}',
+              why: '${t['why'] ?? ''}',
+            ),
+    ],
+  );
 }
