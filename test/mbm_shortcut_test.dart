@@ -36,6 +36,21 @@ void main() {
     expect(appendMbm('Sticky note', '   '), 'Sticky note');
   });
 
+  test('an idea titled with its method preselects it and drops the prefix', () {
+    CantinaIdea titled(String title, String desc) => CantinaIdea(
+          id: 'x', kind: 'mbm', core: 'mindset', pain: '', title: title, desc: desc,
+          upvotes: 0, adopted: 0, link: false,
+        );
+    final o = ideaStrategy(titled('Make It Obvious · phone charges outside bedroom', 'No screen'));
+    expect(o.kind, MbmKind.obvious);
+    expect(o.text, 'phone charges outside bedroom — No screen');
+    expect(ideaStrategy(titled('Make it Easy: 2-minute start rule', '')).kind, MbmKind.easy);
+    expect(ideaStrategy(titled('make it fun - music on', '')).kind, MbmKind.rewarding);
+    final plain = ideaStrategy(titled('Shoes by the door', ''));
+    expect(plain.kind, isNull);
+    expect(plain.text, 'Shoes by the door');
+  });
+
   test('each MBM kind fills its own habit field', () {
     expect(MbmKind.values.map((k) => k.field), ['makeObvious', 'makeEasy', 'makeRewarding']);
   });

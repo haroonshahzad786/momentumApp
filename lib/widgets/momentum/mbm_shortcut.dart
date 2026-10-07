@@ -44,6 +44,31 @@ List<CantinaIdea> mbmIdeasFor(List<CantinaIdea> ideas, String core) {
   return mbm;
 }
 
+final _methodPrefix = RegExp(
+  r'^make\s+it\s+(obvious|easy|rewarding|fun|satisfying)\s*[·:\-—–]\s*',
+  caseSensitive: false,
+);
+
+/// An Ideas Well post as an MBM: its method, when the title names one
+/// ("Make It Obvious · …"), and the strategy text without that prefix.
+({MbmKind? kind, String text}) ideaStrategy(CantinaIdea idea) {
+  var title = idea.title.trim();
+  MbmKind? kind;
+  final m = _methodPrefix.firstMatch(title);
+  if (m != null) {
+    kind = switch (m.group(1)!.toLowerCase()) {
+      'obvious' => MbmKind.obvious,
+      'easy' => MbmKind.easy,
+      _ => MbmKind.rewarding,
+    };
+    title = title.substring(m.end).trim();
+  }
+  final desc = idea.desc.trim();
+  final text =
+      title.isEmpty ? desc : (desc.isEmpty ? title : '$title — $desc');
+  return (kind: kind, text: text);
+}
+
 /// Adds [strategy] to an existing MBM field without losing what's there.
 String appendMbm(String existing, String strategy) {
   final e = existing.trim();
@@ -250,11 +275,10 @@ class _MbmAttachViewState extends State<MbmAttachView> {
   }
 
   void _pick(CantinaIdea idea) => setState(() {
+    final s = ideaStrategy(idea);
     _picked = idea;
-    _text.text =
-        idea.desc.trim().isNotEmpty
-            ? '${idea.title.trim()} — ${idea.desc.trim()}'
-            : idea.title.trim();
+    _text.text = s.text;
+    _kind = s.kind ?? _kind;
   });
 
   Future<void> _save() async {

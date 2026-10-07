@@ -744,6 +744,12 @@ post-sign-in routing ❌ (everyone lands on the Cockpit; intro shown to every si
   "Save my rebuild"); the chat input still lost focus after a reward card was dismissed (refocus now waits 150 ms
   for the browser's blur); Nova's returning close said "head to your Command Center" (prompt fixed, deployed); the
   web Habits tile showed Nova's whole habit block (now `abbreviatedVersion`).
+  **Re-checked in the browser the same day** (3rd habit, Mindset): all 4 confirmed; Ideas Well quick add attached a
+  community MBM; CORE UNLOCKED Mindset; MP 270 → 380. **Two more fixes from the re-check:** (a) the forge turn needs
+  ~7 tool calls and Nova's turn loop stopped at 6, leaving the "Let's keep going" fallback and no forge. The cap is now
+  10, a tool-free final call guarantees a reply, and the Nova functions' timeout is 240 s (deployed). (b) A quick-add
+  idea titled "Make It Obvious · …" now preselects that method and drops the prefix (`ideaStrategy`, unit-tested;
+  not re-checked in the browser).
 
 ## MASTER docs review (2026-09-25) — updated scope + new tasks #15–#40
 
