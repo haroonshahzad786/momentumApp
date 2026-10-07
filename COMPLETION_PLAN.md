@@ -725,7 +725,8 @@ post-sign-in routing ❌ (everyone lands on the Cockpit; intro shown to every si
   8. Session loader pinned to the top of the screen; Go Deeper header still says "0/5 · Forge your Golden Habit".
   9. Cockpit MP (110) didn't include the returning session's +10 — refresh profile after session awards (verify).
   ✅ fixed + deployed same day: Nova's turn loop dropped the main message when a tool call came mid-turn (kept only the last round's text) — affected every player.
-- [ ] **P1-5 Nova-led Stage 2 MBS (first-time)** — Sequence "PHASE 1, STAGE 2 PLAYER WALKTHROUGH": §1 intro +
+- [~] **P1-5 Nova-led Stage 2 MBS (first-time)** — **BUILT + deployed 2026-10-07; browser run pending** (needs the dev server). `functions-flutter/mbsSystemPrompt.js` (Sequence walkthrough §1–4; MVP §4 = Nova guides, never claims to act; no invented "94%"), Stage 2 sessions (`kind: mbs`, modes `mbs_first` / `mbs_returning` — returning: no intro, min ONE strategy), tools `award_mbs_section` (10/15/25, per session) / `save_mbms` / list saves; Implementation Wizard completes the habit (`mbsCompleted`, `mbsAwarded`, clears review flag) + one-time Cantina credits. App: Stage 2 = `HhsChatView(stage2: true)` (Level 2 header + 3-icon track, own rewards, "Claim your reward") → first-timers get `_CantinaUnlockView`, returning back to the hub; old picker removed. 4 backend tests (68). Also covers the Full-MBS half of P1-6 (returning variant).
+  Original: — Sequence "PHASE 1, STAGE 2 PLAYER WALKTHROUGH": §1 intro +
   3 MBMs overview ("Level 2"), §2 Obstacle & Opportunity assessment, §3 MBM implementation 3.1 Obvious /
   3.2 Easy / 3.3 Fun + 3.4 final review, §5 Space Cantina intro (+25💎). §4 Personal Assistant = post-MVP stub.
   Saves MBMs onto the Golden Habit (same fields), awards 10/15/25.

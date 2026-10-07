@@ -30,7 +30,12 @@ class HhsChatView extends StatefulWidget {
     this.initialDraft,
     this.sessionId,
     this.title,
+    this.stage2 = false,
   });
+
+  /// Phase 1 Stage 2 (MBS, "Level 2") session — P1-5: its 3 checkpoints, a
+  /// Level 2 header, and a reward button instead of the forge card.
+  final bool stage2;
 
   /// Header title; default "N/5 · Forge your Golden Habit".
   final String? title;
@@ -84,6 +89,13 @@ const _sectionRewards = <_SectionReward>[
   _SectionReward('Principle Decoder', 20, '📘', MM.violet),
   _SectionReward('Keystone Forger', 25, '🔑', MM.yellow),
   _SectionReward('Golden Habit Architect', 40, '✨', MM.teal),
+];
+
+// Stage 2 checkpoints (Sequence walkthrough: CHECKPOINT 1/3 … 3/3).
+const _stage2Rewards = <_SectionReward>[
+  _SectionReward('Friction Hunter', 10, '🎯', MM.red),
+  _SectionReward('Method Master', 15, '🔧', MM.blue),
+  _SectionReward('Implementation Wizard', 25, '🚀', MM.teal),
 ];
 
 class _HhsChatViewState extends State<HhsChatView> {
@@ -210,14 +222,13 @@ class _HhsChatViewState extends State<HhsChatView> {
         _prevCompleted = result.completedCount;
         _firstSync = false;
       } else if (result.completedCount > _prevCompleted) {
+        final rewards = widget.stage2 ? _stage2Rewards : _sectionRewards;
         for (
           var i = _prevCompleted;
-          i < result.completedCount && i < _sectionRewards.length;
+          i < result.completedCount && i < rewards.length;
           i++
         ) {
-          _rewardQueue.add(
-            _QueuedReward(_sectionRewards[i], CelebrationBus.claim()),
-          );
+          _rewardQueue.add(_QueuedReward(rewards[i], CelebrationBus.claim()));
         }
         _prevCompleted = result.completedCount;
       }
@@ -226,7 +237,11 @@ class _HhsChatViewState extends State<HhsChatView> {
       // habit doc was written and regardless of the (award-dependent) MP count,
       // so the flow can never dead-end. The rich habit card renders only when
       // forged fields are available; otherwise a generic confirmation shows.
-      if (result.forged || result.reachedForge || result.completedCount >= 5) {
+      if (widget.stage2
+          ? result.forged
+          : result.forged ||
+              result.reachedForge ||
+              result.completedCount >= 5) {
         _showForge = true;
       }
     });
@@ -275,7 +290,10 @@ class _HhsChatViewState extends State<HhsChatView> {
               children: [
                 _header(completed, active),
                 Expanded(child: _body()),
-                if (!_showForge) _inputBar(),
+                if (!_showForge)
+                  _inputBar()
+                else if (widget.stage2 && _rewardQueue.isEmpty)
+                  _stage2Done(),
               ],
             ),
           ),
@@ -286,7 +304,7 @@ class _HhsChatViewState extends State<HhsChatView> {
             ),
           // The forge card waits until every reward card is dismissed — they
           // used to stack (P1-10 #4).
-          if (_showForge && _rewardQueue.isEmpty)
+          if (_showForge && _rewardQueue.isEmpty && !widget.stage2)
             _ForgeConfirmOverlay(
               fields: _sync.fields,
               onLockIn: widget.onComplete,
@@ -333,13 +351,17 @@ class _HhsChatViewState extends State<HhsChatView> {
                 child: Column(
                   children: [
                     Text(
-                      'STAGE 1 · HHS',
+                      widget.stage2
+                          ? 'STAGE 2 · MBS · LEVEL 2'
+                          : 'STAGE 1 · HHS',
                       style: MM.displayX(size: 9, color: MM.yellow),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       widget.title ??
-                          '${_sync.completedCount}/5 · Forge your Golden Habit',
+                          (widget.stage2
+                              ? '${_sync.completedCount}/3 · Make it automatic'
+                              : '${_sync.completedCount}/5 · Forge your Golden Habit'),
                       style: MM.display(size: 13, color: Colors.white),
                     ),
                   ],
@@ -349,11 +371,26 @@ class _HhsChatViewState extends State<HhsChatView> {
             ],
           ),
           const SizedBox(height: 6),
-          HHSPyramid(active: active, completed: completed, compact: true),
+          if (widget.stage2)
+            _Stage2Track(done: _sync.completedCount)
+          else
+            HHSPyramid(active: active, completed: completed, compact: true),
         ],
       ),
     );
   }
+
+  /// Stage 2 finished: the reward (Space Cantina for first-timers) is the
+  /// app's own screen, like Stage 1's Command Center.
+  Widget _stage2Done() => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+    child: MMPrimaryButton(
+      label: 'Claim your reward 🎮',
+      pulse: true,
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      onPressed: widget.onComplete,
+    ),
+  );
 
   Widget _body() {
     if (_booting) {
@@ -469,6 +506,46 @@ class _HhsChatViewState extends State<HhsChatView> {
 }
 
 // ─── Chat bubble ─────────────────────────────────────────────────────────
+/// Level 2 progress: the 3 MBM icons, lit as checkpoints complete.
+class _Stage2Track extends StatelessWidget {
+  const _Stage2Track({required this.done});
+  final int done;
+
+  @override
+  Widget build(BuildContext context) {
+    const icons = ['🎯', '🔧', '🚀'];
+    const labels = ['OBSTACLE', 'METHODS', 'SETUP'];
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < 3; i++) ...[
+          if (i > 0)
+            Container(
+              width: 28,
+              height: 2,
+              color: i <= done ? MM.teal : Colors.white.withOpacity(0.15),
+            ),
+          Column(
+            children: [
+              Opacity(
+                opacity: i < done ? 1 : (i == done ? 0.85 : 0.35),
+                child: Text(icons[i], style: const TextStyle(fontSize: 20)),
+              ),
+              Text(
+                labels[i],
+                style: MM.displayX(
+                  size: 7,
+                  color: i < done ? MM.teal : Colors.white.withOpacity(0.5),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _ChatBubble extends StatelessWidget {
   const _ChatBubble({required this.message});
   final ChatMessage message;

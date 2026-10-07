@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/phase1_state.dart';
 import '../../services/chat_service.dart';
-import '../../services/onboarding_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/confetti_overlay.dart';
 import '../../widgets/momentum/glass_panel.dart';
@@ -89,6 +88,9 @@ class _Phase1FlowState extends State<Phase1Flow> {
 
   /// The session the chat is showing (null = first-time conversation).
   HhsSession? _session;
+
+  /// Stage 2 (MBS) runs as its own Nova session (P1-5).
+  HhsSession? _mbsSession;
 
   /// Has forged a Golden Habit before — new habits use returning sessions.
   bool get _returning => widget.state.stage1Completed;
@@ -177,6 +179,18 @@ class _Phase1FlowState extends State<Phase1Flow> {
 
   void _startStage2() => _go('mbs');
 
+  /// Nova finished Level 2. A first-timer gets the Space Cantina unlock (the
+  /// Phase 1 culmination); a returning player already has it, so back to the
+  /// hub — the new habit is ready for daily tracking.
+  void _onMbsComplete() {
+    _mbsSession = null;
+    if (widget.state.stage2Completed) {
+      _go('hub');
+    } else {
+      _go('cantina');
+    }
+  }
+
   void _completeStage2() {
     widget.onStateChange(
       widget.state.copyWith(
@@ -233,12 +247,30 @@ class _Phase1FlowState extends State<Phase1Flow> {
         return _CommandCenterUnlockView(onContinue: () => _go('mbs'));
       case 'mbs':
         final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-        return _MBSStage2View(
+        final mbs = _mbsSession;
+        if (mbs != null) {
+          return HhsChatView(
+            key: ValueKey(mbs.id),
+            userId: uid,
+            sessionId: mbs.id,
+            stage2: true,
+            onProgress: (_) {},
+            onComplete: _onMbsComplete,
+            onBack: () => _go('hub'),
+          );
+        }
+        return _HhsSessionGate(
           userId: uid,
-          habitId: widget.entryHabitId,
+          start: (
+            mode: widget.state.stage2Completed ? 'mbs_returning' : 'mbs_first',
+            habitId: widget.entryHabitId,
+          ),
+          onSession: (s) => setState(() => _mbsSession = s),
+          onNone: () => _go('hub'),
           onBack: () => _go('hub'),
-          onComplete: _completeStage2,
         );
+      case 'cantina':
+        return _CantinaUnlockView(onEnter: _completeStage2);
       case 'hub':
       default:
         return _Phase1HubView(
@@ -317,6 +349,7 @@ class _HhsSessionGateState extends State<_HhsSessionGate> {
   @override
   Widget build(BuildContext context) {
     final rebuilding = widget.start?.mode == 'go_deeper';
+    final level2 = widget.start?.mode.startsWith('mbs') ?? false;
     return _PhaseScaffold(
       child: SizedBox(
         height: MediaQuery.of(context).size.height * 0.85,
@@ -332,6 +365,8 @@ class _HhsSessionGateState extends State<_HhsSessionGate> {
                   Text(
                     rebuilding
                         ? 'Nova is loading everything about this habit…'
+                        : level2
+                        ? 'Nova is preparing Level 2…'
                         : 'Nova is reviewing your habits and lists…',
                     textAlign: TextAlign.center,
                     style: MM.body(
@@ -496,9 +531,8 @@ class _PhaseScaffold extends StatelessWidget {
 
 // ─── Back-button (rounded chip) ──────────────────────────────────────────
 class _BackChip extends StatelessWidget {
-  const _BackChip({required this.onPressed, this.size = 36});
+  const _BackChip({required this.onPressed});
   final VoidCallback onPressed;
-  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -506,8 +540,8 @@ class _BackChip extends StatelessWidget {
       onTap: onPressed,
       borderRadius: BorderRadius.circular(10),
       child: Container(
-        width: size,
-        height: size,
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
           color: MM.navy.withOpacity(0.55),
           border: Border.all(color: Colors.white.withOpacity(0.12)),
@@ -858,55 +892,6 @@ class _MbmMiniCard extends StatelessWidget {
   }
 }
 
-class _Bubble extends StatelessWidget {
-  const _Bubble({required this.from, required this.text});
-  final String from;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final isMe = from == 'me';
-    return Align(
-      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.85,
-        ),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-          decoration: BoxDecoration(
-            gradient:
-                isMe
-                    ? const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color(0xFF3A8DFF), Color(0xFF1F5FB8)],
-                    )
-                    : null,
-            color: isMe ? null : MM.navy.withOpacity(0.7),
-            border: Border.all(
-              color:
-                  isMe
-                      ? const Color(0xFF4D9BFF).withOpacity(0.5)
-                      : MM.violet.withOpacity(0.3),
-            ),
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(14),
-              topRight: const Radius.circular(14),
-              bottomLeft: Radius.circular(isMe ? 14 : 4),
-              bottomRight: Radius.circular(isMe ? 4 : 14),
-            ),
-          ),
-          child: Text(
-            text,
-            style: MM.body(color: Colors.white, size: 13, height: 1.45),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 // ─── 3. Command Center Unlock ────────────────────────────────────────────
 class _CommandCenterUnlockView extends StatelessWidget {
   const _CommandCenterUnlockView({required this.onContinue});
@@ -1112,176 +1097,15 @@ class _RevealRowState extends State<_RevealRow>
   }
 }
 
-// ─── 4. MBS Stage 2 ──────────────────────────────────────────────────────
-class _MBSStage2View extends StatefulWidget {
-  const _MBSStage2View({
-    required this.userId,
-    required this.onBack,
-    required this.onComplete,
-    this.habitId,
-  });
-  final String userId;
-
-  /// When set (Go-Deeper re-entry, #7), momentify this specific flagged habit
-  /// instead of the newest forged one.
-  final String? habitId;
-  final VoidCallback onBack;
-  final VoidCallback onComplete;
-
-  @override
-  State<_MBSStage2View> createState() => _MBSStage2ViewState();
-}
-
-class _MBSStage2ViewState extends State<_MBSStage2View> {
-  final _onboarding = OnboardingService();
-
-  int _step = 0; // 0..2 MBMs, 3 = IF-THEN, 4 = complete (Cantina)
-  final Map<String, String> _picks = {};
-
-  ActiveHabit? _habit; // the forged Golden Habit we're momentifying
-  bool _loading = true;
-  bool _saving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  @override
-  void dispose() {
-    _onboarding.dispose();
-    super.dispose();
-  }
-
-  Future<void> _load() async {
-    // Go-Deeper re-entry targets a specific flagged habit; otherwise momentify
-    // the newest forged one.
-    final id = widget.habitId;
-    final h =
-        (id != null && id.isNotEmpty)
-            ? (await _onboarding.habitById(widget.userId, id) ??
-                await _onboarding.activeHabit(widget.userId))
-            : await _onboarding.activeHabit(widget.userId);
-    if (!mounted) return;
-    setState(() {
-      _habit = h;
-      _loading = false;
-    });
-  }
-
-  String get _habitName =>
-      (_habit?.habitName.trim().isNotEmpty ?? false)
-          ? _habit!.habitName.trim()
-          : 'your Golden Habit';
-
-  // Momentum-Method suggestions are personalized from the forged habit's real
-  // fields (when / where / name / obstacle) rather than a hardcoded catalogue.
-  // (A richer AI/Momentum-Lists-sourced generator is a future hook — kept
-  // deterministic here so Stage 2 references the player's actual habit.)
-  List<String> _strategiesFor(String id) {
-    final when = (_habit?.when ?? '').trim();
-    final where = (_habit?.where ?? '').trim();
-    switch (id) {
-      case 'obvious':
-        return [
-          when.isNotEmpty
-              ? "Set a daily cue at $when so it's impossible to miss"
-              : "Set a daily cue at a fixed time so it's impossible to miss",
-          where.isNotEmpty
-              ? 'Leave a visible reminder where you $where'
-              : 'Leave a visible reminder in plain sight',
-          'Stack it right after an existing routine you never skip',
-        ];
-      case 'easy':
-        return [
-          'Shrink it to a 2-minute version of "$_habitName"',
-          'Prep everything the night before so step one is effortless',
-          'Remove the single biggest obstacle that makes it hard to start',
-        ];
-      case 'reward':
-        return [
-          'Log it in Momentum for the MP burst + flame growth',
-          'Pair it with something you enjoy (temptation bundling)',
-          'Celebrate the moment you finish — make it feel like a win',
-        ];
-      default:
-        return const [];
-    }
-  }
-
-  List<String> get _ifThenOptions {
-    final h = _habit;
-    final hasPlan =
-        (h?.obstacleIf.trim().isNotEmpty ?? false) ||
-        (h?.obstacleThen.trim().isNotEmpty ?? false);
-    return [
-      if (hasPlan)
-        'IF ${h!.obstacleIf.trim().isNotEmpty ? h.obstacleIf.trim() : 'life gets in the way'} '
-            '→ THEN ${h.obstacleThen.trim().isNotEmpty ? h.obstacleThen.trim() : 'do the 30-second version'}',
-      'IF I run out of time → THEN do the 30-second version',
-      "IF I'm traveling → THEN do a minimal version wherever I am",
-      "IF I'm drained → THEN just complete the first tiny step",
-    ];
-  }
-
-  /// Persists the picks + IF-THEN onto the Golden Habit and awards the three
-  /// Stage-2 badges, then advances to the Cantina unlock. Best-effort: a save
-  /// failure still lets the player finish (the award is server-idempotent and
-  /// the next save reconciles), matching the Phase 1 persistence philosophy.
-  Future<void> _finishMbs() async {
-    if (_saving) return;
-    setState(() => _saving = true);
-
-    final ifThen = _picks['ifthen'] ?? '';
-    final arrow = ifThen.split('→');
-    final ifPart =
-        (arrow.isNotEmpty ? arrow[0] : '')
-            .replaceFirst(RegExp(r'^\s*IF\s*', caseSensitive: false), '')
-            .trim();
-    final thenPart =
-        (arrow.length > 1 ? arrow[1] : '')
-            .replaceFirst(RegExp(r'^\s*THEN\s*', caseSensitive: false), '')
-            .trim();
-
-    await _onboarding.saveMomentumMethods(
-      userId: widget.userId,
-      habitId: _habit?.habitId,
-      makeObvious: _picks['obvious'] ?? '',
-      makeEasy: _picks['easy'] ?? '',
-      makeRewarding: _picks['reward'] ?? '',
-      obstacleIf: ifPart,
-      obstacleThen: thenPart,
-    );
-
-    if (!mounted) return;
-    setState(() {
-      _saving = false;
-      _step++;
-    });
-  }
+// ─── 4. Stage 2 complete: Space Cantina unlock (Sequence Section 5) ─────
+// Level 2 itself is a Nova session (mbsSystemPrompt.js, P1-5); the Space
+// Cantina unlock is the app's own reward screen, like Stage 1's Command Center.
+class _CantinaUnlockView extends StatelessWidget {
+  const _CantinaUnlockView({required this.onEnter});
+  final VoidCallback onEnter;
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Scaffold(
-        backgroundColor: MM.pageBg,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            Positioned.fill(child: StarfieldBackground()),
-            Center(child: CircularProgressIndicator(color: MM.blue)),
-          ],
-        ),
-      );
-    }
-    if (_step >= _mbms.length + 1) return _buildCantina();
-    if (_step == _mbms.length) return _buildIfThen();
-    return _buildMbmStep();
-  }
-
-  // ----- Cantina unlock -----
-  Widget _buildCantina() {
     return Scaffold(
       backgroundColor: MM.pageBg,
       body: Stack(
@@ -1343,11 +1167,6 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            _habitName,
-                            style: MM.body(color: Colors.white, size: 12),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
                             '+ Make It Obvious · + Make It Easy · + Make It Rewarding · IF-THEN locked',
                             style: MM.body(
                               color: Colors.white.withOpacity(0.6),
@@ -1398,7 +1217,7 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
                       label: 'Enter the Cockpit 🚀',
                       pulse: true,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      onPressed: widget.onComplete,
+                      onPressed: onEnter,
                     ),
                   ],
                 ),
@@ -1417,317 +1236,6 @@ class _MBSStage2ViewState extends State<_MBSStage2View> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // ----- IF-THEN step (step == 3) -----
-  Widget _buildIfThen() {
-    final fallback = _picks['ifthen'];
-    return Scaffold(
-      backgroundColor: MM.pageBg,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          const Positioned.fill(child: StarfieldBackground()),
-          SafeArea(
-            child: Column(
-              children: [
-                _MbsHeader(
-                  stepLabel: 'STAGE 2 · STEP 4/4',
-                  title: '⚠️ IF-THEN Obstacle Plan',
-                  color: MM.yellow,
-                  onBack: () => setState(() => _step--),
-                ),
-                _MbsTrack(step: _step),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const _Bubble(
-                          from: 'ai',
-                          text:
-                              "Last step. Pick the most likely obstacle and lock in a 'non-zero' fallback. The IF-THEN is your safety net when life happens.",
-                        ),
-                        const SizedBox(height: 10),
-                        ..._ifThenOptions.map((o) {
-                          final isOn = fallback == o;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: _RadioRow(
-                              label: o,
-                              color: MM.yellow,
-                              selected: isOn,
-                              onTap: () => setState(() => _picks['ifthen'] = o),
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 18),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
-                    border: Border(
-                      top: BorderSide(color: Colors.white.withOpacity(0.06)),
-                    ),
-                  ),
-                  child: MMPrimaryButton(
-                    label: _saving ? 'Momentifying…' : 'Lock it in 🔒',
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    onPressed:
-                        (fallback != null && !_saving) ? _finishMbs : null,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ----- MBM step (0..2) -----
-  Widget _buildMbmStep() {
-    final mbm = _mbms[_step];
-    final picked = _picks[mbm.id];
-    final strategies = _strategiesFor(mbm.id);
-
-    return Scaffold(
-      backgroundColor: MM.pageBg,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          const Positioned.fill(child: StarfieldBackground()),
-          SafeArea(
-            child: Column(
-              children: [
-                _MbsHeader(
-                  stepLabel: 'STAGE 2 · STEP ${_step + 1}/4',
-                  title: '${mbm.icon} ${mbm.name}',
-                  color: mbm.color,
-                  onBack:
-                      _step == 0
-                          ? widget.onBack
-                          : () => setState(() => _step--),
-                ),
-                _MbsTrack(step: _step),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _Bubble(from: 'ai', text: mbm.desc),
-                        const SizedBox(height: 8),
-                        _Bubble(
-                          from: 'ai',
-                          text:
-                              'For "$_habitName", here are 3 ${mbm.name} strategies. Pick the one that fits your life.',
-                        ),
-                        const SizedBox(height: 10),
-                        ...strategies.map((s) {
-                          final isOn = picked == s;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: _RadioRow(
-                              label: s,
-                              color: mbm.color,
-                              selected: isOn,
-                              onTap: () => setState(() => _picks[mbm.id] = s),
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.fromLTRB(14, 10, 14, 18),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
-                    border: Border(
-                      top: BorderSide(color: Colors.white.withOpacity(0.06)),
-                    ),
-                  ),
-                  child: MMPrimaryButton(
-                    label:
-                        _step == _mbms.length - 1
-                            ? 'On to IF-THEN →'
-                            : 'Next MBM (${_mbms[_step + 1].name}) →',
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    onPressed:
-                        picked != null ? () => setState(() => _step++) : null,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MbsHeader extends StatelessWidget {
-  const _MbsHeader({
-    required this.stepLabel,
-    required this.title,
-    required this.color,
-    required this.onBack,
-  });
-  final String stepLabel;
-  final String title;
-  final Color color;
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [color.withOpacity(0.08), Colors.transparent],
-        ),
-        border: Border(bottom: BorderSide(color: color.withOpacity(0.2))),
-      ),
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-      child: Row(
-        children: [
-          _BackChip(onPressed: onBack, size: 32),
-          Expanded(
-            child: Column(
-              children: [
-                Text(stepLabel, style: MM.displayX(size: 9, color: color)),
-                const SizedBox(height: 2),
-                Text(title, style: MM.display(size: 13, color: Colors.white)),
-              ],
-            ),
-          ),
-          const SizedBox(width: 32),
-        ],
-      ),
-    );
-  }
-}
-
-class _MbsTrack extends StatelessWidget {
-  const _MbsTrack({required this.step});
-  final int step;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      child: Row(
-        children: [
-          for (var i = 0; i < _mbms.length; i++) ...[
-            if (i > 0) const SizedBox(width: 4),
-            Expanded(
-              child: Container(
-                height: 3,
-                decoration: BoxDecoration(
-                  color:
-                      i < step
-                          ? _mbms[i].color
-                          : i == step
-                          ? _mbms[i].color.withOpacity(0.7)
-                          : Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(2),
-                  boxShadow:
-                      i == step
-                          ? [BoxShadow(color: _mbms[i].color, blurRadius: 6)]
-                          : null,
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(width: 4),
-          Expanded(
-            child: Container(
-              height: 3,
-              decoration: BoxDecoration(
-                color:
-                    step > _mbms.length - 1
-                        ? MM.yellow
-                        : Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RadioRow extends StatelessWidget {
-  const _RadioRow({
-    required this.label,
-    required this.color,
-    required this.selected,
-    required this.onTap,
-  });
-  final String label;
-  final Color color;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color:
-              selected
-                  ? color.withOpacity(0.18)
-                  : Colors.white.withOpacity(0.04),
-          border: Border.all(
-            color: selected ? color : Colors.white.withOpacity(0.12),
-            width: selected ? 2 : 1,
-          ),
-          borderRadius: BorderRadius.circular(8),
-          boxShadow:
-              selected
-                  ? [BoxShadow(color: color.withOpacity(0.33), blurRadius: 14)]
-                  : null,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 16,
-              height: 16,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: selected ? color : Colors.transparent,
-                border: Border.all(
-                  color: selected ? color : Colors.white.withOpacity(0.4),
-                  width: 1.5,
-                ),
-              ),
-              child:
-                  selected
-                      ? const Icon(Icons.check, size: 10, color: Colors.black)
-                      : null,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                label,
-                style: MM.body(color: Colors.white, size: 12, height: 1.5),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
