@@ -9,6 +9,7 @@ import '../../widgets/momentum/hhs_pyramid.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 import '../../widgets/momentum/starfield.dart';
 import '../../widgets/momentum/mbm_shortcut.dart';
+import '../../widgets/momentum/refinement_summary.dart';
 import 'hhs_chat_view.dart';
 
 // ─── MBM catalogue ───────────────────────────────────────────────────────
@@ -53,6 +54,7 @@ class Phase1Flow extends StatefulWidget {
     required this.onStateChange,
     required this.onBack,
     required this.onExitToCockpit,
+    this.onStartCheckin,
     this.entryStage,
     this.entryHabitId,
     this.entryDraft,
@@ -62,6 +64,10 @@ class Phase1Flow extends StatefulWidget {
   final void Function(Phase1State next) onStateChange;
   final VoidCallback onBack;
   final VoidCallback onExitToCockpit;
+
+  /// Starts today's check-in — the post-refinement flow delivers it "right
+  /// now in the same session" (#23 step 3). Null falls back to the Cockpit.
+  final VoidCallback? onStartCheckin;
 
   /// Phase 1 Re-Entry Bridge target (PHASE 1 & 2 DETAILS §4C). `null` lands on
   /// the hub; `'hhs'` deep-links into Stage 1 (rebuild a Golden Habit); `'mbs'`
@@ -92,6 +98,10 @@ class _Phase1FlowState extends State<Phase1Flow> {
 
   /// Stage 2 (MBS) runs as its own Nova session (P1-5).
   HhsSession? _mbsSession;
+
+  /// The habit a Go Deeper session just refined, and how (#23 step 3).
+  String? _refinedHabitId;
+  bool _refinedRebuilt = true;
 
   /// Has forged a Golden Habit before — new habits use returning sessions.
   bool get _returning => widget.state.stage1Completed;
@@ -169,8 +179,10 @@ class _Phase1FlowState extends State<Phase1Flow> {
       // First-time: the Command Center unlock is the Stage 1 reward.
       _go('command-center', base: done);
     } else if (session.isGoDeeper) {
-      // Rebuilt in place — back to the hub; tracking picks it up.
-      _go('hub', base: done);
+      // Rebuilt in place → what changed + its 🧪 experiment, then check-in.
+      _refinedHabitId = session.habitId;
+      _refinedRebuilt = true;
+      _go('refined', base: done);
     } else {
       // Returning: Nova already summarised the progress (no unlock reveal).
       // The MBM Shortcut offers Full MBS / Ideas Well / manual entry (P1-6).
@@ -184,8 +196,17 @@ class _Phase1FlowState extends State<Phase1Flow> {
   /// Phase 1 culmination); a returning player already has it, so back to the
   /// hub — the new habit is ready for daily tracking.
   void _onMbsComplete() {
+    final session = _mbsSession;
     _mbsSession = null;
-    if (widget.state.stage2Completed) {
+    final pathB = widget.entryStage == 'mbs' &&
+        (widget.entryHabitId ?? '').isNotEmpty;
+    if (widget.state.stage2Completed && pathB) {
+      // Go Deeper Path B (better MBMs for an existing habit).
+      _refinedHabitId =
+          (session?.habitId ?? '').isNotEmpty ? session!.habitId : widget.entryHabitId;
+      _refinedRebuilt = false;
+      _go('refined');
+    } else if (widget.state.stage2Completed) {
       _go('hub');
     } else {
       _go('cantina');
@@ -295,6 +316,16 @@ class _Phase1FlowState extends State<Phase1Flow> {
             onBack: () => _go('mbm-shortcut'),
           ),
         );
+      case 'refined':
+        final id = _refinedHabitId;
+        if (id == null || id.isEmpty) continue hub;
+        return RefinementSummaryView(
+          habitId: id,
+          rebuilt: _refinedRebuilt,
+          onCheckin: widget.onStartCheckin ?? widget.onExitToCockpit,
+          onCockpit: widget.onExitToCockpit,
+        );
+      hub:
       case 'hub':
       default:
         return _Phase1HubView(

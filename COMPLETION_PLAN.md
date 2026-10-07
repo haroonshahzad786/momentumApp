@@ -949,7 +949,7 @@ distances/momentum values (see #40).
   reclassification (needs the audit-trail rules in §4E); the Core "Additional Notes" two-way sync (no such Core
   field exists yet); delete. Mark as Formed and Need Help were not clicked live (they write / start a Nova
   session) — both reuse existing, tested flows.
-- [~] **#23 Experiment lifecycle + real AI resolution paths** (PRD 13.C, Sequence Day-5) — ⚠️ Flag button
+- [x] **#23 Experiment lifecycle + real AI resolution paths** (PRD 13.C, Sequence Day-5) — ⚠️ Flag button
   in every habit view; Quick Suggestion = Claude call over Momentum Lists + Captain's Log (today a
   placeholder); Go Deeper → HHS/MBS with context pre-loaded (routing exists); Manual Edit → #22; every
   change = 🧪 experiment with a 3-day check-in → convert or retire (retired ones never re-suggested).
@@ -979,7 +979,23 @@ distances/momentum values (see #40).
   Obvious tweak drawn from the player's own note and lists, added it, and 🧪 Day 1 of 3 showed. The first live
   call hit the shared 30 s client timeout, hence the 60 s. 5 backend + 1 app test (85 / 111). Not clicked live:
   the check-in intervention route (it needs 3 low check-ins; same sheet).
-  **Next:** Step 3:
+  **Step 3 DONE 2026-10-07 (browser-verified on the test account):** Go Deeper refinements are experiments.
+  `experiments.recordRefinement` diffs the habit before/after and records the real mechanical changes
+  (source `go_deeper_hhs` for a Stage 1 rebuild; `go_deeper_mbs` for Stage 2 when the habit already had MBMs,
+  decided once per session and stored as `refining`, so a new habit's first MBMs are not an experiment), and
+  resolves the ⚠️ flag (deployed in claudeSendMessage / claudeHhsSession). App: after a rebuild (or Path B),
+  `RefinementSummaryView` ("Sequence: Post-Phase-1-Refinement Flow") says what changed with the 🧪 card,
+  "Your scores, streak and Trophy Room are untouched", and "Start today's check-in →". The check-in's ✏️
+  Manual Edit opens the Detailed View over the check-in (scores kept; Need Help inside it still reaches
+  Phase 1). Verified: Path B on Morning Mental Reset → Nova's Stage 2 → the summary showed "New MBMs with Nova ·
+  Day 1 of 3" (Make it Obvious old → new), Firestore experiment source `go_deeper_mbs`, and the button opened
+  the Daily Ritual. 2 backend tests (87). Not clicked live: a full Path A rebuild (same summary) and the
+  check-in's Manual Edit route. **Open for Will:** a Stage 2 refinement still pays the Stage 2 checkpoint MP
+  (+10/+15/+25). A Stage 1 rebuild pays none (P1-4), so refining could be repeated for points.
+  Also fixed: web Habits cards showed "FORMING · 🔥 0d" for every habit (stored stage/streak/daysFormed are
+  never written); now formed → 🟢 Formed · 🏆 Trophy Room, else Day X/14 from check-ins. The header reads
+  "N IN FORGE · M FORMED".
+  Earlier note — Step 3:
   Go Deeper rebuilds become experiments + the "what changed" re-entry summary (moved from #26), and Manual
   Edit from the check-in intervention opens the Detailed View.
 - [ ] **#24 Today's Focus (AI) + score validation** — 3–5 bullets generated from *this* session's scores,

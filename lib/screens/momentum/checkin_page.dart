@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../services/onboarding_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/mm_buttons.dart';
+import '../../widgets/momentum/habit_detail_view.dart';
 import '../../widgets/momentum/quick_suggestion_sheet.dart';
 import '../../widgets/momentum/starfield.dart';
 import '../../services/checkin_service.dart';
@@ -176,6 +177,10 @@ class _CheckInPageState extends State<CheckInPage> {
       _quickSuggestion(coreId!, quickRef, uid);
       return;
     }
+    if (tag == 'Manual edit' && quickRef != null) {
+      _manualEdit(quickRef);
+      return;
+    }
     _toastTimer?.cancel();
     if (coreId != null) {
       final ref = _refFor(coreId);
@@ -219,6 +224,67 @@ class _CheckInPageState extends State<CheckInPage> {
           flagged: true,
           reason: 'Mission Control: $low check-ins at or below 3.0',
         );
+    }
+  }
+
+  /// PATH 3 — ✏️ Manual Edit: the habit's Detailed View opens on top of the
+  /// check-in (scores so far are kept); a saved change is a 🧪 experiment.
+  Future<void> _manualEdit(GoldenHabitRef ref) async {
+    setState(() => _flagCoreId = null);
+    String? next;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (ctx) {
+          final wide = MediaQuery.of(ctx).size.width >= 900;
+          return Scaffold(
+            backgroundColor: MM.pageBg,
+            body: Stack(
+              fit: StackFit.expand,
+              children: [
+                const Positioned.fill(child: StarfieldBackground()),
+                SafeArea(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1100),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: Text(
+                                "← Back to today's check-in",
+                                style: MM.body(color: MM.teal, size: 13),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            HabitDetailView(
+                              habitId: ref.habitId,
+                              wide: wide,
+                              onNav: (key) {
+                                next = key;
+                                Navigator.of(ctx).pop();
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    if (!mounted) return;
+    final key = next;
+    // "Need Help / Rebuild" from the Detailed View → the Phase 1 bridge.
+    if (key != null && key.startsWith('rebuild:')) {
+      final parts = key.split(':');
+      widget.onReturnToPhase1(parts[1], habitId: parts.length > 2 ? parts[2] : null);
     }
   }
 
@@ -1085,8 +1151,8 @@ class _MissionControlInterventionState
         '✏️',
         'Manual Edit',
         'YOUR CALL',
-        'Full control. Adjust the habit yourself.',
-        'Logs as a 🧪 Experiment with date stamp.'
+        'Full control: its Detailed View opens, your check-in waits.',
+        'Saved changes start a 🧪 3-day experiment.'
       ],
     ];
     return [

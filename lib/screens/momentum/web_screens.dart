@@ -30,7 +30,8 @@ import '../../theme/momentum_tokens.dart';
 import '../../services/leaderboard_score.dart';
 import '../../widgets/momentum/captains_log_archive.dart';
 import '../../services/all_habits.dart';
-import '../../services/formation.dart' show FormationProgress;
+import '../../services/formation.dart'
+    show FormationProgress, formationProgress, kFormationDays;
 import '../../widgets/momentum/formation_room.dart';
 import '../../widgets/momentum/habit_detail_view.dart' show abbreviatedVersion;
 import '../../widgets/momentum/habit_color.dart';
@@ -639,6 +640,9 @@ class _WebHabitsState extends State<WebHabits> {
   bool _loading = true;
   String? _error;
 
+  final _checkinsSvc = CheckinService();
+  Map<String, List<int>> _coreScores = const {};
+
   static const _stage = {
     'bad': (Color(0xFFEA0029), 'Pain point', '🔴'),
     'forming': (Color(0xFFFFC629), 'Forming', '🟠'),
@@ -668,9 +672,15 @@ class _WebHabitsState extends State<WebHabits> {
     });
     try {
       final res = await _svc.getGoldenHabits(uid);
+      // Day X/14 comes from the Core's check-ins (no check-ins → Day 0).
+      List<DailyCheckin> checkins = const [];
+      try {
+        checkins = await _checkinsSvc.getRecent(uid, limit: 30);
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _habits = res.data;
+        _coreScores = coreScoreSeries(checkins);
         _loading = false;
       });
     } catch (e) {
@@ -701,7 +711,14 @@ class _WebHabitsState extends State<WebHabits> {
             filter == null
                 ? 'GOLDEN HABITS'
                 : '${kCoreLabel[filter]?.toUpperCase() ?? filter.toUpperCase()} HABITS',
-        meta: '${shown.length} IN FORGE',
+        meta: () {
+          // "In forge" = still forming; formed ones are counted separately.
+          final formed = shown.where((h) => h.formed).length;
+          final forming = shown.length - formed;
+          return formed == 0
+              ? '$forming IN FORGE'
+              : '$forming IN FORGE · $formed FORMED';
+        }(),
         accent:
             filter == null ? MM.magenta : (MM.coreColor[filter] ?? MM.magenta),
         action:
@@ -723,7 +740,14 @@ class _WebHabitsState extends State<WebHabits> {
                   minTileWidth: 300,
                   children:
                       shown.map((h) {
-                        final st = _stage[h.stage] ?? _stage['forming']!;
+                        // Same truth as Routines / the Detailed View: the
+                        // formed flag, else 14-day formation progress (the
+                        // stored stage/streak/daysFormed are never written).
+                        final st = _stage[h.formed ? 'formed' : 'forming']!;
+                        final prog = formationProgress(
+                          _coreScores[GoldenHabitRef.shortCore(h.coreId)] ??
+                              const [],
+                        );
                         final hex = coreHex(h.coreId);
                         final short = abbreviatedVersion(h);
                         final note =
@@ -817,7 +841,9 @@ class _WebHabitsState extends State<WebHabits> {
                                     ),
                                     const Spacer(),
                                     Text(
-                                      '🔥 ${h.streak}d',
+                                      h.formed
+                                          ? '🏆 Trophy Room'
+                                          : 'Day ${prog.days.clamp(0, kFormationDays)}/$kFormationDays',
                                       style: MM.body(
                                         size: 11,
                                         color: Colors.white.withOpacity(0.7),
@@ -829,7 +855,11 @@ class _WebHabitsState extends State<WebHabits> {
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(3),
                                   child: LinearProgressIndicator(
-                                    value: (h.daysFormed / 14).clamp(0.0, 1.0),
+                                    value:
+                                        h.formed
+                                            ? 1.0
+                                            : (prog.days / kFormationDays)
+                                                .clamp(0.0, 1.0),
                                     minHeight: 4,
                                     backgroundColor: Colors.white.withOpacity(
                                       0.1,

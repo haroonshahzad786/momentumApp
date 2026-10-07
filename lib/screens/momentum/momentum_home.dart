@@ -965,6 +965,7 @@ class _MomentumHomeState extends State<MomentumHome> {
         onStateChange: _persistPhase1,
         onBack: () => _go('dashboard'),
         onExitToCockpit: () => _go('dashboard'),
+        onStartCheckin: _startCheckin,
       );
     }
     if (_screen == 'ritual0') {
