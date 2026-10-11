@@ -156,6 +156,19 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
               ),
             ),
           ),
+          // Purple-Lit Cockpit Frame overlay in the top windshield area
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: h * 0.29,
+            child: IgnorePointer(
+              child: Image.asset(
+                'assets/momentum/cockpit_frame.png',
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
           // Back — closes the console and brings the rocket back.
           Positioned(
             left: u * 0.05,
