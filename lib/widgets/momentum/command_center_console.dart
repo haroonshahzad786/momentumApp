@@ -130,7 +130,7 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
               ),
             ),
           ),
-          // Purple-Lit Cockpit Frame overlay in the top windshield area
+          // Purple-Lit Cockpit Frame overlay in the top windshield area (drawn second, behind all content)
           Positioned(
             left: -u * 0.05,
             right: 0,
