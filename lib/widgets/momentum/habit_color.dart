@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../services/all_habits.dart';
 import '../../theme/momentum_tokens.dart';
 
-/// Swatch for each PRD §11 colour. 🟠 is a real orange so "forming" never
+/// Swatch for each Phase 1&2 Details §4C colour. 🟠 is a real orange so "forming" never
 /// reads as a 🌟 note (yellow).
 Color habitColorValue(HabitColor? c) => switch (c) {
       HabitColor.red => MM.red,
@@ -39,7 +39,7 @@ class HabitColorDot extends StatelessWidget {
   }
 }
 
-/// The PRD's "status counter at top showing red/orange/green tallies".
+/// Phase 1&2 Details §4C's "status counter at top showing red/orange/green tallies".
 class HabitStatusCounter extends StatelessWidget {
   const HabitStatusCounter(this.colors, {super.key, this.leading});
   final Iterable<HabitColor?> colors;
@@ -77,7 +77,7 @@ class HabitStatusCounter extends StatelessWidget {
 /// means "remove the tag".
 ///
 /// [allowNeutral] is false for non-routines: "there is no Black (neutral)
-/// category" in their colour key (PRD §11).
+/// category" in their colour key (Phase 1&2 Details §4C).
 Future<({HabitColor? color})?> pickHabitColor(BuildContext context, HabitColor? current,
     {String? habitName, bool allowNeutral = true}) {
   return showModalBottomSheet<({HabitColor? color})>(

@@ -1289,7 +1289,7 @@ class _MissionControlInterventionState
   }
 }
 
-/// Captain's Log for one Core (PRD 12.C / Gamification spec §7): two short,
+/// Captain's Log for one Core (Gamification spec §7 / Phase 1&2 Details): two short,
 /// optional prompts — what went well, what didn't. Owns its controllers so the
 /// cursor never jumps while typing; keyed per Core so switching Cores reloads.
 class _CaptainsLogFields extends StatefulWidget {

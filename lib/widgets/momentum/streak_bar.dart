@@ -51,8 +51,8 @@ class StreakMilestoneProgress {
   }
 }
 
-/// The dashboard's persistent streak readout (PRD 12.10 "Across top: Current
-/// Streak with consecutive days and days until reward"). [compact] is the
+/// The dashboard's persistent streak readout (Phase 1&2 Details "Across Top
+/// of Screen — Current Streak": consecutive days and days until reward). [compact] is the
 /// phone top-bar block; the default is the full-width desktop bar.
 class StreakBar extends StatefulWidget {
   const StreakBar({

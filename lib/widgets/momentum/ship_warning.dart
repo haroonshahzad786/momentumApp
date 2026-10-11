@@ -100,7 +100,8 @@ class RelaunchSheet extends StatelessWidget {
 
   final int missedWeekdays;
 
-  /// 5+ weekdays away — "Welcome back, Captain" framing (PRD 7).
+  /// 5+ weekdays away — "Welcome back, Captain" framing. The 5+ threshold
+  /// came only from the retired PRD — unconfirmed.
   final bool longAbsence;
 
   /// Momentum Points removed by the relaunch (0 while the amount is unset).

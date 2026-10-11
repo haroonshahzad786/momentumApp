@@ -4,13 +4,13 @@ import 'checkin_service.dart' show DailyCheckin;
 import 'formation.dart';
 import 'onboarding_service.dart';
 
-// ALL HABITS Quick View (PRD §11, #21). Habits live in two stores:
+// ALL HABITS Quick View (Phase 1&2 Details §4C, #21). Habits live in two stores:
 //   • Golden Habits (`golden_habits/*`) — structured, what HHS forges;
 //   • per-core "Routines List" / "Non-Routine" line items — the schedule.
 // Adding a habit from Routines writes both, HHS may write only one, so the
 // view merges them and drops duplicates (same Core + same name).
 
-/// PRD §11 colour key. Golden Habits are coloured automatically (🟠 forming,
+/// Phase 1&2 Details §4C colour key. Golden Habits are coloured automatically (🟠 forming,
 /// 🟢 formed); every other line carries the colour the player tagged it with.
 enum HabitColor {
   red('🔴', 'Bad habit', 'Eliminate or replace'),
@@ -49,7 +49,7 @@ String itemKey(String item) {
   return k;
 }
 
-/// 🔴 / 🟠 / 🟢 tallies for the PRD §11 status counter.
+/// 🔴 / 🟠 / 🟢 tallies for the Phase 1&2 Details §4C status counter.
 ({int red, int orange, int green}) statusCounts(Iterable<HabitColor?> colors) {
   var r = 0, o = 0, g = 0;
   for (final c in colors) {
@@ -61,7 +61,7 @@ String itemKey(String item) {
 }
 
 /// Where a habit sits in the day. Routines land in a time block; non-routines
-/// are triggered by situations, so they go in "Throughout Day" (PRD §11).
+/// are triggered by situations, so they go in "Throughout Day" (Tactical Implementation Guide).
 enum HabitSlot { morning, workday, evening, anytime, throughout }
 
 const Map<HabitSlot, String> kHabitSlotLabel = {
@@ -72,7 +72,7 @@ const Map<HabitSlot, String> kHabitSlotLabel = {
   HabitSlot.throughout: 'Throughout Day',
 };
 
-/// PRD §11 By Core order: 🧠 → 💰 → 👥 → 💪 → 🧘.
+/// Standard Core order (Phase 1&2 Details): 🧠 → 💰 → 👥 → 💪 → 🧘.
 const List<String> kCoreOrder = [
   'mindset',
   'career',
@@ -187,7 +187,7 @@ class AllHabit {
   /// Has an active 🧪 experiment (#23).
   final bool experiment;
 
-  /// IF-THEN (PRD §11): IF [internal trigger], THEN [growth-owner response].
+  /// IF-THEN (Phase 1&2 Details §4C): IF [internal trigger], THEN [growth-owner response].
   /// Empty when the habit doesn't carry one.
   final String ifText;
   final String thenText;
@@ -420,7 +420,7 @@ Map<String, List<int>> coreScoreSeries(List<DailyCheckin> checkins) {
 }
 
 /// Default Non-Routines priority — "highest-damage failure habits at the top"
-/// (PRD §11): 🔴, then 🟠, 🔵, untagged, 🌟, 🟢, ⚫.
+/// (Phase 1&2 Details §4C): 🔴, then 🟠, 🔵, untagged, 🌟, 🟢, ⚫.
 const List<HabitColor?> _damageOrder = [
   HabitColor.red,
   HabitColor.orange,
@@ -446,7 +446,7 @@ List<AllHabit> orderByPriority(List<AllHabit> habits, List<String> saved) {
     });
 }
 
-/// The Non-Routines List: non-routine habits per Core (PRD order), each Core
+/// The Non-Routines List: non-routine habits per Core (standard Core order), each Core
 /// in priority order. Formed Golden Habits have graduated to the Trophy Room
 /// and are only counted. Mindset is always present — it carries the locked
 /// Mantra / Gratitude slots.

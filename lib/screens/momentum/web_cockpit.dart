@@ -105,7 +105,7 @@ class WebCockpit extends StatelessWidget {
           nextPlanetName: _nextPlanetName,
           onNav: onNav,
         );
-        // PRD 12.10 "Across top: Current Streak with consecutive days and
+        // Phase 1&2 Details (Rocket Dashboard) "Across top: Current Streak with consecutive days and
         // days until reward".
         final streakBar = StreakBar(
           streak: streak,
@@ -497,7 +497,7 @@ class _FlightData extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // PRD 12.10 stats box: Current Planet · Momentum Score · Balance %.
+    // Phase 1&2 Details (Rocket Dashboard) stats box: Current Planet · Momentum Score · Balance %.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

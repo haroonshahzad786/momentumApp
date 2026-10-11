@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../../services/checkin_service.dart';
 import '../../theme/momentum_tokens.dart';
 
-/// The Captain's Log archive (Momentum List #15, PRD 10/12): every 🏆 win and
+/// The Captain's Log archive (Momentum List #15): every 🏆 win and
 /// 📚 lesson the player logged in daily check-ins, newest first, grouped by
 /// day and Core. Read-only — entries are written by the check-in itself.
 class CaptainsLogArchive extends StatefulWidget {

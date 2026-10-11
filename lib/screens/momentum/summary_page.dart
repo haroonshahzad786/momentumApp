@@ -599,8 +599,9 @@ class _BalanceMeter extends StatelessWidget {
   final int days;
   final int delay;
 
-  /// Gauge colour by 7-day average (PRD §14): green 4.0+, yellow 3.0–3.9,
-  /// red below 3.0.
+  /// Gauge colour by 7-day average: green 4.0+, yellow 3.0–3.9, red below
+  /// 3.0. The spec only flags <3.0; the yellow band came from the retired
+  /// PRD — unconfirmed.
   static Color gaugeColor(double avg) =>
       avg >= 4 ? MM.teal : (avg >= 3 ? MM.yellow : MM.red);
 

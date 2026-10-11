@@ -1268,7 +1268,7 @@ class _WebRoutinesState extends State<WebRoutines> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // PRD §11 status counter — red / orange / green tallies.
+          // Phase 1&2 Details §4C status counter — red / orange / green tallies.
           Align(
             alignment: Alignment.centerLeft,
             child: HabitStatusCounter([

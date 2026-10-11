@@ -170,7 +170,7 @@ class CoreListsService {
     }
   }
 
-  /// Saves (or clears, with null) one line's PRD §11 colour.
+  /// Saves (or clears, with null) one line's Phase 1&2 Details §4C colour.
   Future<void> setItemColor({
     required String userId,
     required CoreList list,

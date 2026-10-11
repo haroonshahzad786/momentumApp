@@ -1186,7 +1186,7 @@ class _RelaunchPenaltyCardState extends State<_RelaunchPenaltyCard> {
     ('maxStreakSavers', 'Max Streak Savers held', 1, 0,
         'Savers are spent automatically to cover missed weekdays.'),
     ('vacationMaxDays', 'Vacation Mode max length (days)', 7, 1,
-        'PRD: up to 7 days. Vacation weekdays never count as missed.'),
+        'Placeholder: the spec leaves the length open (confirm with Will). Vacation weekdays never count as missed.'),
     ('vacationsPerYear', 'Vacations per year', 0, 0,
         '0 = no limit (the spec leaves this open).'),
   ];

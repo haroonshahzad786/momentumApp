@@ -1043,7 +1043,7 @@ class _MomentumHomeState extends State<MomentumHome> {
       );
     }
     if (_screen == 'nonroutines') {
-      // Non-Routines List (PRD §11, #21) — the rocket's right icon.
+      // Non-Routines List (Phase 1&2 Details §4C, #21) — the rocket's right icon.
       return ScreenShell(
         title: 'Non-Routines',
         subtitle: 'BY CORE · PRIORITY',
@@ -1055,7 +1055,7 @@ class _MomentumHomeState extends State<MomentumHome> {
       );
     }
     if (_screen == 'allhabits') {
-      // ∞ ALL HABITS Quick View (PRD §11, #21).
+      // ∞ ALL HABITS Quick View (Phase 1&2 Details §4C, #21).
       return ScreenShell(
         title: 'All Habits',
         subtitle: 'QUICK VIEW',

@@ -28,7 +28,7 @@ const Map<String, String> _coreTitle = {
   'emotional': 'Emotional & Mental',
 };
 
-/// ALL HABITS Quick View (PRD §11, #21) — the rocket's centre (∞) icon. Every
+/// ALL HABITS Quick View (Phase 1&2 Details §4C, #21) — the rocket's centre (∞) icon. Every
 /// habit the player has, from both stores, toggled By Time / By Core. Shared
 /// by the phone screen and the desktop shell.
 class AllHabitsView extends StatefulWidget {

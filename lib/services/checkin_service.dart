@@ -27,7 +27,7 @@ class CheckinService {
       '${d.day.toString().padLeft(2, '0')}';
 
   /// [captainsLog] is the per-Core Captain's Log (🏆 wins / 📚 lessons,
-  /// PRD 12.C). Empty entries aren't stored. `logs` keeps the older one-string
+  /// Gamification spec §7). Empty entries aren't stored. `logs` keeps the older one-string
   /// shape (wins + lessons joined) for readers that predate the split — the
   /// admin Client Detail endpoint returns it.
   Future<void> saveCheckin({
@@ -275,7 +275,7 @@ Map<String, double> rollingCoreAverages(List<DailyCheckin> recent,
   return {for (final c in sums.keys) c: sums[c]! / counts[c]!};
 }
 
-/// Balance % (PRD §14 "Balance Percentage"; Build Tracker C.10 — simple
+/// Balance % (Phase 1&2 Details stats box; Build Tracker C.10 — simple
 /// variance-based for MVP): 100% when every scored Core has the same 7-day
 /// average, falling as they spread apart. On the 1–5 scale the widest possible
 /// spread is a standard deviation of 2, which maps to 0%.

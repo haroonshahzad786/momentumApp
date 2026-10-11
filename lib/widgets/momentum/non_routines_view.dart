@@ -28,7 +28,7 @@ const Map<String, String> _coreTitle = {
   'emotional': 'Emotional & Mental',
 };
 
-/// Non-Routines List (PRD §11, #21) — the rocket's right (checklist) icon.
+/// Non-Routines List (Phase 1&2 Details §4C, #21) — the rocket's right (checklist) icon.
 /// Emotion-triggered habits per Core, in the player's priority order (drag to
 /// reprioritise), with each habit's IF-THEN. Mindset keeps #1 Mantra and
 /// #2 Gratitude locked on top; formed Golden Habits have left for the Trophy
@@ -191,7 +191,7 @@ class _NonRoutinesViewState extends State<NonRoutinesView> {
         runSpacing: 10,
         spacing: 12,
         children: [
-          // PRD §11: "Clickable link at the top opens BTTF List (#1)".
+          // BTTF link at the top — came only from the retired PRD; unconfirmed.
           MMGhostButton(
             label: '🔮 Back to the Future',
             onPressed: () => widget.onNav('lists'),
@@ -284,8 +284,9 @@ class _NonRoutinesViewState extends State<NonRoutinesView> {
     );
   }
 
-  /// PRD §11 Mindset locked defaults: "#1 Mantra and #2 Gratitude are
-  /// permanently reserved as linked placeholders (tap to open Momentum Lists".
+  /// Mindset locked defaults: #1 Mantra and #2 Gratitude are reserved as
+  /// linked rows that open Momentum Lists. Came only from the retired PRD —
+  /// unconfirmed.
   Widget _lockedRow(int rank, String title, String sub) => Semantics(
         button: true,
         label: '#$rank $title, locked. Opens Momentum Lists',

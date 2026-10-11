@@ -635,7 +635,7 @@ const Map<String, String> _coreShortId = {
 };
 
 /// A single habit parsed from a stored Routines List / Non-Routine line.
-/// Its PRD §11 colour is saved on the server (`flutterSetCoreListItemColor`);
+/// Its Phase 1&2 Details §4C colour is saved on the server (`flutterSetCoreListItemColor`);
 /// a line matching a Golden Habit is coloured by formation instead.
 class _RoutineHabit {
   _RoutineHabit({
@@ -923,7 +923,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        // PRD §11 status counter — red / orange / green tallies.
+        // Phase 1&2 Details §4C status counter — red / orange / green tallies.
         HabitStatusCounter([
           for (final h in [..._routine, ..._nonRoutine]) h.color,
         ]),
@@ -1404,7 +1404,7 @@ class _RoutineEditSheetState extends State<_RoutineEditSheet> {
                   style: MM.body(size: 12, color: Colors.white.withOpacity(0.7)))
             else
               Wrap(spacing: 8, runSpacing: 8, children: [
-                // Non-routines have no ⚫ Neutral (PRD §11).
+                // Non-routines have no ⚫ Neutral (Phase 1&2 Details §4C).
                 for (final c in HabitColor.values)
                   if (c != HabitColor.black ||
                       widget.habit.list == null ||

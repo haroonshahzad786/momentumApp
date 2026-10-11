@@ -761,7 +761,9 @@ Reference (Pre-PRD)"**, so that doc is the acceptance reference._
 1. `Gamification Mechanics Specs Reference (Pre-PRD)` (Mar 2026) — **test basis**, mechanics + values.
 2. `10K VIEW…` (Jun 2026) + `HOW GAMIFICATION, AI, AND SCIENCE…` (Mar 2026) — newest MVP/post-MVP labels.
 3. `PHASE 1 AND 2 SEQUENCE (…FOR CODERS)` (Phase 2 part May 2026) — player-facing flow + visuals.
-4. `PRD - Product Requirements Doc` (v4.0, Feb 2026) — full feature catalog (A–G format).
+4. `PHASE 1 AND PHASE 2 DETAILS (condensed)`, `Space Cantina`, `MM Build Tracker` — feature detail.
+   **`PRD - Product Requirements Doc` is RETIRED (user, 2026-10-10): never cite it.** Its archived
+   predecessor "Issues & Features (Detailed)" is not a source either. See "PRD removal review" below.
 5. `Scope v2` (Jan 2026) — **older**, but the only doc with concrete numbers for most placeholders →
    usable as *proposed defaults* for Will to confirm, never as final values.
 6. `Haroon Calls and meetings` (call notes through 9/9/26) — Will's direct asks to Haroon.
@@ -782,18 +784,55 @@ Epic Thrusters 2500), Mystery Box drop table. The old Codario Django back office
 distances/momentum values (see #40).
 
 ### Conflicts to resolve with Will (docs disagree — don't pick silently)
+_Re-sourced 2026-10-10 without the retired PRD. Rows marked ~~struck~~ had only the PRD on the other side → spec stands._
 | Topic | Gamification spec | Other doc(s) |
 |---|---|---|
-| MP per check-in | flat +10, regardless of score (**built**) | PRD/Sequence: scales with score + Captain's Log + Balance Bonus (+25 on Day 1 example) |
-| Streak Savers | earned at 30-day milestone, max **1** banked | PRD/How-Gamif: variable-reward drops, max **3** |
-| Streak milestones | 3/7/14/30/60/90/180/365 (**built**, credits user-set) | PRD: 7/14/21/30… |
-| Armor | 1/2/3-day grace, Epic = week | PRD: 1/2 grace days *per month* |
-| Thrusters | +25/50/75/100% MP | PRD: +10/20% · Scope v2: +2..+10 Core Power/day |
-| Planets | Moon→Mars→Jupiter→Saturn→Pluto | PRD: Space Station→…→Uranus→Neptune→Pluto |
-| Leaderboard rank | ship tier → Momentum Score → trophies; trending arrows; opt-out | PRD 16.3: 60/25/15 composite (**built**) |
+| MP per check-in | flat +10, regardless of score (**built**) | Sequence: scales with score + Captain's Log + Balance Bonus (+25 on Day 1 example) → admin mode #41 |
+| Streak Savers | earned at 30-day milestone, max **1** banked (Phase 1&2 Details agrees) | How-Gamif: max **3** |
+| Streak milestones | 3/7/14/30/60/90/180/365 (**built**; Details: "from the first 3-day trigger") | How-Gamif: 7/14/21/30/60/90/180/365 |
+| ~~Armor~~ | 1/2/3-day grace, Epic = week (Details agrees) | PRD only — dropped |
+| Thrusters | +25/50/75/100% MP | Scope v2: +2..+10 Core Power/day (PRD's +10/20% dropped) |
+| Planets | Moon→Mars→Jupiter→Saturn→Pluto | Sequence/Details/Scope v2 mention Space Station etc. → Will decided: admin, default 5, up to 8 (#42) |
+| Leaderboard rank | ship tier → Momentum Score → trophies; trending arrows; opt-out | **Space Cantina doc**: 60/25/15 composite (**built**) |
 | Bottom-rank label | "Just Getting Started" | built: "RISING" tag |
-| Vacation Mode length | placeholder | PRD: up to 7 days |
-| Balance alert source | Core **scores** <3.0 for 5 days | PRD: 7-day **rolling average** <3.0 for 5 days |
+| Vacation Mode length | placeholder | only the PRD said 7 days → **unconfirmed**; built as admin-editable default 7 |
+| ~~Balance alert source~~ | Core **scores** <3.0 for 5 days (built) | Details' iCore Alert also says "low scores below 3.0 for 5+ days" → resolved, spec stands. (A call note says "rolling average" as an example.) |
+
+### PRD removal review (2026-10-10)
+The user retired `PRD - Product Requirements Doc (Formerly the ISSUES AND FEATURES DETAILED VERSION)`.
+The .docx and its text extract were moved out of the project to `C:\Users\haroon\Documents\MM_removed_refs\`
+(a copy still sits inside `design/ref/MASTER .zip`). Every done task that cited it was re-checked against
+the other docs. Code comments now cite the backing doc instead.
+
+**Confirmed by other docs (no change):**
+- #21 colour key 🔴🟠🟢⚫🔵🌟, status counter, By Time / By Core, non-routines with no ⚫, drag to reprioritise,
+  highest damage first, IF-THEN → Phase 1&2 Details §4C. Core order 🧠💰👥💪🧘 → Details. "Throughout Day" →
+  Tactical Implementation Guide.
+- #20 stats box (planet · Momentum Score · Balance %) + streak across the top → Details (Rocket Dashboard).
+- #18 Balance % = variance-based → Build Tracker C.10; 7-day rolling across 5 Cores → Details.
+- #15 Captain's Log wins & lessons → Gamification spec §7 + Details.
+- #22 Detailed View sections → Details §4A. #23 3-day 🧪 experiments, Quick Suggestion, experiment tracker →
+  Sequence (Post-Phase-1 Refinement). #26 routing → calls 7/22 + Sequence.
+- Cantina leaderboard 60/25/15 → Space Cantina doc.
+- "Welcome back, Captain" relaunch framing → Wireframe guide + spec ("relaunching, never failing").
+
+**Conflict found — FIXED 2026-10-10:**
+- **Rocket nose icons (#20).** The PRD said 3 icons with the Command Center in ☰. Details + Sequence (Alex
+  walkthrough) + Will's 2/26/26 meeting notes say **4**: a large centre-top **steering wheel → Command Center**, plus smaller
+  clock (Routines), ∞ (All Habits), checklist (Non-Routines). **Now built that way** in `rocket_widget.dart`
+  (steering wheel in the big socket → `lists` = Command Center; clock + checklist kept at their ORIGINAL
+  positions in the two small sockets; ∞ between them on a gray round plate, since the art has no 4th socket —
+  it covers the stamped "5 Core Life" logo). `icon-command.png` / `icon-allhabits.png` are PLACEHOLDER art drawn in the same
+  teal style — swap in real art when Will sends it. Tap routing checked in a widget test (all 4 keys) and **browser-verified on web 2026-10-10** (will@, Cockpit: wheel → Lists, clock → Routines, ∞ → All Habits, checklist → Non-Routines; no writes).
+
+**PRD-only details — no other doc backs them (kept, marked unconfirmed for Will):**
+- Vacation Mode default 7 days (#17) — spec says placeholder; stays admin-editable.
+- Summary gauge yellow band 3.0–3.9 (#6/#18) — spec only flags <3.0.
+- Non-Routines: Mindset #1 Mantra / #2 Gratitude locked rows, BTTF link at top (#21 step 3).
+- Ship warning "long absence" threshold of 5+ weekdays (#16).
+
+**Open tasks that cited PRD sections** (#24, #27, #29, #31, #34, #35, #36): re-source each from the other docs
+before starting it; the PRD section numbers in their text are now meaningless.
 
 ### Will's decisions (2026-09-25, relayed by Haroon)
 - **Momentum Points:** admin-selectable mode in the Economy panel — *flat* (+N per check-in, default 10,

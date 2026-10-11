@@ -4,7 +4,7 @@ import '../../models/user_profile.dart';
 import '../../theme/momentum_tokens.dart';
 import 'mm_buttons.dart';
 
-/// Streak protection (#17, Gamification spec §6 / PRD 12.C): the Streak Saver
+/// Streak protection (#17, Gamification spec §6): the Streak Saver
 /// count and Vacation Mode controls. Protection only — nothing here punishes.
 class StreakProtectionCard extends StatefulWidget {
   const StreakProtectionCard({

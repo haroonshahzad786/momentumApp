@@ -20,7 +20,7 @@ class CoreList {
   final String name;
   final List<String> items;
 
-  /// PRD §11 colour per line: [itemKey] → red|orange|black|green|blue|note.
+  /// Phase 1&2 Details §4C colour per line: [itemKey] → red|orange|black|green|blue|note.
   /// Kept beside the plain strings so FlutterFlow's reads are unchanged.
   final Map<String, String> colors;
 
