@@ -112,32 +112,6 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
       height: h,
       child: Stack(
         children: [
-          // Deep space starfield background with nebula gradients
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment(0, -1.2),
-                  radius: 1.3,
-                  colors: [
-                    Color(0x264A7FFF),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment(0, 1.2),
-                  radius: 1.5,
-                  colors: [Color(0x269B5CFF), Colors.transparent],
-                ),
-              ),
-            ),
-          ),
           Positioned.fill(
             child: RepaintBoundary(
               child: AnimatedBuilder(
