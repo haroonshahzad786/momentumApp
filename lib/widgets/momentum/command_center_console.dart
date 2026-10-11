@@ -419,7 +419,8 @@ class _ConsolePainter extends CustomPainter {
     canvas.save();
     canvas.clipRRect(RRect.fromRectAndRadius(Offset.zero & size, r));
 
-    _windshield(canvas, w, h, u);
+    // Old windshield graphics replaced by Purple-Lit Cockpit Frame image overlay
+    // _windshield(canvas, w, h, u);
     _dash(canvas, w, h, u);
     _leftCluster(canvas, w, h, u);
     _rightCluster(canvas, w, h, u);
