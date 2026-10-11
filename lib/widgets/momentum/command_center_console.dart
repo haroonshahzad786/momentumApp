@@ -132,10 +132,10 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
           ),
           // Purple-Lit Cockpit Frame overlay in the top windshield area
           Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: h * 0.29,
+            left: u * 0.08,
+            right: u * 0.08,
+            top: -u * 0.04,
+            height: h * 0.35,
             child: IgnorePointer(
               child: Image.asset(
                 'assets/momentum/cockpit_frame.png',
