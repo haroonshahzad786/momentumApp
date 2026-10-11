@@ -63,15 +63,6 @@ class _ListsScreenState extends State<ListsScreen> {
   bool _saving = false;
   String? _error;
 
-  /// The 17 canonical Momentum Lists (Build Guide §Feature 4) offered when the
-  /// user creates a new list — free-text names are allowed too.
-  static const List<String> _canonicalLists = [
-    'Strengths', 'Passions', 'Fears', 'Goals', 'Obstacles',
-    'Values', 'Triggers', 'Rewards', 'Accountability', 'Environment',
-    'Time Availability', 'Energy Patterns', 'Social Support', 'Resources',
-    'Past Successes', 'Past Failures', 'Back to the Future',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -261,7 +252,7 @@ class _ListsScreenState extends State<ListsScreen> {
 
   Future<String?> _promptListName(Set<String> existing) {
     final controller = TextEditingController();
-    final suggestions = _canonicalLists
+    final suggestions = kCanonicalMomentumLists
         .where((n) => !existing.contains(n.toLowerCase()))
         .toList();
     return showDialog<String>(

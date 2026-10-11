@@ -293,7 +293,10 @@ class _ScreenScaffold extends StatelessWidget {
 // LISTS — real MomentumLists in a manifest grid (tap to expand items)
 // ═══════════════════════════════════════════════════════════════
 class WebLists extends StatefulWidget {
-  const WebLists({super.key});
+  const WebLists({super.key, this.expand = const <String>{}});
+
+  /// List names to pre-expand on open (Command Center console deep link).
+  final Set<String> expand;
   @override
   State<WebLists> createState() => _WebListsState();
 }
@@ -301,7 +304,7 @@ class WebLists extends StatefulWidget {
 class _WebListsState extends State<WebLists> {
   final _service = MomentumListsService();
   List<MomentumList> _lists = const [];
-  final Set<String> _expanded = {};
+  late final Set<String> _expanded = {...widget.expand};
   bool _loading = true;
   String? _error;
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import '../../theme/momentum_tokens.dart';
+import 'command_center_console.dart';
 
 /// Thruster flame, as a Lottie vector loop. Picked over the source GIFs: those
 /// are 1-bit-transparency frames, which speckle badly around the soft edge of a
@@ -26,6 +27,8 @@ class RocketWidget extends StatefulWidget {
     this.streak = 0,
     this.onNav,
     this.onCoreAlert,
+    this.onCommandCenter,
+    this.onOpenCommandCenter,
   });
 
   /// Optional override. When null the rocket sizes itself responsively:
@@ -41,6 +44,14 @@ class RocketWidget extends StatefulWidget {
   final int streak;
   final void Function(String key)? onNav;
   final void Function(String coreId)? onCoreAlert;
+
+  /// Fires when the Command Center console opens (true) or closes (false), so
+  /// the host can clear its own chrome around the stage.
+  final ValueChanged<bool>? onCommandCenter;
+
+  /// When set, the steering wheel hands the Command Center to the host (which
+  /// shows the console over its whole panel) instead of swapping in place.
+  final VoidCallback? onOpenCommandCenter;
 
   @override
   State<RocketWidget> createState() => _RocketWidgetState();
@@ -109,7 +120,26 @@ class _RocketWidgetState extends State<RocketWidget>
     super.dispose();
   }
 
+  /// The steering wheel swaps the rocket for the Command Center console in
+  /// the same box, rather than navigating away.
+  bool _commandOpen = false;
+
   bool _isActive(String id) => widget.activeCores.contains(id);
+
+  void _setCommand(bool open) {
+    setState(() => _commandOpen = open);
+    widget.onCommandCenter?.call(open);
+  }
+
+  void _onNose(String kind) {
+    if (kind == 'lists' && widget.onOpenCommandCenter != null) {
+      widget.onOpenCommandCenter!();
+    } else if (kind == 'lists') {
+      _setCommand(true);
+    } else {
+      widget.onNav?.call(kind);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -119,7 +149,47 @@ class _RocketWidgetState extends State<RocketWidget>
       builder: (context, constraints) {
         final double w = _resolveWidth(context, constraints, aspect);
         final double h = w * aspect;
-        return _buildRocket(w, h);
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 420),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          // The engine plume hangs below the rocket's box — don't clip it.
+          layoutBuilder:
+              (current, previous) => Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: [...previous, if (current != null) current],
+              ),
+          transitionBuilder:
+              (child, anim) => FadeTransition(
+                opacity: anim,
+                child: ScaleTransition(
+                  scale: Tween(begin: 0.96, end: 1.0).animate(anim),
+                  child: child,
+                ),
+              ),
+          child:
+              _commandOpen
+                  ? CommandCenterConsole(
+                    key: const ValueKey('command'),
+                    // Fills whatever box the host gives the stage — the
+                    // Cockpit hands it the whole panel while it is open.
+                    width:
+                        constraints.maxWidth.isFinite
+                            ? constraints.maxWidth
+                            : w,
+                    height:
+                        constraints.maxHeight.isFinite
+                            ? constraints.maxHeight
+                            : h,
+                    onClose: () => _setCommand(false),
+                    onNav: widget.onNav,
+                  )
+                  : KeyedSubtree(
+                    key: const ValueKey('rocket'),
+                    child: _buildRocket(w, h),
+                  ),
+        );
       },
     );
   }
@@ -220,7 +290,7 @@ class _RocketWidgetState extends State<RocketWidget>
                   button: true,
                   label: n.label,
                   child: GestureDetector(
-                    onTap: () => widget.onNav?.call(n.kind),
+                    onTap: () => _onNose(n.kind),
                     child: MouseRegion(
                       cursor: SystemMouseCursors.click,
                       child: n.plate

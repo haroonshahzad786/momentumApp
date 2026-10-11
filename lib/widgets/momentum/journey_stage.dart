@@ -270,7 +270,18 @@ class JourneyStage extends StatefulWidget {
     this.zoomController,
     this.controlsOnLeft = false,
     this.dailyIntro = false,
+    this.onCommandCenter,
+    this.onOpenCommandCenter,
   });
+
+  /// Fires when the rocket's Command Center console opens / closes. While it
+  /// is open the stage drops its planet rail + zoom bar and centres the
+  /// console; hosts use this to hide their own chrome too.
+  final ValueChanged<bool>? onCommandCenter;
+
+  /// Hands the steering wheel to the host: it shows the Command Center over
+  /// its own panel and the stage stays as it is underneath.
+  final VoidCallback? onOpenCommandCenter;
 
   /// First view of the day opens on the whole route, holds, then flies in to
   /// the cockpit (Will, call 9/9: "zoomed-out journey view on each daily
@@ -320,6 +331,14 @@ class JourneyStage extends StatefulWidget {
 class _JourneyStageState extends State<JourneyStage>
     with TickerProviderStateMixin {
   static const String _seenKey = 'mm.journey.seen_planet';
+
+  /// The rocket has swapped to the Command Center console.
+  bool _commandOpen = false;
+
+  void _onCommand(bool open) {
+    setState(() => _commandOpen = open);
+    widget.onCommandCenter?.call(open);
+  }
   static const String _introKey = 'mm.journey.intro_day';
 
   /// Daily zoom-out → zoom-in. Drives [_localZoom] 0 → 1; any manual zoom
@@ -722,10 +741,14 @@ class _JourneyStageState extends State<JourneyStage>
         children: [
           // The rail floats over one edge so the stage keeps its width.
           Positioned.fill(
-            child: Padding(
-              padding: widget.controlsOnLeft
-                  ? EdgeInsets.only(left: _gutter)
-                  : EdgeInsets.only(right: _gutter),
+            child: AnimatedPadding(
+              duration: const Duration(milliseconds: 420),
+              curve: Curves.easeOutCubic,
+              padding: _commandOpen
+                  ? EdgeInsets.zero
+                  : widget.controlsOnLeft
+                      ? EdgeInsets.only(left: _gutter)
+                      : EdgeInsets.only(right: _gutter),
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 350),
                 child: switch (_mode) {
@@ -740,6 +763,8 @@ class _JourneyStageState extends State<JourneyStage>
                         streak: widget.streak,
                         onNav: widget.onNav,
                         onCoreAlert: widget.onCoreAlert,
+                        onCommandCenter: _onCommand,
+                        onOpenCommandCenter: widget.onOpenCommandCenter,
                       ),
                     ),
                   _Mode.reveal => _buildReveal(),
@@ -754,7 +779,7 @@ class _JourneyStageState extends State<JourneyStage>
               left: widget.controlsOnLeft ? _railW + 2 : null,
               top: 0,
               bottom: 0,
-              child: Center(
+              child: _hideForCommand(Center(
                 child: JourneyZoomBar(
                   value: _zoom,
                   enabled: _mode == _Mode.dashboard,
@@ -762,14 +787,14 @@ class _JourneyStageState extends State<JourneyStage>
                   trackHeight: _zoomBarH,
                   onChanged: _setZoom,
                 ),
-              ),
+              )),
             ),
           Positioned(
             right: widget.controlsOnLeft ? null : 0,
             left: widget.controlsOnLeft ? 0 : null,
             top: 0,
             bottom: 0,
-            child: Center(
+            child: _hideForCommand(Center(
               child: _PlanetRail(
                 width: _railW,
                 compact: widget.compact,
@@ -780,12 +805,22 @@ class _JourneyStageState extends State<JourneyStage>
                 busy: _mode != _Mode.dashboard,
                 onTap: _flyTo,
               ),
-            ),
+            )),
           ),
         ],
       ),
     );
   }
+
+  /// Rail + zoom bar step aside while the Command Center console is open.
+  Widget _hideForCommand(Widget child) => IgnorePointer(
+        ignoring: _commandOpen,
+        child: AnimatedOpacity(
+          opacity: _commandOpen ? 0 : 1,
+          duration: const Duration(milliseconds: 300),
+          child: child,
+        ),
+      );
 
   /// Pinch on the route (touch only — the zoom bar is the pointer affordance).
   /// Scaling up flies the camera back in toward the cockpit dashboard.
@@ -922,6 +957,8 @@ class _JourneyStageState extends State<JourneyStage>
                 streak: widget.streak,
                 onNav: widget.onNav,
                 onCoreAlert: widget.onCoreAlert,
+                onCommandCenter: _onCommand,
+                onOpenCommandCenter: widget.onOpenCommandCenter,
               ),
             ),
           ),

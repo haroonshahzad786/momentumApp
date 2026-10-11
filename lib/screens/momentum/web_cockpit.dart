@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/momentum_tokens.dart';
+import '../../widgets/momentum/command_center_console.dart';
 import '../../widgets/momentum/journey_stage.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 import '../../widgets/momentum/starfield.dart';
@@ -371,6 +372,9 @@ class _RocketStage extends StatefulWidget {
 }
 
 class _RocketStageState extends State<_RocketStage> {
+  /// The Command Center console is open in the stage — it takes the panel.
+  bool _commandOpen = false;
+
   /// Shared between the journey stage (which drives it) and the panel-wide
   /// starfield (which reads it), so the stars stream faster mid-flight.
   late final ValueNotifier<double> _warp = ValueNotifier<double>(
@@ -425,47 +429,91 @@ class _RocketStageState extends State<_RocketStage> {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 26, 20, 30),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'MISSION IN PROGRESS',
-                  style: GoogleFonts.orbitron(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 2.2,
-                    color: const Color(0xFFD8C0FF).withOpacity(0.85),
+          // The normal stage stays mounted under the console (so the journey
+          // keeps its state) and just fades out of the way.
+          IgnorePointer(
+            ignoring: _commandOpen,
+            child: AnimatedOpacity(
+              opacity: _commandOpen ? 0 : 1,
+              duration: const Duration(milliseconds: 350),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 26, 20, 30),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'MISSION IN PROGRESS',
+                      style: GoogleFonts.orbitron(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 2.2,
+                        color: const Color(0xFFD8C0FF).withOpacity(0.85),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    // Cockpit dashboard by default; plays the arrival cinematic in
+                    // place when the player reaches a new planet, and the vertical
+                    // rail on its right replays any leg on tap.
+                    JourneyStage(
+                      planetIdx: planetIdx,
+                      activeCores: widget.activeCores,
+                      atRiskCores: widget.atRiskCores,
+                      streak: widget.streak,
+                      height: 500,
+                      rocketWidth: 260,
+                      warpSpeed: _warp,
+                      dailyIntro: true,
+                      onNav: widget.onNav,
+                      onCoreAlert: widget.onCoreAlert,
+                      onOpenCommandCenter:
+                          () => setState(() => _commandOpen = true),
+                    ),
+                    const SizedBox(height: 20),
+                    FractionallySizedBox(
+                      widthFactor: 0.8,
+                      child: MMPrimaryButton(
+                        label: 'Daily Check-in →',
+                        pulse: true,
+                        expand: true,
+                        onPressed: widget.onCheckIn,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Command Center console — takes the whole panel while open.
+          Positioned.fill(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 420),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder:
+                  (child, anim) => FadeTransition(
+                    opacity: anim,
+                    child: ScaleTransition(
+                      scale: Tween(begin: 0.96, end: 1.0).animate(anim),
+                      child: child,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 14),
-                // Cockpit dashboard by default; plays the arrival cinematic in
-                // place when the player reaches a new planet, and the vertical
-                // rail on its right replays any leg on tap.
-                JourneyStage(
-                  planetIdx: planetIdx,
-                  activeCores: widget.activeCores,
-                  atRiskCores: widget.atRiskCores,
-                  streak: widget.streak,
-                  height: 500,
-                  rocketWidth: 260,
-                  warpSpeed: _warp,
-                  dailyIntro: true,
-                  onNav: widget.onNav,
-                  onCoreAlert: widget.onCoreAlert,
-                ),
-                const SizedBox(height: 20),
-                FractionallySizedBox(
-                  widthFactor: 0.8,
-                  child: MMPrimaryButton(
-                    label: 'Daily Check-in →',
-                    pulse: true,
-                    expand: true,
-                    onPressed: widget.onCheckIn,
-                  ),
-                ),
-              ],
+              child:
+                  _commandOpen
+                      ? Padding(
+                        key: const ValueKey('command'),
+                        padding: const EdgeInsets.all(12),
+                        child: LayoutBuilder(
+                          builder:
+                              (context, c) => CommandCenterConsole(
+                                width: c.maxWidth,
+                                height: c.maxHeight,
+                                onClose:
+                                    () => setState(() => _commandOpen = false),
+                                onNav: widget.onNav,
+                              ),
+                        ),
+                      )
+                      : const SizedBox.shrink(key: ValueKey('none')),
             ),
           ),
         ],

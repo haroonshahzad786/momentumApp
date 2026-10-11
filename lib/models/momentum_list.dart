@@ -17,3 +17,13 @@ class MomentumList {
             .toList(),
       );
 }
+
+/// The 17 canonical Momentum Lists (Build Guide §Feature 4). Offered as
+/// suggestions when the user creates a list, and shown as locked slots on the
+/// Command Center console until Nova (or the player) fills them.
+const List<String> kCanonicalMomentumLists = [
+  'Strengths', 'Passions', 'Fears', 'Goals', 'Obstacles',
+  'Values', 'Triggers', 'Rewards', 'Accountability', 'Environment',
+  'Time Availability', 'Energy Patterns', 'Social Support', 'Resources',
+  'Past Successes', 'Past Failures', 'Back to the Future',
+];

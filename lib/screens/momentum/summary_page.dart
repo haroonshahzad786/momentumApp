@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/checkin_service.dart';
 import '../../services/economy_config_service.dart';
+import '../../services/todays_focus_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/celebration_host.dart';
 import '../../widgets/momentum/confetti_overlay.dart';
@@ -250,7 +251,11 @@ class _SummaryPageState extends State<SummaryPage> {
                           days: _balanceDays,
                           delay: 950,
                         ),
-                        const _TodaysFocus(delay: 1150),
+                        _TodaysFocus(
+                          userId: widget.userId,
+                          todayScores: widget.todayScores,
+                          delay: 1150,
+                        ),
                         const _DailyChallenge(delay: 1350),
                       ],
                     ),
@@ -749,51 +754,126 @@ class _BalanceMeter extends StatelessWidget {
   }
 }
 
-/// Today's Focus — Nova's coaching surface. The personalized version is fed by
-/// the AI pattern engine (not yet wired), so this is shown as a clearly-marked
-/// preview with general guidance and NO fabricated per-habit numbers.
-class _TodaysFocus extends StatelessWidget {
-  const _TodaysFocus({required this.delay});
+/// 📍 Today's Focus (#24) — Nova's 3–5 bullets for today, written from this
+/// check-in plus Golden Habits (⚠️ flags, 🧪 experiments) and Momentum Lists
+/// (Sequence "AI-generated Focus Reminders"). The server caches them on the
+/// day's check-in, so reopening the Summary doesn't call Nova again.
+class _TodaysFocus extends StatefulWidget {
+  const _TodaysFocus({
+    required this.userId,
+    required this.todayScores,
+    required this.delay,
+  });
+  final String userId;
+  final Map<String, int> todayScores;
   final int delay;
+
+  @override
+  State<_TodaysFocus> createState() => _TodaysFocusState();
+}
+
+class _TodaysFocusState extends State<_TodaysFocus> {
+  final _service = TodaysFocusService();
+  List<FocusBullet>? _bullets;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (widget.userId.isEmpty) {
+      setState(() => _bullets = const []);
+      return;
+    }
+    setState(() {
+      _bullets = null;
+      _failed = false;
+    });
+    try {
+      final b = await _service.fetch(
+          userId: widget.userId, scores: widget.todayScores);
+      if (mounted) setState(() => _bullets = b);
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    }
+  }
+
+  Widget _message(String text) => Text(text,
+      style: MM.body(
+          color: Colors.white.withOpacity(0.7), size: 12.5, height: 1.5));
+
+  Widget _body() {
+    if (_failed) {
+      return Row(children: [
+        Expanded(child: _message("Nova couldn't write today's focus.")),
+        TextButton(
+          onPressed: _load,
+          child: Text('TRY AGAIN',
+              style: MM.display(
+                  size: 10, color: MM.blue, weight: FontWeight.w700)),
+        ),
+      ]);
+    }
+    final b = _bullets;
+    if (b == null) {
+      return Row(children: [
+        const SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2)),
+        const SizedBox(width: 10),
+        _message('Nova is reading your check-in…'),
+      ]);
+    }
+    if (b.isEmpty) {
+      return _message('Finish today’s check-in and Nova will set your focus.');
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final x in b)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 24,
+                  child: Text(x.emoji.isEmpty ? '•' : x.emoji,
+                      style: const TextStyle(fontSize: 14)),
+                ),
+                Expanded(
+                  child: Text(x.text,
+                      style: MM.body(
+                          color: Colors.white.withOpacity(0.85),
+                          size: 12.5,
+                          height: 1.45)),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return _Reveal(
-      delay: Duration(milliseconds: delay),
+      delay: Duration(milliseconds: widget.delay),
       child: GlassPanel(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(children: [
-              Text("TODAY'S FOCUS · NOVA",
-                  style: MM.displayX(
-                      size: 10, color: Colors.white.withOpacity(0.55))),
-              const SizedBox(width: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: MM.blue.withOpacity(0.12),
-                  border: Border.all(color: MM.blue.withOpacity(0.4)),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text('PREVIEW',
-                    style: MM.display(
-                        size: 8,
-                        color: MM.blue,
-                        weight: FontWeight.w700,
-                        letterSpacing: 8 * 0.12)),
-              ),
-            ]),
+            Text("📍 TODAY'S FOCUS · NOVA",
+                style: MM.displayX(
+                    size: 10, color: Colors.white.withOpacity(0.55))),
             const SizedBox(height: 10),
-            Text(
-              'Personalized focus from Nova arrives once the AI has more of '
-              'your check-in history to learn from. For now: keep your '
-              'lowest Core in view and protect the habit that moves it.',
-              style: MM.body(
-                  color: Colors.white.withOpacity(0.7), size: 12.5, height: 1.5),
-            ),
+            _body(),
           ],
         ),
       ),

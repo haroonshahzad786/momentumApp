@@ -320,6 +320,10 @@ class _CheckInPageState extends State<CheckInPage> {
 
   void _advance() {
     final cores = _displayed;
+    // The slider shows 3 until it's moved — record what the player saw, or an
+    // untouched Core would be saved as unscored.
+    final current = cores[_idx];
+    if (!current.locked) _scores.putIfAbsent(current.id, () => 3);
     if (_idx == cores.length - 1) {
       widget.onComplete(_scores, _logs);
     } else {

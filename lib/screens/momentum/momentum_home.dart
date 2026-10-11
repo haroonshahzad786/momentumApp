@@ -63,6 +63,9 @@ class _MomentumHomeState extends State<MomentumHome> {
   /// rocket, #20); null shows every Core.
   String? _habitsCore;
 
+  /// List opened from a Command Center console button (`lists:<name>`).
+  Set<String> _listsExpand = const {};
+
   /// Locked Core the player chose to fuel — pre-drafts the HHS opener.
   String? _fuelCore;
 
@@ -398,7 +401,11 @@ class _MomentumHomeState extends State<MomentumHome> {
     _phase1EntryHabitId = null;
     _fuelCore = null;
     _habitsCore = null;
-    if (key.startsWith('habit:')) {
+    _listsExpand = const {};
+    if (key.startsWith('lists:')) {
+      _listsExpand = {key.substring(6)};
+      key = 'lists';
+    } else if (key.startsWith('habit:')) {
       _habitId = key.substring(6);
       if (_screen != 'habit') _habitReturn = _screen;
       key = 'habit';
@@ -1005,6 +1012,8 @@ class _MomentumHomeState extends State<MomentumHome> {
     }
     if (_screen == 'lists') {
       return ListsScreen(
+        key: ValueKey(_listsExpand.join()),
+        expand: _listsExpand,
         onBack: () => _go('dashboard'),
         onChat: _openChat,
         onNav: _go,
@@ -1388,7 +1397,8 @@ class _MomentumHomeState extends State<MomentumHome> {
         title = 'Lists';
         subtitle = 'Manifest';
         accent = MM.blue;
-        content = const WebLists();
+        content = WebLists(
+            key: ValueKey(_listsExpand.join()), expand: _listsExpand);
         break;
       case 'trophy':
         title = 'Trophy Room';

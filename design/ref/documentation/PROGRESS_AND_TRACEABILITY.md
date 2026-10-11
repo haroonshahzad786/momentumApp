@@ -8,7 +8,7 @@
 
 **Prepared for:** Will Moore (client)
 **App:** Moore Momentum (plain‑Flutter rebuild)
-**Last updated:** 2026‑09‑27
+**Last updated:** 2026‑10‑11
 
 This document maps **every feature built so far** back to **your original specification documents**, quotes the exact passage each feature was built from, and shows a **screenshot of the working app**. The goal is a single place where you can see *what was built*, *why* (which of your docs drove it), and *that it works*.
 
@@ -643,6 +643,16 @@ These three come straight from the Gamification Mechanics Specs Reference (§6 S
 ### Fix: Routines empty for new players ✅
 - **Problem:** a player whose habits were all made with Nova saw an empty Routines screen. Nova saved the habit but not its line in the Core's Routines / Non-Routines list, which is what that screen reads.
 - **Fixed (7 Oct):** Nova now adds the line when it forges a habit (and renames it after a Go Deeper rebuild), and the Routines screens (web + phone) also show any Golden Habit that is missing a line. That covers players who already have habits. Checked in the browser on the test account.
+
+### Command Center console — the cockpit dashboard from the original app ✅
+- **Source:** Document A (Sequence), "Section/Step 6 - Reward - Command Center w/ Momentum Lists" and "Command Center/Momentum Lists access unlocks as players provide information"; the steering wheel on the rocket's nose opens it (Phase 1&2 Details, 2/26/26 meeting). The look follows the original app's Command Center console (your screenshot: a dash with instrument clusters around a screen of list buttons, locked lists greyed with a 🔒).
+- **Built (11 Oct):** tapping the steering wheel fades the rocket out and the Command Center console in, in the same place. On the desktop Cockpit the console takes over the whole centre panel: the Mission label, planet rail, zoom bar and Daily Check-in button step aside so the most lists fit, laid out two per row. ◀ brings the rocket back. On the phone it fills the journey stage. The console is drawn in code (a spaceship canopy — wide front window between two curved, violet-rimmed pillars, corner side windows, an overhead light strip and a violet-edged sill — plus instrument clusters, blinking LEDs and a radar sweep; reworked 11 Oct to match your canopy reference), so it stays sharp at any size; no art from the original app survived the export.
+- **Real data:** each Momentum List with items is a silver ▶ button; tapping it opens the Lists page with that list already expanded. Any of the 17 canonical lists that is still empty shows as a locked slot ("Unlocks as you and Nova fill it in"). The odometer shows your total list items and the gauge needle shows how many lists are unlocked. Offline, it falls back to the locked slots after 8 seconds.
+- **Verified (browser, test account):** opened from the Cockpit, the console listed the test player's 8 lists (82 items) then the locked slots; tapping Obstacles opened Lists with Obstacles expanded; ◀ restored the rocket, rail, zoom bar and Check-in button. Also checked on the phone layout.
+- **To confirm with you:** the locked slots use the 17 Build Guide list names. Your original screenshot had Funeral, Top People, Fears, Passions/Loves, Gratitude, Strengths and Purpose. Tell us if that should be the fixed set instead.
+
+![Command Center console on the desktop Cockpit](images/26-command-center-console-web.png) ![Command Center console on the phone](images/27-command-center-console-mobile.png)
+*Left: the console filling the Cockpit's centre panel with the test player's real lists. Right: the same console on the phone.*
 
 ---
 

@@ -1037,8 +1037,20 @@ before starting it; the PRD section numbers in their text are now meaningless.
   Earlier note — Step 3:
   Go Deeper rebuilds become experiments + the "what changed" re-entry summary (moved from #26), and Manual
   Edit from the check-in intervention opens the Detailed View.
-- [ ] **#24 Today's Focus (AI) + score validation** — 3–5 bullets generated from *this* session's scores,
-  log, flags and experiments; private nudge when Captain's Log tone contradicts the score. Needs #15.
+- [x] **#24 Today's Focus (AI)** — 3–5 bullets generated from *this* session's scores, log, flags and
+  experiments. Sources (no PRD): Sequence "AI-generated Focus Reminders" + the two TODAY'S FOCUS examples,
+  Details, How-Gamif, 10K View. **Score validation SKIPPED (user, 2026-10-11)** — MVP Scope Audit says
+  post-MVP; revisit later. **BUILT 2026-10-11, NOT YET DEPLOYED:** `functions-flutter/todaysFocus.js` +
+  `flutterTodaysFocus` (8 tests; suite 95/95). Reads today's check-in (scores + Captain's Log), last 7
+  check-ins, Golden Habits (⚠️ flag, 🧪 experiment, cue/when), active Cores, Momentum Lists; ~1 Sonnet call
+  per check-in (~1¢), cached on `checkins/{day}.todaysFocus` keyed by the session's input. App:
+  `TodaysFocusService` + the Summary's Today's Focus panel (was a PREVIEW placeholder): loading → bullets,
+  empty state when no check-in, Try again on error. **DEPLOYED + BROWSER-VERIFIED 2026-10-11** on
+  haroon+mmtest: a check-in with a Mindset lesson → 4 bullets that quote today's lesson, the running 🧪
+  Energy Reset experiment and real habits; repeat call `cached: true`. **Bug found + fixed while testing:** the
+  check-in only saved a Core's score if its slider was MOVED — an untouched Core (shown as 3) was saved
+  unscored, so an all-default check-in had no scores (no points, streak, balance or focus). `_advance` now
+  records the shown score for every unlocked Core (`checkin_page.dart`).
 - [x] **#25 Phase 2 first-time launch** — **DONE as P1-8 (2026-10-07, browser-verified).** (Sequence §0) — "Phase 1 complete → mission begins" transition +
   90-second cockpit tour with Next/Back, ending on the Daily Check-In button.
 - [x] **#26 First-time vs returning routing** (PRD 4, calls 7/22) — **DONE as P1-1 (2026-10-06, browser-verified).**
