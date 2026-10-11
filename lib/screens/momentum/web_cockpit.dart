@@ -408,6 +408,15 @@ class _RocketStageState extends State<_RocketStage> {
             child: StarfieldBackground(showScanlines: false, showStars: false),
           ),
           Positioned.fill(child: MovingStarfield(speed: _warp)),
+          // Cockpit frame overlay — sits on top of starfield, behind content
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Image.asset(
+                'assets/momentum/cockpit_frame.png',
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
           // target planet halo
           Positioned(
             top: 26,
