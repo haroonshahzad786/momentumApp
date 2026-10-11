@@ -14,7 +14,7 @@ String flameAsset(int streak) {
 
 /// Layered hero rocket: base PNG + per-core panels + nose instruments.
 /// `activeCores` controls which panels show color vs gray.
-/// Tap a nose icon (habits / lists / routines) to navigate.
+/// Tap a nose icon (Command Center / routines / all habits / non-routines).
 class RocketWidget extends StatefulWidget {
   const RocketWidget({
     super.key,
@@ -73,15 +73,23 @@ class _RocketWidgetState extends State<RocketWidget>
         Offset(0.65, 0.69), _panelWWing, 0),
   ];
 
-  // Tip of the rocket (PRD 12.10): left clock → Full Routines List, centre →
-  // All Habits Quick View, right checklist → Non-Routines. The Command Center
-  // lives in the ☰ menu per the PRD, not on the nose.
+  // Tip of the rocket (Phase 1&2 Details, Sequence, 2/26/26 meeting): large
+  // centre-top steering wheel → Command Center; below it, smaller left clock →
+  // Full Routines List, centre ∞ → All Habits Quick View, right checklist →
+  // Non-Routines. Steering wheel + ∞ art are placeholders until real art lands.
+  // Centres are measured from rocket.png's dark sockets (516×980 px): big
+  // (258,137), left (195.5,209.5), right (321,209.5).
   static const _noseIcons = <_NoseIcon>[
-    _NoseIcon('allhabits', 'icon-habits.png', Offset(0.505, 0.13), 0.155,
-        'All Habits'),
-    _NoseIcon('routines', 'icon-routines.png', Offset(0.39, 0.22), 0.11,
+    _NoseIcon('lists', 'icon-command.png', Offset(0.5, 0.1398), 0.19,
+        'Command Center'),
+    _NoseIcon('routines', 'icon-routines.png', Offset(0.3789, 0.2138), 0.11,
         'Routines'),
-    _NoseIcon('nonroutines', 'icon-lists.png', Offset(0.62, 0.22), 0.11,
+    // The rocket art has no 4th socket, so ∞ sits on its own gray plate, on
+    // the centre line midway between the big socket (bottom y188) and the
+    // Mindset panel (top y247).
+    _NoseIcon('allhabits', 'icon-allhabits.png', Offset(0.5, 0.2219), 0.097,
+        'All Habits', plate: true),
+    _NoseIcon('nonroutines', 'icon-lists.png', Offset(0.6221, 0.2138), 0.11,
         'Non-Routines'),
   ];
 
@@ -215,10 +223,31 @@ class _RocketWidgetState extends State<RocketWidget>
                     onTap: () => widget.onNav?.call(n.kind),
                     child: MouseRegion(
                       cursor: SystemMouseCursors.click,
-                      child: Image.asset(
-                        'assets/momentum/${n.src}',
-                        fit: BoxFit.contain,
-                      ),
+                      child: n.plate
+                          ? DecoratedBox(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: const Color(0xFF3A3F47),
+                                border: Border.all(
+                                    color: const Color(0xFF8A9099),
+                                    width: w * 0.006),
+                                boxShadow: const [
+                                  BoxShadow(
+                                      color: Color(0x80000000), blurRadius: 4),
+                                ],
+                              ),
+                              child: Padding(
+                                padding: EdgeInsets.all(w * 0.012),
+                                child: Image.asset(
+                                  'assets/momentum/${n.src}',
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            )
+                          : Image.asset(
+                              'assets/momentum/${n.src}',
+                              fit: BoxFit.contain,
+                            ),
                     ),
                   ),
                 ),
@@ -385,8 +414,13 @@ class _CoreDef {
 }
 
 class _NoseIcon {
-  const _NoseIcon(this.kind, this.src, this.center, this.w, this.label);
+  const _NoseIcon(this.kind, this.src, this.center, this.w, this.label,
+      {this.plate = false});
   final String kind;
+
+  /// Draw a gray round plate behind the icon (for icons with no socket in the
+  /// rocket art).
+  final bool plate;
   final String label;
   final String src;
   final Offset center;
