@@ -134,8 +134,8 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
           Positioned(
             left: -u * 0.05,
             right: 0,
-            top: -u * 0.12,
-            height: h * 0.15,
+            top: -u * 0.15,
+            height: h * 0.08,
             child: IgnorePointer(
               child: Image.asset(
                 'assets/momentum/cockpit_frame.png',
