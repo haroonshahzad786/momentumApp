@@ -631,7 +631,7 @@ nothing is lost. Statuses here are honest to the rebuild; 🔒 = blocked on the 
 several Stage-1 items are OWNED by the Voiceflow "Nova" agent (Claude can't edit it — see
 [[reference_vf_onboarding_agent]]), so they're "in Nova's scope" not separately buildable on the Flutter side._
 
-- [ ] **BG-F5 Auto-Tagging System** — AI extracts user statements into the 17 Momentum Lists during the
+- [ ] **BG-F5 Auto-Tagging System** — AI extracts user statements into the 21 Momentum Lists (doc set, see #31a; was "17") during the
   onboarding chat (strengths/fears/obstacles/etc.). **In Nova's scope** (the VF agent captures list data);
   not verified to actually persist per-list tags on the Flutter side. Verify what Nova writes, or descope.
 - [ ] **BG-F6 / BG-F9 Master Habits Database (500+ vetted habits) + recommendation algorithm** 🔒 —
@@ -1068,9 +1068,58 @@ before starting it; the PRD section numbers in their text are now meaningless.
   Core Confirmed → Principle Decoder → Keystone Forger → Golden Habit Architect) and Stage 2 10/15/25
   (Friction Hunter → Method Master → Implementation Wizard) with the lock→✅ progress bar; Core icon unlock
   animation on first habit in a Core.
-- [ ] **#31 Command Center MVP rules** (PRD 10.C) — locked lists shown greyed with unlock hint; each entry
-  shows its source (Phase 1 / manual / AI / quest); archive instead of delete; search across lists;
-  celebratory first reveal; One-Time Actions list with done/pending.
+- [~] **#31 Command Center per the docs** — **RE-BASED 2026-10-12 on "Command Center w/ Momentum Lists
+  (Detailed Version)" (`design/ref/Command Center w_ Momentum Lists (Detailed Version).docx`) + Phase 1&2 Details
+  §4B/§4D + Phase 1&2 Sequence (Section/Step 6 + Flight Deck tutorial). The old PRD 10.C wording is retired.**
+  The doc defines **21 lists** (the old "17 lists / Build Guide §Feature 4" set was wrong). Sub-tasks:
+  - [x] **31a 21-list set + order** — `kMomentumListSpecs` (name, doc "What it is" blurb, server aliases) in
+    `lib/models/momentum_list.dart`; console shows the 21 in doc order (filled first, then locked), alias-matches
+    server names ("Obstacles List", "Fears"→Top Irrational Fears…), keeps custom lists (e.g. If-Then Strategy)
+    visible, locked-slot tooltip = doc blurb. Browser-verified 2026-10-12.
+    Order: 1 Back to the Future · 2 Mantra · 3 Gratitude · 4 Strengths · 5 Weaknesses · 6 Passions · 7 Dislikes ·
+    8 Routines · 9 Non-Routines · 10 Top People · 11 Top Environments · 12 Top Irrational Fears ·
+    13 Daily Bold Tracker · 14 Obstacles · 15 Messes to Clean/Space Junk · 16 Captain's Log/Journal ·
+    17 One-Time Actions to Automate · 18 Fav Tech Automations · 19 Career Goals · 20 Lifestyle Factors ·
+    21 Trophy Room/Formed Habits.
+  - [x] **31b (2026-10-12) — DONE as navigation:** the three slots now count real habits (same
+    `mergeAllHabits` the Routines/Non-Routines/Trophy screens use; Trophy = Golden Habits coloured green),
+    unlock when count > 0, tooltip "N habits", and tap → `onNav('routines' | 'nonroutines' | 'trophy')` (existing
+    full screens, which already have the doc's colour key / Core priority / formed views). A same-named legacy
+    `momentum_lists` doc is hidden from the console (still in "Open all lists"). Browser-verified: Trophy Room
+    opens (1 formed habit). Not done: rendering these views *inside* the console screen (cramped) — screens
+    open full-page instead. Original scope: Routines (#8) + Non-Routines (#9) + Trophy Room (#21) slots read real habit data — they live on
+    the per-core path (`flutterFetchAllCoreListItems`, golden habits), NOT `momentum_lists`, so today they show
+    locked. Routines: Morning/Afternoon/Evening → cluster (time + place) → habit, colour key 🔴🟠⚫🟢🔵🌟.
+    Non-Routines: by Core in priority order, drag-to-reorder, IF-THEN text, Mindset locked placeholders #1 Mantra
+    / #2 Gratitude (link to lists #2/#3), Back-to-the-Future quick link; formed habits leave the list.
+    Trophy Room: by Core, collapsible detail (replaced habit, MBMs, days to form, 30/60/90 review status);
+    Routine habits stay green on Routines AND appear here. Reuse the existing web Routines/Habits/Trophy views.
+  - [x] **31c (2026-10-12) Per-Core + structured lists — DONE on web** (`web_screens.dart` WebLists; model in `momentum_list.dart`):    stored in the doc tag format `#ListType::CoreArea::TagLabel` inside flat items (no new endpoint). Per-Core lists group by Core    + tag/add/edit/delete; Top People/Environments = 2 sub-lists with 1–5 per-Core scores; Daily Bold = Date·Core·Action·Reflection    table; Captain's Log = Win/Challenge/Reflection. Browser-verified: Top People, Daily Bold, per-Core Strengths. NOT browser-verified:    Captain's Log dialog, Top Environments. Mobile ListsScreen only has per-Core tagging. Nova/Phase 1 don't write tags yet. Empty    starter lists for the 4 structured lists are shown client-side until first save.
+  - [x] **31d (2026-10-12) — DONE + browser-verified** (`_CommandCenterUnlockView` in `phase1_flow.dart`,
+    verified via a temporary route, since reverted): 3 beats — "🥇 REWARD ACTIVATED / COMMAND CENTER UNLOCKED ✅"
+    (4 mission-control bullets, "I've now uploaded your intel") → "MOMENTUM LISTS ACTIVATED ✅" (numbered rows in doc
+    order: doc description + **real stored data** from `momentum_lists` + merged habits, e.g. Routines names, "N/A for
+    current Routine Golden Habit"; no fabricated rows; Trophy Room excluded) → lift-off (rocket rises off Earth,
+    "break Earth's gravitational pull", Continue to Level 2 / Save game). Not verified in the real first-time path
+    (needs a brand-new account finishing the HHS) — the screen itself and its data are. Doc's "any questions or manual
+    updates?" prompt and the rocketFire.gif asset are not included. Original scope — Sequence §Step 6: "REWARD ACTIVATED /
+    COMMAND CENTER UNLOCKED" → "MOMENTUM LISTS ACTIVATED" showing, per list, description + data stored
+    (Back to the Future, Routines, Obstacles, Passions, Strengths in the example) → "lift-off" bridge to Stage 2
+    ("break earth's gravitational pull" rocket animation). Returning players get only a brief
+    "lists updated this session" summary. Existing Stage-1 unlock screen audited ✅ (P1) — compare to this copy.
+  - [~] **31e (2026-10-12) Unlock rules — Stage 1 part DONE + browser-verified** (`command_center_console.dart`): once a Golden Habit exists (Stage 1 done), Back to the Future / Obstacles / Lifestyle Factors are unlocked even when empty (Routines or Non-Routines unlock from their habits); tapping an empty one opens Lists with it expanded + "Add item". Everything else still unlocks by having items. NOT built (doc has no firm rules / needs design): Side Quest prompts (alien on a new planet → add 1–3 items), the TBD milestone that unlocks the rest, Strengths/Passions/Weaknesses "usually", One-Time Actions in Stage 2.
+  - [~] **31f (2026-10-12) PARTIAL: 4 rocket-tip icons browser-verified on web (steering wheel→console, clock→Routines, ∞→All Habits, checklist→Non-Routines); added ☰ menu "Command Center" entry (opens cockpit with console open; NOT browser-verified — menu is the mobile layout, web uses the sidebar which has no Command Center entry); Trophy top-left icon exists in dashboard_page; menu already has Foundation Hub (Phase 1 return), Cantina, Profile. Not built: Flight-Deck tutorial walkthrough. Original:** Access points — Flight-Deck tutorial: ☰ hamburger (Command Center, Cantina, Phase 1 return,
+    settings) and rocket-tip icons: 🎯 steering wheel (large, top centre) → Command Center, ⏰ clock → Routines,
+    ∞ → All Habits, ☑️ checklist → Non-Routines detail; 🏆 Trophy icon top-left #2. Verify all four open the
+    right list (#20 covers the icons; confirm Routines/Non-Routines land on lists #8/#9 inside the console).
+  - [~] **31g (2026-10-12) PARTIAL — (a) bi-directional habit edits: AUDITED, already satisfied: Routines, Non-Routines, All Habits, Detailed Habit View, Trophy, Command Center and the check-in all read the SAME stores (getGoldenHabits + getRoutineData → mergeAllHabits), so an edit saved from the detail view (updateHabitDetail) shows everywhere on next load; not live-pushed between open screens; web Routines/All Habits have no inline edit (edits happen in the detail view); I did not run an edit-then-check test. (b) list cross-references DONE on web: doc "Cross-reference/Pair with" map (`kListSeeAlso`) shown as SEE ALSO chips on expanded lists; tap opens the target (browser-verified Strengths→Weaknesses; target tile appears at the end of the grid, no scroll-to). Not built: Mantra+Gratitude→Step 0 (#5 done earlier), Top Fears→Bold Tracker links. Original:** Cross-links + bi-directional edits — edits to a habit in ALL-Habits / Detailed Habit View /
+    Daily Scoring must update the Routines/Non-Routines list and vice-versa; lists cross-reference (Dislikes↔
+    Passions/Weaknesses/Routines, Fears→Bold Tracker/Obstacles, Mantra+Gratitude → daily Step 0 [#5 ✅]).
+  - [~] **31h (2026-10-12) DONE on web, browser-verified (archive→restore, done/pending, search): flags are trailing markers on the stored item (`~arch`, `~done`, `~src:manual`; model `momentum_list.dart`, UI `web_screens.dart` WebLists). Archive replaces delete (hidden + not counted; ARCHIVED section with Restore and Delete-permanently); One-Time Actions get a checkbox + "N pending · M done"; search box across all lists; items added by hand show "added by you". Console panel, reveal and unlock counts ignore archived items. NOT done: source for items written by Phase 1/Nova/quests (they carry no marker yet — needs the tagger to add one, so only "added by you" can show); mobile ListsScreen still hard-deletes; Messes cleanup streaks. Original:** Carried from old #31 — each entry shows its source (Phase 1 / manual / AI / quest); archive
+    instead of delete; search across lists; One-Time Actions with done/pending (doc: "mark completed for a
+    dopamine hit"); Messes cleanup streaks (optional gamification).
+  - [x] **31i Console look** — cockpit frame behind dash, no title, taller window, windshield scene (rocket,
+    radar rings, stars) per user mock. Done 2026-10-12.
 - [x] **#32 Returning-player HHS/MBS flows** (Sequence) — **DONE as P1-2…P1-6 (2026-10-07, browser-verified).**
   Voluntary new habit / guided gamified / flag-triggered (Go Deeper), each with context pre-loaded; MBS
   shortcuts: Quick Add from Ideas Well + manual MBM entry. (Absorbs BG-F8.) Not done: MBM version history

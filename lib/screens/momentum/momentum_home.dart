@@ -84,6 +84,9 @@ class _MomentumHomeState extends State<MomentumHome> {
   /// 'mission' ("The Mission Begins") then 'tour' (cockpit tour); null = none.
   String? _launch;
   bool _menuOpen = false;
+
+  /// Menu → Command Center: land on the cockpit with the console open.
+  bool _openCommand = false;
   final _auth = AuthService();
   final _adminService = AdminService();
   bool _isAdmin = false;
@@ -402,6 +405,8 @@ class _MomentumHomeState extends State<MomentumHome> {
     _fuelCore = null;
     _habitsCore = null;
     _listsExpand = const {};
+    _openCommand = key == 'command';
+    if (key == 'command') key = 'dashboard';
     if (key.startsWith('lists:')) {
       _listsExpand = {key.substring(6)};
       key = 'lists';
@@ -1324,6 +1329,7 @@ class _MomentumHomeState extends State<MomentumHome> {
           onCheckIn: _startCheckin,
           onCoreAlert: _showCoreAlert,
           phase1Banner: _phase1.finished ? null : _phase1Banner(),
+          openCommand: _openCommand,
         );
         break;
       case 'routines':

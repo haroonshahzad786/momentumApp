@@ -31,11 +31,15 @@ class WebCockpit extends StatelessWidget {
     required this.onCheckIn,
     required this.onCoreAlert,
     this.phase1Banner,
+    this.openCommand = false,
   });
 
   /// "Continue Phase 1" banner while Phase 1 is unfinished — the phone has
   /// the Phase 1 pill; web had no way back in (P1-10 #5).
   final Widget? phase1Banner;
+
+  /// Open straight into the Command Center console (menu → Command Center).
+  final bool openCommand;
 
   final String name;
   final int streak;
@@ -96,6 +100,7 @@ class WebCockpit extends StatelessWidget {
           onNav: onNav,
           onCheckIn: onCheckIn,
           onCoreAlert: onCoreAlert,
+          openCommand: openCommand,
         );
         final right = _FlightData(
           planet: MM.planets[_planetIdx],
@@ -358,6 +363,7 @@ class _RocketStage extends StatefulWidget {
     required this.onNav,
     required this.onCheckIn,
     required this.onCoreAlert,
+    this.openCommand = false,
   });
   final int planetIdx;
   final List<String> activeCores;
@@ -366,6 +372,7 @@ class _RocketStage extends StatefulWidget {
   final void Function(String key) onNav;
   final VoidCallback onCheckIn;
   final void Function(String coreId) onCoreAlert;
+  final bool openCommand;
 
   @override
   State<_RocketStage> createState() => _RocketStageState();
@@ -373,7 +380,13 @@ class _RocketStage extends StatefulWidget {
 
 class _RocketStageState extends State<_RocketStage> {
   /// The Command Center console is open in the stage — it takes the panel.
-  bool _commandOpen = false;
+  late bool _commandOpen = widget.openCommand;
+
+  @override
+  void didUpdateWidget(covariant _RocketStage old) {
+    super.didUpdateWidget(old);
+    if (widget.openCommand && !old.openCommand) _commandOpen = true;
+  }
 
   /// Shared between the journey stage (which drives it) and the panel-wide
   /// starfield (which reads it), so the stars stream faster mid-flight.

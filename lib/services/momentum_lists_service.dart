@@ -59,6 +59,15 @@ class MomentumListsService {
       .map((m) => MomentumList.fromJson(m.cast<String, dynamic>()))
       .toList();
 
+  /// Gets a single list by name.
+  Future<MomentumList> getList(String userId, String listName) async {
+    final all = await getAllLists(userId);
+    return all.data.firstWhere(
+      (l) => l.name.trim().toLowerCase() == listName.trim().toLowerCase(),
+      orElse: () => MomentumList(name: listName, items: const []),
+    );
+  }
+
   /// Appends a single item to the named Momentum List (creating the list if it
   /// doesn't exist yet), preserving the existing items. Used by the Cantina
   /// Ideas Well "adopt" flow to file a Tech/App pick into the user's list.

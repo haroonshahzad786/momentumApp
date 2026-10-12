@@ -143,13 +143,21 @@ class _ListsScreenState extends State<ListsScreen> {
   }
 
   Future<void> _addItem(int index) async {
-    final text = await _promptText(title: 'Add to ${_lists[index].name}');
+    final list = _lists[index];
+    // Per-Core lists tag each entry with its Core (doc tag format).
+    String? core;
+    if (isPerCoreList(list.name)) {
+      core = await _pickCore(list.name);
+      if (core == null) return;
+    }
+    final text = await _promptText(
+      title: core == null ? 'Add to ${list.name}' : 'Add to ${list.name} · $core',
+    );
     if (text == null || text.trim().isEmpty) return;
     final prev = [..._lists];
-    final list = _lists[index];
     final updated = MomentumList(
       name: list.name,
-      items: [...list.items, text.trim()],
+      items: [...list.items, encodeListItem(list.name, core, text.trim())],
     );
     _expanded.add(list.name);
     _replaceList(index, updated);
@@ -158,17 +166,15 @@ class _ListsScreenState extends State<ListsScreen> {
 
   Future<void> _editItem(int index, int itemIndex) async {
     final list = _lists[index];
-    final text = await _promptText(
-      title: 'Edit item',
-      initial: list.items[itemIndex],
-    );
+    final tag = parseListItem(list.items[itemIndex]);
+    final text = await _promptText(title: 'Edit item', initial: tag.label);
     if (text == null) return;
     final prev = [..._lists];
     final items = [...list.items];
     if (text.trim().isEmpty) {
       items.removeAt(itemIndex);
     } else {
-      items[itemIndex] = text.trim();
+      items[itemIndex] = encodeListItem(list.name, tag.core, text.trim());
     }
     final updated = MomentumList(name: list.name, items: items);
     _replaceList(index, updated);
@@ -245,6 +251,24 @@ class _ListsScreenState extends State<ListsScreen> {
             onPressed: () => Navigator.of(ctx).pop(controller.text),
             child: Text('Save', style: MM.body(color: MM.blue)),
           ),
+        ],
+      ),
+    );
+  }
+
+  Future<String?> _pickCore(String listName) {
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        backgroundColor: MM.panel,
+        title: Text('Which Core is this for?',
+            style: MM.display(size: 15, color: Colors.white)),
+        children: [
+          for (final c in kMomentumCores)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(ctx).pop(c),
+              child: Text(c, style: MM.body(color: Colors.white, size: 14)),
+            ),
         ],
       ),
     );
@@ -463,6 +487,21 @@ class _ListTile extends StatelessWidget {
   final void Function(int itemIndex) onEditItem;
   final void Function(int itemIndex) onDeleteItem;
 
+  /// Item indices, grouped by Core for per-Core lists (header = Core name,
+  /// null header = untagged / flat list). Core order follows [kMomentumCores].
+  List<(String?, List<int>)> _groups() {
+    final all = [for (var i = 0; i < list.items.length; i++) i];
+    if (!isPerCoreList(list.name)) return [(null, all)];
+    final byCore = <String?, List<int>>{};
+    for (final i in all) {
+      (byCore[parseListItem(list.items[i]).core] ??= []).add(i);
+    }
+    return [
+      for (final c in [...kMomentumCores, null])
+        if (byCore[c] != null) (c ?? 'Other', byCore[c]!),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return GlassPanel(
@@ -506,7 +545,15 @@ class _ListTile extends StatelessWidget {
                       MM.body(color: Colors.white.withOpacity(0.4), size: 12),
                 ),
               ),
-            for (var i = 0; i < list.items.length; i++)
+            for (final g in _groups())
+              for (final i in g.$2) ...[
+                if (g.$1 != null && i == g.$2.first)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(g.$1!.toUpperCase(),
+                        style: MM.displayX(
+                            size: 9, color: Colors.white.withOpacity(0.5))),
+                  ),
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Row(
@@ -530,7 +577,7 @@ class _ListTile extends StatelessWidget {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
                           child: Text(
-                            list.items[i],
+                            parseListItem(list.items[i]).label,
                             style: MM.body(color: Colors.white, size: 12),
                           ),
                         ),
@@ -549,6 +596,7 @@ class _ListTile extends StatelessWidget {
                   ],
                 ),
               ),
+              ],
             const SizedBox(height: 6),
             InkWell(
               onTap: onAddItem,

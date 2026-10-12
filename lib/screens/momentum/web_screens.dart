@@ -308,6 +308,955 @@ class _WebListsState extends State<WebLists> {
   bool _loading = true;
   String? _error;
 
+  // ── Editing (doc tag format #ListType::CoreArea::TagLabel) ──────────
+  Future<void> _save(MomentumList list, List<String> items) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return;
+    final prev = _lists;
+    setState(() {
+      _lists = [
+        for (final x in _lists)
+          x.name == list.name ? MomentumList(name: x.name, items: items) : x,
+      ];
+    });
+    try {
+      await _service.saveList(uid, list.name, items);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _lists = prev);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not save change.')),
+      );
+    }
+  }
+
+  Future<String?> _askText(String title, {String initial = ''}) {
+    final c = TextEditingController(text: initial);
+    return showDialog<String>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: MM.panel,
+            title: Text(title, style: MM.display(size: 15, color: Colors.white)),
+            content: SizedBox(
+              width: 360,
+              child: TextField(
+                controller: c,
+                autofocus: true,
+                maxLines: null,
+                style: MM.body(color: Colors.white, size: 14),
+                onSubmitted: (v) => Navigator.of(ctx).pop(v),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(c.text),
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  Future<String?> _askCore() {
+    return showDialog<String>(
+      context: context,
+      builder:
+          (ctx) => SimpleDialog(
+            backgroundColor: MM.panel,
+            title: Text(
+              'Which Core is this for?',
+              style: MM.display(size: 15, color: Colors.white),
+            ),
+            children: [
+              for (final c in kMomentumCores)
+                SimpleDialogOption(
+                  onPressed: () => Navigator.of(ctx).pop(c),
+                  child: Text(c, style: MM.body(color: Colors.white, size: 14)),
+                ),
+            ],
+          ),
+    );
+  }
+
+  Future<void> _addItem(MomentumList l) async {
+    String? core;
+    if (isPerCoreList(l.name)) {
+      core = await _askCore();
+      if (core == null) return;
+    }
+    final text = await _askText(
+      core == null ? 'Add to ${l.name}' : 'Add to ${l.name} · $core',
+    );
+    if (text == null || text.trim().isEmpty) return;
+    await _save(l, [
+      ...l.items,
+      withItemFlags(
+        encodeListItem(l.name, core, text.trim()),
+        const ItemFlags(source: 'manual'),
+      ),
+    ]);
+  }
+
+  Future<void> _editItem(MomentumList l, int i) async {
+    final tag = parseListItem(l.items[i]);
+    final text = await _askText('Edit item', initial: tag.label);
+    if (text == null) return;
+    final items = [...l.items];
+    if (text.trim().isEmpty) {
+      items.removeAt(i);
+    } else {
+      items[i] = withItemFlags(
+        encodeListItem(l.name, tag.core, text.trim()),
+        itemFlags(items[i]),
+      );
+    }
+    await _save(l, items);
+  }
+
+  Future<void> _retag(MomentumList l, int i) async {
+    final core = await _askCore();
+    if (core == null) return;
+    final items = [...l.items];
+    items[i] = withItemFlags(
+      encodeListItem(l.name, core, parseListItem(items[i]).label),
+      itemFlags(items[i]),
+    );
+    await _save(l, items);
+  }
+
+  // ── Structured lists (Top People/Environments, Daily Bold, Captain's Log) ──
+  static String _today() {
+    final d = DateTime.now();
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+
+  // ── Search across all lists (doc 31h) ───────────────────────────────
+  String _query = '';
+
+  Widget _searchBar() => Padding(
+    padding: const EdgeInsets.only(bottom: 14),
+    child: TextField(
+      onChanged: (v) => setState(() => _query = v.trim()),
+      style: MM.body(color: Colors.white, size: 13),
+      decoration: InputDecoration(
+        prefixIcon: const Icon(Icons.search, size: 18),
+        hintText: 'Search all your lists…',
+        hintStyle: MM.body(color: Colors.white.withOpacity(0.4), size: 13),
+      ),
+    ),
+  );
+
+  Widget _searchResults() {
+    final q = _query.toLowerCase();
+    final hits = <(String, String)>[];
+    for (final l in _lists) {
+      for (final raw in l.items) {
+        if (isArchivedItem(raw)) continue;
+        final label = parseListItem(raw).label;
+        if (label.toLowerCase().contains(q) ||
+            l.name.toLowerCase().contains(q)) {
+          hits.add((l.name, label));
+        }
+      }
+    }
+    return WebSection(
+      title: 'SEARCH',
+      meta: '${hits.length} RESULTS',
+      accent: MM.blue,
+      child:
+          hits.isEmpty
+              ? _empty('No matches', 'Nothing in your lists matches "$_query".')
+              : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final h in hits)
+                    InkWell(
+                      onTap:
+                          () => setState(() {
+                            _expanded.add(h.$1);
+                            _query = '';
+                          }),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 5),
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: '${h.$1}  ',
+                                style: MM.body(
+                                  size: 11,
+                                  color: MM.blue,
+                                  weight: FontWeight.w700,
+                                ),
+                              ),
+                              TextSpan(
+                                text: h.$2,
+                                style: MM.body(size: 12.5, color: Colors.white),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+    );
+  }
+
+  Widget _oneTimeSummary(MomentumList l) {
+    var done = 0, pending = 0;
+    for (final raw in l.items) {
+      if (isArchivedItem(raw)) continue;
+      itemFlags(raw).done ? done++ : pending++;
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        '$pending pending · $done done',
+        style: MM.body(size: 11, color: Colors.white.withOpacity(0.55)),
+      ),
+    );
+  }
+
+  List<Widget> _openBody(MomentumList l) => [
+    ..._openBodyCore(l),
+    ..._archivedSection(l),
+    ..._seeAlso(l),
+  ];
+
+  /// Doc cross-references ("Cross-reference with…") as tap-to-open chips.
+  List<Widget> _seeAlso(MomentumList l) {
+    final names = seeAlsoFor(l.name);
+    if (names.isEmpty) return const [];
+    return [
+      const SizedBox(height: 10),
+      Text(
+        'SEE ALSO',
+        style: MM.displayX(size: 9, color: Colors.white.withOpacity(0.5)),
+      ),
+      const SizedBox(height: 6),
+      Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          for (final n in names)
+            InkWell(
+              onTap: () => _openOther(n),
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: MM.blue.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: MM.blue.withOpacity(0.4)),
+                ),
+                child: Text(n, style: MM.body(size: 11, color: Colors.white)),
+              ),
+            ),
+        ],
+      ),
+    ];
+  }
+
+  void _openOther(String specName) {
+    final spec = momentumListSpecFor(specName);
+    final i = _lists.indexWhere((x) => momentumListSpecFor(x.name) == spec);
+    setState(() {
+      if (i >= 0) {
+        _expanded.add(_lists[i].name);
+      } else {
+        _lists = [..._lists, MomentumList(name: specName, items: const [])];
+        _expanded.add(specName);
+      }
+    });
+  }
+
+  List<Widget> _openBodyCore(MomentumList l) {
+    switch (listKindFor(l.name)) {
+      case ListKind.twoPart:
+        return _twoPartBody(l);
+      case ListKind.boldTable:
+        return _boldBody(l);
+      case ListKind.log:
+        return _logBody(l);
+      default:
+        return [
+          if (_isOneTime(l)) _oneTimeSummary(l),
+          for (final e in _orderedEntries(l)) _listItemRow(l, e.$1, e.$2),
+          _addItemButton(l),
+        ];
+    }
+  }
+
+  Widget _archBtn(VoidCallback onTap) => Tooltip(
+    message: 'Archive',
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(3),
+        child: Icon(
+          Icons.archive_outlined,
+          size: 14,
+          color: Colors.white.withOpacity(0.35),
+        ),
+      ),
+    ),
+  );
+
+  Widget _xButton(VoidCallback onTap) => InkWell(
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.all(3),
+      child: Icon(Icons.close, size: 14, color: Colors.white.withOpacity(0.35)),
+    ),
+  );
+
+  void _removeAt(MomentumList l, int i) => _save(l, [...l.items]..removeAt(i));
+
+  Widget _addLink(String label, VoidCallback onTap) => InkWell(
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          const Icon(Icons.add, size: 16, color: MM.blue),
+          const SizedBox(width: 6),
+          Text(label, style: MM.body(size: 12, color: MM.blue)),
+        ],
+      ),
+    ),
+  );
+
+  Widget _field(TextEditingController c, String label, {int lines = 1}) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: TextField(
+          controller: c,
+          maxLines: lines,
+          style: MM.body(color: Colors.white, size: 13),
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: MM.body(color: Colors.white.withOpacity(0.5), size: 12),
+          ),
+        ),
+      );
+
+  Future<bool> _form(String title, List<Widget> children) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: MM.panel,
+            title: Text(title, style: MM.display(size: 15, color: Colors.white)),
+            content: SizedBox(
+              width: 420,
+              child: SingleChildScrollView(
+                child: Column(mainAxisSize: MainAxisSize.min, children: children),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+    );
+    return ok == true;
+  }
+
+  // Top People / Top Environments: two sub-lists, per-Core 1–5 scores on the first.
+  List<Widget> _twoPartBody(MomentumList l) {
+    final titles =
+        kSubListTitles[momentumListSpecFor(l.name)?.name] ??
+        const ['List 1', 'List 2'];
+    final out = <Widget>[];
+    for (var sub = 0; sub < 2; sub++) {
+      out.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 4, bottom: 6),
+          child: Text(
+            titles[sub].toUpperCase(),
+            style: MM.displayX(size: 9, color: Colors.white.withOpacity(0.5)),
+          ),
+        ),
+      );
+      for (var i = 0; i < l.items.length; i++) {
+        final e = parseTwoPart(l.items[i]);
+        if (e == null || e.sub != sub) continue;
+        out.add(
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _editTwoPart(l, i, e),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          e.name,
+                          style: MM.body(
+                            size: 13,
+                            color: Colors.white,
+                            weight: FontWeight.w600,
+                          ),
+                        ),
+                        if (e.scores.any((s) => s != null))
+                          Padding(
+                            padding: const EdgeInsets.only(top: 3),
+                            child: Wrap(
+                              spacing: 6,
+                              children: [
+                                for (var c = 0; c < 5; c++)
+                                  if (e.scores[c] != null)
+                                    _chip(
+                                      '${kMomentumCores[c].substring(0, 3)} ${e.scores[c]}',
+                                      e.scores[c]! >= 4
+                                          ? MM.teal
+                                          : e.scores[c]! <= 2
+                                          ? MM.magenta
+                                          : MM.yellow,
+                                    ),
+                              ],
+                            ),
+                          ),
+                        if (e.note.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 3),
+                            child: Text(
+                              e.note,
+                              style: MM.body(
+                                size: 12,
+                                color: Colors.white.withOpacity(0.65),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                _archBtn(() => _archive(l, i)),
+              ],
+            ),
+          ),
+        );
+      }
+      out.add(_addLink('Add', () => _editTwoPart(l, null, null, sub: sub)));
+    }
+    // Legacy plain items (not in the structured format) stay visible.
+    for (var i = 0; i < l.items.length; i++) {
+      if (parseTwoPart(l.items[i]) == null && !isArchivedItem(l.items[i])) {
+        out.add(_listItemRow(l, i, parseListItem(l.items[i]).label));
+      }
+    }
+    return out;
+  }
+
+  Future<void> _editTwoPart(
+    MomentumList l,
+    int? index,
+    TwoPartEntry? cur, {
+    int sub = 0,
+  }) async {
+    final s = cur?.sub ?? sub;
+    final name = TextEditingController(text: cur?.name ?? '');
+    final note = TextEditingController(text: cur?.note ?? '');
+    final scores = [...(cur?.scores ?? List<int?>.filled(5, null))];
+    final titles =
+        kSubListTitles[momentumListSpecFor(l.name)?.name] ??
+        const ['List 1', 'List 2'];
+    final isPeople = momentumListSpecFor(l.name)?.name == 'Top People';
+    final ok = await _form(titles[s], [
+      _field(name, isPeople ? 'Person' : 'Environment'),
+      if (s == 0) ...[
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            isPeople
+                ? 'Influence per Core (1 = draining, 5 = energizing)'
+                : 'Impact per Core (1 = very negative, 5 = very supportive)',
+            style: MM.body(size: 11, color: Colors.white.withOpacity(0.55)),
+          ),
+        ),
+        StatefulBuilder(
+          builder:
+              (ctx, set) => Column(
+                children: [
+                  for (var c = 0; c < 5; c++)
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 110,
+                          child: Text(
+                            kMomentumCores[c],
+                            style: MM.body(size: 12, color: Colors.white),
+                          ),
+                        ),
+                        for (var v = 1; v <= 5; v++)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: ChoiceChip(
+                              label: Text('$v'),
+                              selected: scores[c] == v,
+                              onSelected:
+                                  (sel) => set(() => scores[c] = sel ? v : null),
+                            ),
+                          ),
+                      ],
+                    ),
+                ],
+              ),
+        ),
+      ],
+      _field(
+        note,
+        s == 0
+            ? (isPeople
+                ? 'Positive / negative habit, how they affect you'
+                : 'Triggers, cues, automatic behaviours')
+            : (isPeople
+                ? 'Why a good accountability partner + how to connect'
+                : 'Why you are drawn to it + how to use it'),
+        lines: 2,
+      ),
+    ]);
+    if (!ok || name.text.trim().isEmpty) return;
+    final raw = encodeTwoPart(
+      l.name,
+      TwoPartEntry(s, name.text, scores, note.text),
+    );
+    final items = [...l.items];
+    index == null
+        ? items.add(withItemFlags(raw, const ItemFlags(source: 'manual')))
+        : items[index] = withItemFlags(raw, itemFlags(items[index]));
+    await _save(l, items);
+  }
+
+  // Daily Bold Tracker: Date · Core · Action · Reflection table.
+  List<Widget> _boldBody(MomentumList l) {
+    final rows = <(int, BoldEntry)>[
+      for (var i = 0; i < l.items.length; i++)
+        if (parseBold(l.items[i]) != null) (i, parseBold(l.items[i])!),
+    ]..sort((a, b) => b.$2.date.compareTo(a.$2.date));
+    TextStyle h() => MM.displayX(size: 9, color: Colors.white.withOpacity(0.5));
+    return [
+      if (rows.isNotEmpty)
+        Row(
+          children: [
+            SizedBox(width: 78, child: Text('DATE', style: h())),
+            SizedBox(width: 74, child: Text('CORE', style: h())),
+            Expanded(child: Text('ACTION · REFLECTION', style: h())),
+            const SizedBox(width: 20),
+          ],
+        ),
+      for (final r in rows)
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 78,
+                child: Text(
+                  r.$2.date,
+                  style: MM.body(size: 11, color: Colors.white.withOpacity(0.7)),
+                ),
+              ),
+              SizedBox(
+                width: 74,
+                child: Text(
+                  r.$2.core,
+                  style: MM.body(size: 11, color: Colors.white),
+                ),
+              ),
+              Expanded(
+                child: InkWell(
+                  onTap: () => _editBold(l, r.$1, r.$2),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        r.$2.action,
+                        style: MM.body(size: 12, color: Colors.white),
+                      ),
+                      if (r.$2.reflection.isNotEmpty)
+                        Text(
+                          r.$2.reflection,
+                          style: MM.body(
+                            size: 11,
+                            color: Colors.white.withOpacity(0.6),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              _archBtn(() => _archive(l, r.$1)),
+            ],
+          ),
+        ),
+      for (var i = 0; i < l.items.length; i++)
+        if (parseBold(l.items[i]) == null && !isArchivedItem(l.items[i]))
+          _listItemRow(l, i, parseListItem(l.items[i]).label),
+      _addLink('Log a bold action', () => _editBold(l, null, null)),
+    ];
+  }
+
+  Future<void> _editBold(MomentumList l, int? index, BoldEntry? cur) async {
+    final date = TextEditingController(text: cur?.date ?? _today());
+    final action = TextEditingController(text: cur?.action ?? '');
+    final refl = TextEditingController(text: cur?.reflection ?? '');
+    var core = cur?.core ?? kMomentumCores.first;
+    final ok = await _form('Daily Bold Action', [
+      _field(date, 'Date (yyyy-mm-dd)'),
+      StatefulBuilder(
+        builder:
+            (ctx, set) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: DropdownButtonFormField<String>(
+                value: kMomentumCores.contains(core) ? core : kMomentumCores.first,
+                dropdownColor: MM.panel,
+                decoration: InputDecoration(
+                  labelText: 'Core area',
+                  labelStyle: MM.body(
+                    color: Colors.white.withOpacity(0.5),
+                    size: 12,
+                  ),
+                ),
+                style: MM.body(color: Colors.white, size: 13),
+                items: [
+                  for (final c in kMomentumCores)
+                    DropdownMenuItem(value: c, child: Text(c)),
+                ],
+                onChanged: (v) => set(() => core = v ?? core),
+              ),
+            ),
+      ),
+      _field(action, 'Bold action taken', lines: 2),
+      _field(refl, 'Notes / reflection', lines: 2),
+    ]);
+    if (!ok || action.text.trim().isEmpty) return;
+    final raw = encodeBold(
+      BoldEntry(date.text.trim(), core, action.text, refl.text),
+    );
+    final items = [...l.items];
+    index == null
+        ? items.add(withItemFlags(raw, const ItemFlags(source: 'manual')))
+        : items[index] = withItemFlags(raw, itemFlags(items[index]));
+    await _save(l, items);
+  }
+
+  // Captain's Log: Win / Challenge / Reflection per day.
+  List<Widget> _logBody(MomentumList l) {
+    final rows = <(int, LogEntry)>[
+      for (var i = 0; i < l.items.length; i++)
+        if (parseLog(l.items[i]) != null) (i, parseLog(l.items[i])!),
+    ]..sort((a, b) => b.$2.date.compareTo(a.$2.date));
+    Widget line(String k, String v, Color c) =>
+        v.isEmpty
+            ? const SizedBox.shrink()
+            : Padding(
+              padding: const EdgeInsets.only(top: 3),
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '$k  ',
+                      style: MM.body(size: 11, color: c, weight: FontWeight.w700),
+                    ),
+                    TextSpan(
+                      text: v,
+                      style: MM.body(
+                        size: 12,
+                        color: Colors.white.withOpacity(0.85),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+    return [
+      for (final r in rows)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () => _editLog(l, r.$1, r.$2),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        r.$2.date,
+                        style: MM.displayX(
+                          size: 9,
+                          color: Colors.white.withOpacity(0.5),
+                        ),
+                      ),
+                      line('WIN', r.$2.win, MM.teal),
+                      line('CHALLENGE', r.$2.challenge, MM.yellow),
+                      line('REFLECTION', r.$2.reflection, MM.blue),
+                    ],
+                  ),
+                ),
+              ),
+              _archBtn(() => _archive(l, r.$1)),
+            ],
+          ),
+        ),
+      for (var i = 0; i < l.items.length; i++)
+        if (parseLog(l.items[i]) == null && !isArchivedItem(l.items[i]))
+          _listItemRow(l, i, parseListItem(l.items[i]).label),
+      _addLink('Add log entry', () => _editLog(l, null, null)),
+    ];
+  }
+
+  Future<void> _editLog(MomentumList l, int? index, LogEntry? cur) async {
+    final date = TextEditingController(text: cur?.date ?? _today());
+    final win = TextEditingController(text: cur?.win ?? '');
+    final ch = TextEditingController(text: cur?.challenge ?? '');
+    final refl = TextEditingController(text: cur?.reflection ?? '');
+    final ok = await _form("Captain's Log", [
+      _field(date, 'Date (yyyy-mm-dd)'),
+      _field(win, 'Your biggest win', lines: 2),
+      _field(ch, 'Your biggest challenge to grow from', lines: 2),
+      _field(refl, 'Reflection (optional)', lines: 2),
+    ]);
+    if (!ok || (win.text.trim().isEmpty && ch.text.trim().isEmpty)) return;
+    final raw = encodeLog(
+      LogEntry(date.text.trim(), win.text, ch.text, refl.text),
+    );
+    final items = [...l.items];
+    index == null
+        ? items.add(withItemFlags(raw, const ItemFlags(source: 'manual')))
+        : items[index] = withItemFlags(raw, itemFlags(items[index]));
+    await _save(l, items);
+  }
+
+  Widget _addItemButton(MomentumList l) => InkWell(
+    onTap: () => _addItem(l),
+    borderRadius: BorderRadius.circular(6),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          const Icon(Icons.add, size: 16, color: MM.blue),
+          const SizedBox(width: 6),
+          Text('Add item', style: MM.body(size: 12, color: MM.blue)),
+        ],
+      ),
+    ),
+  );
+
+  bool _isOneTime(MomentumList l) =>
+      momentumListSpecFor(l.name)?.name == 'One-Time Actions';
+
+  // Archive instead of delete (doc 31h): the item keeps its text with a
+  // `~arch` marker, hidden from counts/views until restored.
+  void _setFlags(MomentumList l, int i, ItemFlags f) {
+    final items = [...l.items];
+    items[i] = withItemFlags(items[i], f);
+    _save(l, items);
+  }
+
+  ItemFlags _flagsWith(
+    String raw, {
+    bool? archived,
+    bool? done,
+  }) {
+    final f = itemFlags(raw);
+    return ItemFlags(
+      archived: archived ?? f.archived,
+      done: done ?? f.done,
+      source: f.source,
+    );
+  }
+
+  void _archive(MomentumList l, int i) =>
+      _setFlags(l, i, _flagsWith(l.items[i], archived: true));
+
+  void _restore(MomentumList l, int i) =>
+      _setFlags(l, i, _flagsWith(l.items[i], archived: false));
+
+  void _toggleDone(MomentumList l, int i) => _setFlags(
+    l,
+    i,
+    _flagsWith(l.items[i], done: !itemFlags(l.items[i]).done),
+  );
+
+  final Set<String> _showArchived = {};
+
+  List<Widget> _archivedSection(MomentumList l) {
+    final idx = [
+      for (var i = 0; i < l.items.length; i++)
+        if (isArchivedItem(l.items[i])) i,
+    ];
+    if (idx.isEmpty) return const [];
+    final open = _showArchived.contains(l.name);
+    return [
+      const SizedBox(height: 8),
+      InkWell(
+        onTap:
+            () => setState(
+              () => open ? _showArchived.remove(l.name) : _showArchived.add(l.name),
+            ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Text(
+            '${open ? '▾' : '▸'} ARCHIVED (${idx.length})',
+            style: MM.displayX(size: 9, color: Colors.white.withOpacity(0.5)),
+          ),
+        ),
+      ),
+      if (open)
+        for (final i in idx)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    parseListItem(l.items[i]).label,
+                    style: MM.body(
+                      size: 12,
+                      color: Colors.white.withOpacity(0.45),
+                    ),
+                  ),
+                ),
+                Tooltip(
+                  message: 'Restore',
+                  child: InkWell(
+                    onTap: () => _restore(l, i),
+                    child: Padding(
+                      padding: const EdgeInsets.all(3),
+                      child: Icon(
+                        Icons.unarchive_outlined,
+                        size: 15,
+                        color: Colors.white.withOpacity(0.5),
+                      ),
+                    ),
+                  ),
+                ),
+                Tooltip(
+                  message: 'Delete permanently',
+                  child: _xButton(() => _removeAt(l, i)),
+                ),
+              ],
+            ),
+          ),
+    ];
+  }
+
+  Widget _listItemRow(MomentumList l, int i, String text) {
+    final perCore = isPerCoreList(l.name);
+    final oneTime = _isOneTime(l);
+    final flags = itemFlags(l.items[i]);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (oneTime)
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: InkWell(
+                onTap: () => _toggleDone(l, i),
+                child: Icon(
+                  flags.done ? Icons.check_circle : Icons.radio_button_unchecked,
+                  size: 16,
+                  color: flags.done ? MM.teal : Colors.white.withOpacity(0.45),
+                ),
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(top: 6, right: 8),
+              child: Container(
+                width: 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: MM.blue.withOpacity(0.7),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          Expanded(
+            child: InkWell(
+              onTap: () => _editItem(l, i),
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: text,
+                      style: MM.body(
+                        size: 12.5,
+                        color: Colors.white.withOpacity(flags.done ? 0.45 : 0.8),
+                      ).copyWith(
+                        decoration:
+                            flags.done ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                    if (flags.source == 'manual')
+                      TextSpan(
+                        text: '  · added by you',
+                        style: MM.body(
+                          size: 10,
+                          color: Colors.white.withOpacity(0.35),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          if (perCore)
+            Tooltip(
+              message: 'Tag Core',
+              child: InkWell(
+                onTap: () => _retag(l, i),
+                child: Padding(
+                  padding: const EdgeInsets.all(3),
+                  child: Icon(
+                    Icons.label_outline,
+                    size: 15,
+                    color: Colors.white.withOpacity(0.4),
+                  ),
+                ),
+              ),
+            ),
+          Tooltip(
+            message: 'Archive',
+            child: InkWell(
+              onTap: () => _archive(l, i),
+              child: Padding(
+                padding: const EdgeInsets.all(3),
+                child: Icon(
+                  Icons.archive_outlined,
+                  size: 14,
+                  color: Colors.white.withOpacity(0.35),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -331,7 +1280,22 @@ class _WebListsState extends State<WebLists> {
       final res = await _service.getAllLists(uid);
       if (!mounted) return;
       setState(() {
-        _lists = res.data;
+        // Structured lists the doc defines but the account may not have yet:
+        // shown empty so the player can start them (saving creates the list).
+        _lists = [
+          ...res.data,
+          for (final n in [
+            'Top People',
+            'Top Environments',
+            'Daily Bold Tracker',
+            "Captain's Log",
+            ...widget.expand,
+          ])
+            if (!res.data.any(
+              (x) => momentumListSpecFor(x.name) == momentumListSpecFor(n),
+            ))
+              MomentumList(name: n, items: const []),
+        ];
         _loading = false;
       });
     } catch (e) {
@@ -352,6 +1316,9 @@ class _WebListsState extends State<WebLists> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _searchBar(),
+          if (_query.isNotEmpty) _searchResults(),
+          if (_query.isEmpty)
           WebSection(
             title: 'MANIFEST',
             meta: '${_lists.length} LISTS',
@@ -407,46 +1374,9 @@ class _WebListsState extends State<WebLists> {
                                           _chip('${l.count}', MM.blue),
                                         ],
                                       ),
-                                      if (open && l.items.isNotEmpty) ...[
+                                      if (open) ...[
                                         const SizedBox(height: 12),
-                                        for (final it in l.items)
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              bottom: 6,
-                                            ),
-                                            child: Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Padding(
-                                                  padding:
-                                                      const EdgeInsets.only(
-                                                        top: 6,
-                                                        right: 8,
-                                                      ),
-                                                  child: Container(
-                                                    width: 5,
-                                                    height: 5,
-                                                    decoration: BoxDecoration(
-                                                      color: MM.blue
-                                                          .withOpacity(0.7),
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                  ),
-                                                ),
-                                                Expanded(
-                                                  child: Text(
-                                                    it,
-                                                    style: MM.body(
-                                                      size: 12.5,
-                                                      color: Colors.white
-                                                          .withOpacity(0.8),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
+                                        ..._openBody(l),
                                       ],
                                     ],
                                   ),
@@ -3015,4 +3945,26 @@ class _Grid extends StatelessWidget {
       },
     );
   }
+}
+
+/// (original index, display text) per item: tags stripped; per-Core lists
+/// are grouped by Core (order from [kMomentumCores]) with "Core · " prefix.
+List<(int, String)> _orderedEntries(MomentumList l) {
+  final parsed = [for (final raw in l.items) parseListItem(raw)];
+  final arch = [for (final raw in l.items) isArchivedItem(raw)];
+  if (!isPerCoreList(l.name)) {
+    return [
+      for (var i = 0; i < parsed.length; i++)
+        if (!arch[i]) (i, parsed[i].label),
+    ];
+  }
+  final out = <(int, String)>[];
+  for (final c in [...kMomentumCores, null]) {
+    for (var i = 0; i < parsed.length; i++) {
+      if (!arch[i] && parsed[i].core == c) {
+        out.add((i, c == null ? parsed[i].label : '$c · ${parsed[i].label}'));
+      }
+    }
+  }
+  return out;
 }

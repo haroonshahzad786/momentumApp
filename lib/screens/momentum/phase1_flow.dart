@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../models/momentum_list.dart';
 import '../../models/phase1_state.dart';
+import '../../models/golden_habit.dart';
+import '../../services/all_habits.dart' show AllHabit, mergeAllHabits;
+import '../../services/habits_service.dart';
 import '../../services/chat_service.dart';
+import '../../services/core_lists_service.dart';
+import '../../services/momentum_lists_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/confetti_overlay.dart';
 import '../../widgets/momentum/glass_panel.dart';
@@ -270,7 +276,11 @@ class _Phase1FlowState extends State<Phase1Flow> {
           onBack: () => _go('hub'),
         );
       case 'command-center':
-        return _CommandCenterUnlockView(onContinue: () => _go('mbs'));
+        return _CommandCenterUnlockView(
+          onContinue: () => _go('mbs'),
+          // Stage 1 is already saved — "Save game" just steps back out.
+          onSave: widget.onExitToCockpit,
+        );
       case 'mbs':
         final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
         final mbs = _mbsSession;
@@ -963,20 +973,156 @@ class _MbmMiniCard extends StatelessWidget {
   }
 }
 
-// ─── 3. Command Center Unlock ────────────────────────────────────────────
-class _CommandCenterUnlockView extends StatelessWidget {
-  const _CommandCenterUnlockView({required this.onContinue});
-  final VoidCallback onContinue;
+// ─── 3. Command Center Unlock (Sequence Section/Step 6) ─────────────────
+// Three beats, per the Phase 1&2 Sequence doc: REWARD ACTIVATED intro →
+// MOMENTUM LISTS ACTIVATED (each list's description plus the data the
+// player's own answers stored) → lift-off bridge to Level 2.
 
-  static const _lists = [
-    ['🚀🔮', 'Back to the Future', 'Aspirational identity across all 5 Cores'],
-    ['⏰🔄', 'Routines', 'Daily schedule incl. your new Golden Habit'],
-    ['🛑', 'Obstacles', 'Internal & external blockers + IF-THEN fallbacks'],
-    ['🎮🕺', 'Passions', 'What energizes and motivates you'],
-    ['🛠️💪', 'Strengths', 'Natural talents & adaptive traits'],
-    ['📍', 'Top Environments', 'Spaces that shape your focus'],
-    ['🏠⏰', 'Lifestyle Factors', 'Real-world constraints'],
-  ];
+/// Emoji per list, from the doc's list descriptions (§4B).
+const Map<String, String> _listEmoji = {
+  'Back to the Future': '🚀🔮',
+  'Mantra': '🕉️',
+  'Gratitude': '🙏✨',
+  'Strengths': '🛠️💪',
+  'Weaknesses': '😔📈',
+  'Passions': '🎮🕺',
+  'Dislikes': '👎🚫',
+  'Routines': '⏰🔄',
+  'Non-Routines': '⏰❌',
+  'Top People': '🧑‍🧑‍🧒‍🧒',
+  'Top Environments': '📍',
+  'Top Irrational Fears': '❓😱',
+  'Daily Bold Tracker': '👊📆',
+  'Obstacles': '🛑',
+  'Messes to Clean': '🧹🗑️',
+  'Captain\'s Log': '👨‍✈️📓',
+  'One-Time Actions': '⚡♾️',
+  'Fav Tech Automations': '📱♾️',
+  'Career Goals': '💼🎯',
+  'Lifestyle Factors': '🏠',
+  'Trophy Room': '🏆',
+};
+
+/// One list in the reveal: what it is + what Stage 1 stored in it.
+class _RevealList {
+  const _RevealList(this.name, this.desc, this.data, {this.note});
+  final String name;
+  final String desc;
+  final List<String> data;
+
+  /// Shown instead of data when nothing was stored (doc: "N/A for current
+  /// Non-Routine Golden Habit").
+  final String? note;
+}
+
+class _CommandCenterUnlockView extends StatefulWidget {
+  const _CommandCenterUnlockView({
+    required this.onContinue,
+    required this.onSave,
+  });
+  final VoidCallback onContinue;
+  final VoidCallback onSave;
+
+  @override
+  State<_CommandCenterUnlockView> createState() =>
+      _CommandCenterUnlockViewState();
+}
+
+class _CommandCenterUnlockViewState extends State<_CommandCenterUnlockView> {
+  int _step = 0; // 0 intro · 1 lists · 2 lift-off
+  List<_RevealList>? _lists;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  /// What the player's Stage 1 answers stored, per list, in doc order. The
+  /// habit lists (Routines / Non-Routines) come from the per-core path; a
+  /// failure just means fewer rows — nothing is invented.
+  Future<void> _load() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    var momentum = const <MomentumList>[];
+    RoutineData? habits;
+    if (uid.isNotEmpty) {
+      final lists = MomentumListsService();
+      final core = CoreListsService();
+      try {
+        final results = await Future.wait([
+          lists
+              .getAllLists(uid)
+              .then<Object?>((f) => f.data)
+              .timeout(const Duration(seconds: 8))
+              .catchError((_) => null),
+          core
+              .getRoutineData(uid)
+              .then<Object?>((f) => f.data)
+              .timeout(const Duration(seconds: 8))
+              .catchError((_) => null),
+        ]);
+        if (results[0] is List<MomentumList>) {
+          momentum = results[0] as List<MomentumList>;
+        }
+        if (results[1] is RoutineData) habits = results[1] as RoutineData;
+      } finally {
+        lists.dispose();
+        core.dispose();
+      }
+    }
+    // Same merge as the console / Routines / Non-Routines screens, so a
+    // Golden Habit with no list line still counts.
+    var golden = const <GoldenHabit>[];
+    try {
+      final hs = HabitsService();
+      try {
+        golden = (await hs.getGoldenHabits(uid).timeout(
+          const Duration(seconds: 8),
+        )).data;
+      } finally {
+        hs.dispose();
+      }
+    } catch (_) {}
+    final all =
+        habits == null && golden.isEmpty
+            ? const <AllHabit>[]
+            : mergeAllHabits(
+              golden: golden,
+              routineLists: habits?.routine ?? const [],
+              nonRoutineLists: habits?.nonRoutine ?? const [],
+              coreScores: const {},
+            );
+    final routines = [for (final h in all) if (h.isRoutine) h.name];
+    final nonRoutines = [for (final h in all) if (!h.isRoutine) h.name];
+    final showHabits = routines.isNotEmpty || nonRoutines.isNotEmpty;
+
+    final out = <_RevealList>[];
+    for (final s in kMomentumListSpecs) {
+      if (s.name == 'Routines' || s.name == 'Non-Routines') {
+        if (!showHabits) continue;
+        final data = s.name == 'Routines' ? routines : nonRoutines;
+        out.add(
+          _RevealList(
+            s.name,
+            s.blurb,
+            data,
+            note:
+                data.isEmpty
+                    ? 'N/A for current ${s.name == 'Routines' ? 'Non-Routine' : 'Routine'} Golden Habit'
+                    : null,
+          ),
+        );
+        continue;
+      }
+      if (s.name == 'Trophy Room') continue; // earned later, not in Stage 1
+      final items = <String>{
+        for (final l in momentum)
+          if (momentumListSpecFor(l.name) == s) ...l.items.where((e) => !isArchivedItem(e)).map((e) { final t = parseListItem(e); return t.core == null ? t.label : "${t.core} · ${t.label}"; }),
+      }.toList();
+      if (items.isNotEmpty) out.add(_RevealList(s.name, s.blurb, items));
+    }
+    if (mounted) setState(() => _lists = out);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -985,86 +1131,194 @@ class _CommandCenterUnlockView extends StatelessWidget {
       celebrate: true,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(18, 20, 18, 30),
-        child: Column(
-          children: [
-            const Text('🔓', style: TextStyle(fontSize: 56)),
-            const SizedBox(height: 8),
-            Text(
-              'COMMAND CENTER UNLOCKED',
-              style: MM.displayX(size: 11, color: MM.yellow),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Your Personal Database',
-              style: MM.display(size: 22, color: Colors.white),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Everything you shared has been routed into 7 Momentum Lists. '
-              'The AI cross-references these in every future interaction.',
-              textAlign: TextAlign.center,
-              style: MM.body(
-                color: Colors.white.withOpacity(0.7),
-                size: 12,
-                height: 1.5,
-              ),
-            ),
-            const SizedBox(height: 18),
-            ..._lists.asMap().entries.map((e) {
-              final l = e.value;
-              return _RevealRow(
-                index: e.key,
-                emoji: l[0],
-                name: l[1],
-                desc: l[2],
-              );
-            }),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    MM.blue.withOpacity(0.18),
-                    MM.violet.withOpacity(0.12),
-                  ],
-                ),
-                border: Border.all(
-                  color: const Color(0xFF4D9BFF).withOpacity(0.4),
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 350),
+          child: KeyedSubtree(
+            key: ValueKey(_step),
+            child: switch (_step) {
+              0 => _intro(),
+              1 => _listsStep(),
+              _ => _liftOff(),
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _novaLine(String text) => Text(
+    text,
+    textAlign: TextAlign.center,
+    style: MM.body(color: Colors.white.withOpacity(0.75), size: 12, height: 1.5),
+  );
+
+  Widget _intro() {
+    const points = [
+      ['📊', 'Stores all insights about you (strengths, obstacles, passions)'],
+      ['🔄', 'Updates automatically as you share information'],
+      ['🎯', 'Powers AI personalization for future habits'],
+      ['📈', 'Evolves with you throughout your entire journey'],
+    ];
+    return Column(
+      children: [
+        Text('🥇 REWARD ACTIVATED 🥇', style: MM.displayX(size: 11, color: MM.yellow)),
+        const SizedBox(height: 14),
+        const Text('🔓', style: TextStyle(fontSize: 56)),
+        const SizedBox(height: 8),
+        Text(
+          'COMMAND CENTER UNLOCKED ✅',
+          textAlign: TextAlign.center,
+          style: MM.display(size: 20, color: Colors.white),
+        ),
+        const SizedBox(height: 12),
+        _novaLine(
+          'Your Command Center is your personal growth database—a living '
+          'knowledge base that gets smarter with every interaction.',
+        ),
+        const SizedBox(height: 10),
+        _novaLine('Think of it as your mission control that:'),
+        const SizedBox(height: 10),
+        for (final p in points)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: GlassPanel(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Row(
                 children: [
-                  Text(
-                    'Level 1 Complete 🚀',
-                    style: MM.display(size: 14, color: Colors.white),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Lift-off ready. Continue to Stage 2 to engineer your '
-                    'habit for friction-free execution.',
-                    textAlign: TextAlign.center,
-                    style: MM.body(
-                      color: Colors.white.withOpacity(0.7),
-                      size: 11,
+                  Text(p[0], style: const TextStyle(fontSize: 18)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      p[1],
+                      style: MM.body(size: 12, color: Colors.white),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 18),
-            MMPrimaryButton(
-              label: 'Continue to Stage 2 →',
-              pulse: true,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              onPressed: onContinue,
-            ),
-          ],
+          ),
+        const SizedBox(height: 10),
+        _novaLine('💾 I\'ve now uploaded your intel.'),
+        const SizedBox(height: 18),
+        MMPrimaryButton(
+          label: 'Show my Momentum Lists →',
+          pulse: true,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          onPressed: () => setState(() => _step = 1),
         ),
-      ),
+      ],
+    );
+  }
+
+  Widget _listsStep() {
+    final lists = _lists;
+    return Column(
+      children: [
+        Text(
+          '🚀 📋 MOMENTUM LISTS ACTIVATED ✅',
+          textAlign: TextAlign.center,
+          style: MM.displayX(size: 11, color: MM.yellow),
+        ),
+        const SizedBox(height: 12),
+        if (lists == null)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 32),
+            child: CircularProgressIndicator(color: MM.blue),
+          )
+        else if (lists.isEmpty)
+          _novaLine(
+            'Your lists will fill in as you and Nova keep talking — '
+            'nothing has been stored yet.',
+          )
+        else
+          for (var i = 0; i < lists.length; i++)
+            _RevealRow(
+              index: i,
+              emoji: _listEmoji[lists[i].name] ?? '📋',
+              name: '${i + 1}. ${lists[i].name}',
+              desc: lists[i].desc,
+              data: lists[i].data,
+              note: lists[i].note,
+            ),
+        const SizedBox(height: 14),
+        _novaLine(
+          'As you continue your journey, your Momentum Lists will expand '
+          'with once-invisible insights and tools to help you build more '
+          'momentum 💡✨🚀.',
+        ),
+        const SizedBox(height: 18),
+        MMPrimaryButton(
+          label: 'Continue →',
+          pulse: true,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          onPressed: () => setState(() => _step = 2),
+        ),
+      ],
+    );
+  }
+
+  Widget _liftOff() {
+    return Column(
+      children: [
+        SizedBox(
+          height: 230,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: 1),
+            duration: const Duration(milliseconds: 2800),
+            curve: Curves.easeInCubic,
+            builder:
+                (_, t, __) => Stack(
+                  alignment: Alignment.bottomCenter,
+                  children: [
+                    const Positioned(
+                      bottom: 0,
+                      child: Text('🌎', style: TextStyle(fontSize: 54)),
+                    ),
+                    Positioned(
+                      bottom: 40 + 160 * t,
+                      child: Opacity(
+                        opacity: 1 - 0.35 * t,
+                        child: Image.asset(
+                          'assets/momentum/rocket.png',
+                          height: 96 - 28 * t,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        _novaLine(
+          'You\'ve now built enough momentum to break Earth\'s gravitational '
+          'pull and achieve lift-off 🌎 🚀.',
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Your epic journey has officially begun 🪐 👾 👽!',
+          textAlign: TextAlign.center,
+          style: MM.display(size: 16, color: Colors.white),
+        ),
+        const SizedBox(height: 14),
+        _novaLine(
+          'Ready to keep your momentum going in LEVEL 2? Science-backed '
+          'habit hacks will make your new habit part of who you are.',
+        ),
+        const SizedBox(height: 18),
+        MMPrimaryButton(
+          label: 'Continue to Level 2 →',
+          pulse: true,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          onPressed: widget.onContinue,
+        ),
+        const SizedBox(height: 8),
+        MMGhostButton(
+          label: 'Save game · come back later',
+          expand: true,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          onPressed: widget.onSave,
+        ),
+      ],
     );
   }
 }
@@ -1075,11 +1329,17 @@ class _RevealRow extends StatefulWidget {
     required this.emoji,
     required this.name,
     required this.desc,
+    this.data = const [],
+    this.note,
   });
   final int index;
   final String emoji;
   final String name;
   final String desc;
+
+  /// What the player's answers stored in this list (first few shown).
+  final List<String> data;
+  final String? note;
 
   @override
   State<_RevealRow> createState() => _RevealRowState();
@@ -1126,7 +1386,16 @@ class _RevealRowState extends State<_RevealRow>
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               children: [
-                Text(widget.emoji, style: const TextStyle(fontSize: 20)),
+                SizedBox(
+                  width: 58,
+                  child: Text(
+                    widget.emoji,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -1148,6 +1417,20 @@ class _RevealRowState extends State<_RevealRow>
                           size: 10,
                         ),
                       ),
+                      if (widget.data.isNotEmpty || widget.note != null) ...[
+                        const SizedBox(height: 5),
+                        Text(
+                          widget.data.isEmpty
+                              ? '💾 ${widget.note}'
+                              : '💾 ${widget.data.take(4).join(' · ')}'
+                                  '${widget.data.length > 4 ? '  +${widget.data.length - 4} more' : ''}',
+                          style: MM.body(
+                            color: MM.teal.withOpacity(0.9),
+                            size: 10.5,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

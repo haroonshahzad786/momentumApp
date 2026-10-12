@@ -4,6 +4,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/momentum_list.dart';
+import '../../services/all_habits.dart';
+import '../../services/checkin_service.dart';
+import '../../services/core_lists_service.dart';
+import '../../services/habits_service.dart';
 import '../../services/momentum_lists_service.dart';
 import '../../theme/momentum_tokens.dart';
 
@@ -61,8 +65,16 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
   Future<void> _load() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     List<MomentumList> lists = const [];
+    Map<String, int> habitCounts = const {};
     var failed = false;
     if (uid != null && uid.isNotEmpty) {
+      // Routines / Non-Routines / Trophy Room are habit views, not
+      // `momentum_lists` docs — a failure here just leaves them locked.
+      try {
+        habitCounts = await _habitCounts(
+          uid,
+        ).timeout(const Duration(seconds: 8));
+      } catch (_) {}
       try {
         // Bounded: offline, the browser can sit on a dead request for minutes
         // and the screen would spin instead of showing the slots.
@@ -77,28 +89,83 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
     if (!mounted) return;
     setState(() {
       _failed = failed;
-      _slots = _buildSlots(lists);
+      _slots = _buildSlots(lists, habitCounts);
     });
   }
 
-  /// Filled lists first (server order), then every canonical list that is
-  /// still empty, locked.
-  static List<_Slot> _buildSlots(List<MomentumList> lists) {
-    final filled = [
-      for (final l in lists)
-        if (l.items.isNotEmpty && l.name.trim().isNotEmpty)
-          _Slot(l.name, l.count),
-    ];
-    final have = {for (final s in filled) _norm(s.name)};
-    return [
-      ...filled,
-      for (final n in kCanonicalMomentumLists)
-        if (!have.contains(_norm(n))) _Slot(n, 0),
-    ];
+  /// Habit counts behind the three habit-backed lists (doc #8, #9, #21), the
+  /// same merge the Routines / Non-Routines / Trophy screens use.
+  static Future<Map<String, int>> _habitCounts(String uid) async {
+    final habits = HabitsService();
+    final lists = CoreListsService();
+    try {
+      final golden = habits.getGoldenHabits(uid);
+      final data = lists.getRoutineData(uid);
+      final checkins = CheckinService()
+          .getRecent(uid, limit: 30)
+          .catchError((_) => const <DailyCheckin>[]);
+      final routineData = (await data).data;
+      final all = mergeAllHabits(
+        golden: (await golden).data,
+        routineLists: routineData.routine,
+        nonRoutineLists: routineData.nonRoutine,
+        coreScores: coreScoreSeries(await checkins),
+      );
+      return {
+        'Routines': all.where((h) => h.isRoutine).length,
+        'Non-Routines': all.where((h) => !h.isRoutine).length,
+        'Trophy Room':
+            all.where((h) => h.isGolden && h.color == HabitColor.green).length,
+      };
+    } finally {
+      habits.dispose();
+      lists.dispose();
+    }
   }
 
-  /// Server lists are often named "Obstacles List" — match "Obstacles".
-  static String _norm(String name) => _Slot.label(name).trim().toLowerCase();
+  /// The 21 doc lists in the doc's order: filled ones first, then the rest as
+  /// locked slots. Custom (non-doc) lists the player has filled follow the
+  /// filled doc lists. Habit-backed lists take their count from the habits and
+  /// open their own screen (a same-named `momentum_lists` doc is skipped).
+  static List<_Slot> _buildSlots(
+    List<MomentumList> lists,
+    Map<String, int> habitCounts,
+  ) {
+    final byName = <String, _Slot>{};
+    final custom = <_Slot>[];
+    // Finishing Stage 1 leaves at least one Golden Habit behind.
+    final stage1Done =
+        (habitCounts['Routines'] ?? 0) + (habitCounts['Non-Routines'] ?? 0) > 0;
+    for (final e in _habitNav.entries) {
+      final n = habitCounts[e.key] ?? 0;
+      if (n > 0) byName[e.key] = _Slot(e.key, n, nav: e.value);
+    }
+    for (final l in lists) {
+      if (l.count == 0 || l.name.trim().isEmpty) continue;
+      final spec = momentumListSpecFor(l.name);
+      // A momentum_lists doc named like a habit-backed list is a legacy
+      // duplicate of that habit view — still reachable from "Open all lists".
+      if (spec != null && _habitNav.containsKey(spec.name)) continue;
+      if (spec == null || byName.containsKey(spec.name)) {
+        custom.add(_Slot(l.name, l.count)); // never hide a list's data
+      } else {
+        byName[spec.name] = _Slot(l.name, l.count);
+      }
+    }
+    return [
+      for (final s in kMomentumListSpecs)
+        if (byName.containsKey(s.name)) byName[s.name]!,
+      ...custom,
+      for (final s in kMomentumListSpecs)
+        if (!byName.containsKey(s.name))
+          _Slot(
+            s.name,
+            0,
+            nav: _habitNav[s.name],
+            stage1: stage1Done && _stage1Lists.contains(s.name),
+          ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,6 +181,30 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
       height: h,
       child: Stack(
         children: [
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: h * _dashTop,
+            child: IgnorePointer(
+              child: RepaintBoundary(
+                child: CustomPaint(painter: _WindowScenePainter(_blink)),
+              ),
+            ),
+          ),
+          // Purple-Lit Cockpit Frame in the top windshield area
+          Positioned(
+            left: 0,
+            right: 0,
+            top: -h * 0.02,
+            height: h * (_dashTop + 0.05),
+            child: IgnorePointer(
+              child: Image.asset(
+                'assets/momentum/cockpit_frame.png',
+                fit: BoxFit.fill,
+              ),
+            ),
+          ),
           Positioned.fill(
             child: RepaintBoundary(
               child: AnimatedBuilder(
@@ -129,19 +220,6 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
                                 : unlocked / slots.length,
                       ),
                     ),
-              ),
-            ),
-          ),
-          // Purple-Lit Cockpit Frame overlay in the top windshield area (drawn second, behind all content)
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: h * 0.38,
-            child: IgnorePointer(
-              child: Image.asset(
-                'assets/momentum/cockpit_frame.png',
-                fit: BoxFit.cover,
               ),
             ),
           ),
@@ -176,21 +254,6 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
                       ),
                     ),
                   ),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            top: h * 0.035,
-            child: IgnorePointer(
-              child: Text(
-                'COMMAND CENTER',
-                textAlign: TextAlign.center,
-                style: MM.displayX(
-                  size: u * 0.042,
-                  color: MM.white.withOpacity(0.85),
                 ),
               ),
             ),
@@ -245,9 +308,13 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
                   slot: slots[i],
                   w: w,
                   onTap:
-                      slots[i].unlocked
-                          ? () => _openList(slots[i].name)
-                          : null,
+                      !slots[i].unlocked
+                          ? null
+                          : slots[i].count == 0 && slots[i].nav == null
+                          ? () => widget.onNav?.call('lists:${slots[i].name}')
+                          : slots[i].nav != null
+                          ? () => widget.onNav?.call(slots[i].nav!)
+                          : () => _openList(slots[i].name),
                 ),
           ),
         ),
@@ -363,7 +430,7 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
           ),
         ),
         Expanded(
-          child: list.items.isEmpty
+          child: list.count == 0
               ? Center(
                   child: Text(
                     'No items yet',
@@ -372,9 +439,13 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
                 )
               : ListView.builder(
                   padding: EdgeInsets.all(pad),
-                  itemCount: list.items.length,
+                  itemCount: list.count,
                   itemBuilder: (_, i) {
-                    final item = list.items[i];
+                    final tag = parseListItem([
+                      for (final e in list.items)
+                        if (!isArchivedItem(e)) e,
+                    ][i]);
+                    final item = tag.core == null ? tag.label : '${tag.core} · ${tag.label}';
                     return Padding(
                       padding: EdgeInsets.only(bottom: w * 0.015),
                       child: Container(
@@ -407,14 +478,37 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
   }
 }
 
+/// Habit-backed lists open their own screen (`onNav` key) instead of a
+/// `momentum_lists` doc.
+/// Doc: Stage 1 always unlocks these (plus Routines or Non-Routines, which
+/// unlock from the habits themselves). Others unlock by use, Side Quests or a
+/// milestone that is still TBD in the doc.
+const Set<String> _stage1Lists = {
+  'Back to the Future',
+  'Obstacles',
+  'Lifestyle Factors',
+};
+
+const Map<String, String> _habitNav = {
+  'Routines': 'routines',
+  'Non-Routines': 'nonroutines',
+  'Trophy Room': 'trophy',
+};
+
 class _Slot {
-  const _Slot(this.name, this.count);
+  const _Slot(this.name, this.count, {this.nav, this.stage1 = false});
   final String name;
   final int count;
-  bool get unlocked => count > 0;
+  final String? nav;
+  /// Unlocked by finishing Stage 1 (doc: BTTF, Obstacles, Lifestyle, Routines
+  /// or Non-Routines) even while still empty.
+  final bool stage1;
+  bool get unlocked => count > 0 || stage1;
 
-  /// Button text — the console already says these are lists.
+  /// Button text — the doc's name for a doc list, otherwise the server name
+  /// minus a trailing "List" (the console already says these are lists).
   static String label(String name) =>
+      momentumListSpecFor(name)?.name ??
       name.trim().replaceFirst(RegExp(r'\s+list$', caseSensitive: false), '');
 }
 
@@ -496,9 +590,11 @@ class _ListButtonState extends State<_ListButton> {
     );
     return Tooltip(
       message:
-          on
-              ? '${widget.slot.count} item${widget.slot.count == 1 ? '' : 's'}'
-              : 'Unlocks as you and Nova fill it in',
+          on && widget.slot.count == 0
+              ? 'Unlocked by Stage 1 — tap to add your first item'
+              : on
+              ? '${widget.slot.count} ${widget.slot.nav != null ? 'habit' : 'item'}${widget.slot.count == 1 ? '' : 's'}'
+              : '${momentumListSpecFor(widget.slot.name)?.blurb ?? 'A custom list'}\nUnlocks as you and Nova fill it in',
       child: Semantics(
         button: on,
         label:
@@ -518,9 +614,9 @@ class _ListButtonState extends State<_ListButton> {
 
 // Centre screen bounds, as fractions of the console box.
 
-const double _screenT = 0.285;
+const double _screenT = 0.325;
 const double _screenB = 0.9;
-const double _dashTop = 0.25;
+const double _dashTop = 0.29;
 
 /// Size unit for gadgets and text: the console's width at its natural
 /// phone-dash proportion. A wider box (the full Cockpit stage) keeps gadgets
@@ -531,6 +627,91 @@ double _unit(double w, double h) => math.min(w, h * 0.62);
 Rect _screenRect(double w, double h) {
   final u = _unit(w, h);
   return Rect.fromLTRB(u * 0.235, h * _screenT, w - u * 0.235, h * _screenB);
+}
+
+/// What is seen through the windshield: glowing stars, radar rings and a
+/// small rocket dead ahead.
+class _WindowScenePainter extends CustomPainter {
+  _WindowScenePainter(this.anim) : super(repaint: anim);
+
+  final Animation<double> anim;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height / _dashTop;
+    final u = _unit(w, h);
+    final cx = w * 0.5;
+    final t = anim.value;
+
+    // Glowing blue stars.
+    final rnd = math.Random(11);
+    for (var i = 0; i < 9; i++) {
+      final p = Offset(
+        w * (0.2 + rnd.nextDouble() * 0.6),
+        h * (0.05 + rnd.nextDouble() * 0.16),
+      );
+      final tw = 0.55 + 0.45 * math.sin((t + i * 0.13) * math.pi * 2);
+      final r = u * (0.004 + rnd.nextDouble() * 0.004);
+      canvas.drawCircle(
+        p,
+        r * 3.2,
+        Paint()
+          ..color = const Color(0xFF3FA8FF).withOpacity(0.28 * tw)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, r * 2),
+      );
+      canvas.drawCircle(p, r, Paint()..color = const Color(0xFFBFE6FF).withOpacity(tw));
+    }
+
+    // Radar rings radiating from the rocket (upper half only).
+    final center = Offset(cx, h * 0.215);
+    final ring = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.9;
+    for (var i = 0; i < 7; i++) {
+      final phase = (t + i / 7) % 1;
+      final radius = u * (0.04 + 0.2 * phase);
+      ring.color = const Color(0xFF4FA8FF).withOpacity(0.45 * (1 - phase));
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        math.pi,
+        math.pi,
+        false,
+        ring,
+      );
+    }
+
+    // Small rocket.
+    final nose = Offset(cx, center.dy - u * 0.075);
+    final rocketH = u * 0.07;
+    final rw = u * 0.016;
+    final body = Path()
+      ..moveTo(nose.dx, nose.dy)
+      ..quadraticBezierTo(nose.dx + rw, nose.dy + rocketH * 0.4, nose.dx + rw, nose.dy + rocketH)
+      ..lineTo(nose.dx - rw, nose.dy + rocketH)
+      ..quadraticBezierTo(nose.dx - rw, nose.dy + rocketH * 0.4, nose.dx, nose.dy)
+      ..close();
+    canvas.drawPath(
+      body,
+      Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFFE6FBFF), Color(0xFF7FD6FF)],
+        ).createShader(body.getBounds()),
+    );
+    final flame = Offset(cx, nose.dy + rocketH);
+    final flick = 0.8 + 0.2 * math.sin(t * math.pi * 12);
+    canvas.drawPath(
+      Path()
+        ..moveTo(flame.dx - rw * 0.55, flame.dy)
+        ..lineTo(flame.dx + rw * 0.55, flame.dy)
+        ..lineTo(flame.dx, flame.dy + u * 0.03 * flick)
+        ..close(),
+      Paint()..color = const Color(0xFFFFB02E),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_WindowScenePainter old) => false;
 }
 
 /// Windshield, struts, dash body and the decorative instrument clusters.
@@ -558,8 +739,11 @@ class _ConsolePainter extends CustomPainter {
     // Old windshield graphics replaced by Purple-Lit Cockpit Frame image overlay
     // _windshield(canvas, w, h, u);
     _dash(canvas, w, h, u);
+    canvas.save();
+    canvas.translate(0, h * (_dashTop - 0.25));
     _leftCluster(canvas, w, h, u);
     _rightCluster(canvas, w, h, u);
+    canvas.restore();
     _screen(canvas, w, h, u);
 
     canvas.restore();
