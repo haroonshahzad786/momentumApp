@@ -43,6 +43,8 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
 
   List<_Slot>? _slots;
   bool _failed = false;
+  String? _selectedListName;
+  MomentumList? _selectedListData;
 
   @override
   void initState() {
@@ -134,8 +136,8 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
           Positioned(
             left: 0,
             right: 0,
-            top: h * 0.01,
-            height: h * 0.22,
+            top: 0,
+            height: h * 0.38,
             child: IgnorePointer(
               child: Image.asset(
                 'assets/momentum/cockpit_frame.png',
@@ -206,6 +208,10 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
   /// [w] is the size unit; [screenW] the screen's real width — wide screens
   /// lay the buttons out in a grid so more lists fit at once.
   Widget _buildScreen(double w, double screenW, List<_Slot>? slots) {
+    if (_selectedListName != null) {
+      return _buildListItemsView(w, screenW);
+    }
+
     final pad = w * 0.025;
     if (slots == null) {
       return Center(
@@ -240,7 +246,7 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
                   w: w,
                   onTap:
                       slots[i].unlocked
-                          ? () => widget.onNav?.call('lists:${slots[i].name}')
+                          ? () => _openList(slots[i].name)
                           : null,
                 ),
           ),
@@ -265,6 +271,136 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
               ),
             ),
           ),
+        ),
+      ],
+    );
+  }
+
+  void _openList(String listName) {
+    setState(() {
+      _selectedListName = listName;
+      _selectedListData = null;
+    });
+    _loadListItems(listName);
+  }
+
+  void _closeList() {
+    setState(() {
+      _selectedListName = null;
+      _selectedListData = null;
+    });
+  }
+
+  Future<void> _loadListItems(String listName) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return;
+
+    try {
+      final result = await MomentumListsService()
+          .getList(uid, listName)
+          .timeout(const Duration(seconds: 8));
+      if (!mounted) return;
+      setState(() {
+        _selectedListData = result;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _selectedListData = const MomentumList(name: '', items: []);
+      });
+    }
+  }
+
+  Widget _buildListItemsView(double w, double screenW) {
+    final pad = w * 0.025;
+    final list = _selectedListData;
+
+    if (list == null) {
+      return Center(
+        child: SizedBox(
+          width: w * 0.08,
+          height: w * 0.08,
+          child: const CircularProgressIndicator(
+            strokeWidth: 2,
+            color: MM.blue,
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.fromLTRB(pad, pad, pad, w * 0.01),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: _closeList,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Padding(
+                    padding: EdgeInsets.all(w * 0.01),
+                    child: Icon(
+                      Icons.arrow_back_rounded,
+                      color: MM.blue,
+                      size: w * 0.04,
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  _Slot.label(_selectedListName ?? ''),
+                  textAlign: TextAlign.center,
+                  style: MM.displayX(
+                    size: w * 0.035,
+                    color: MM.white.withOpacity(0.9),
+                  ),
+                ),
+              ),
+              SizedBox(width: w * 0.06),
+            ],
+          ),
+        ),
+        Expanded(
+          child: list.items.isEmpty
+              ? Center(
+                  child: Text(
+                    'No items yet',
+                    style: MM.mono(size: w * 0.03, color: MM.white.withOpacity(0.6)),
+                  ),
+                )
+              : ListView.builder(
+                  padding: EdgeInsets.all(pad),
+                  itemCount: list.items.length,
+                  itemBuilder: (_, i) {
+                    final item = list.items[i];
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: w * 0.015),
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: w * 0.025,
+                          vertical: w * 0.015,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(w * 0.012),
+                          color: const Color(0xFF111C4E).withOpacity(0.6),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Text(
+                          item,
+                          style: MM.display(
+                            size: w * 0.028,
+                            color: MM.white.withOpacity(0.85),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
         ),
       ],
     );
