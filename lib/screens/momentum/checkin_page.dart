@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../services/behavior_tracker.dart';
 import '../../services/onboarding_service.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/mm_buttons.dart';
@@ -353,7 +354,11 @@ class _CheckInPageState extends State<CheckInPage> {
                   child: core.locked
                       ? _LockedView(
                           core: core,
-                          onSkip: _advance,
+                          onSkip: () {
+                            BehaviorTracker.instance.skip('checkin_locked_core',
+                                screen: 'checkin');
+                            _advance();
+                          },
                           onReturnToPhase1: () =>
                               widget.onReturnToPhase1(null),
                         )

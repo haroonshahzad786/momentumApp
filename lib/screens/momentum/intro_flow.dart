@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/asset_preloader.dart';
+import '../../services/behavior_tracker.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/starfield.dart';
 import '../../widgets/momentum/web_shell.dart';
@@ -162,7 +163,10 @@ class _IntroCarouselState extends State<IntroCarousel> {
                   index: _idx,
                   accent: accent,
                   onDotTap: _go,
-                  onSkip: widget.onFinish,
+                  onSkip: () {
+                    BehaviorTracker.instance.skip('intro', screen: 'intro');
+                    widget.onFinish();
+                  },
                 ),
                 Expanded(
                   child: LayoutBuilder(

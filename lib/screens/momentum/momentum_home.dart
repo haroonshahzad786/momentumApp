@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/behavior_tracker.dart';
 
 import '../../models/phase1_state.dart';
 import '../../models/user_profile.dart';
@@ -176,6 +177,9 @@ class _MomentumHomeState extends State<MomentumHome> {
   @override
   void initState() {
     super.initState();
+    BehaviorTracker.instance
+      ..start()
+      ..screen(_screen);
     _fetchProfile();
     // Admin-controlled planet route (config/journey, #42) — rebuild the app
     // chrome when an admin publishes a new set of planets.
@@ -430,6 +434,7 @@ class _MomentumHomeState extends State<MomentumHome> {
       key = 'phase1';
     }
     _screen = key;
+    BehaviorTracker.instance.screen(key);
     _menuOpen = false;
   });
 
@@ -992,7 +997,10 @@ class _MomentumHomeState extends State<MomentumHome> {
       return DailyRitualStep0(
         userId: FirebaseAuth.instance.currentUser?.uid ?? '',
         onContinue: _completeStep0,
-        onSkip: () => _go('checkin'),
+        onSkip: () {
+          BehaviorTracker.instance.skip('ritual_step0', screen: 'ritual0');
+          _go('checkin');
+        },
         onClose: () => _go('dashboard'),
       );
     }
