@@ -12,6 +12,29 @@ import 'mm_buttons.dart';
 /// One stop on the cockpit tour.
 typedef TourStep = ({String icon, String title, String body});
 
+/// Cockpit elements the tour can spotlight. A widget opts in with
+/// `KeyedSubtree(key: tourKey('streak'), …)`; a step whose target isn't on
+/// screen simply shows without a spotlight.
+final Map<String, GlobalKey> _tourKeys = {};
+GlobalKey tourKey(String id) => _tourKeys.putIfAbsent(id, GlobalKey.new);
+
+/// Sub-areas of a keyed element, as fractions of its box (left, top, w, h) —
+/// e.g. the quick-access icons sit at the tip of the rocket.
+const Map<String, Rect> _tourRegions = {
+  'tip': Rect.fromLTWH(0.22, 0.09, 0.56, 0.2),
+};
+
+/// What each step in [cockpitTourSteps] spotlights ('id' or 'id:region').
+List<String?> cockpitTourTargets({required bool web}) => [
+  web ? 'sidebar' : 'menu',
+  'trophy',
+  'stats',
+  'streak',
+  'rocket',
+  'rocket:tip',
+  'checkin',
+];
+
 const _coreLabels = <String, (String, String)>{
   'physical': ('💪', 'Physical Health'),
   'mindset': ('🧠', 'Mindset'),
@@ -184,11 +207,15 @@ class CockpitTourOverlay extends StatefulWidget {
   const CockpitTourOverlay({
     super.key,
     required this.steps,
+    this.targets = const [],
     required this.onLaunch,
     required this.onClose,
   });
 
   final List<TourStep> steps;
+
+  /// Per-step spotlight targets, aligned with [steps] (see [cockpitTourTargets]).
+  final List<String?> targets;
   final VoidCallback onLaunch;
   final VoidCallback onClose;
 
@@ -196,19 +223,122 @@ class CockpitTourOverlay extends StatefulWidget {
   State<CockpitTourOverlay> createState() => _CockpitTourOverlayState();
 }
 
-class _CockpitTourOverlayState extends State<CockpitTourOverlay> {
+class _CockpitTourOverlayState extends State<CockpitTourOverlay>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   int _i = 0;
+  Rect? _hole;
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  )..repeat(reverse: true);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scheduleMeasure();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() => _scheduleMeasure();
+
+  void _go(int i) {
+    setState(() => _i = i);
+    _scheduleMeasure();
+  }
+
+  void _scheduleMeasure() {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measure(scroll: true));
+  }
+
+  /// Finds the current step's target on screen (scrolling it into view first)
+  /// and stores its rect in this overlay's own coordinates.
+  void _measure({bool scroll = false}) {
+    if (!mounted) return;
+    final spec = _i < widget.targets.length ? widget.targets[_i] : null;
+    Rect? hole;
+    if (spec != null) {
+      final parts = spec.split(':');
+      final ctx = tourKey(parts[0]).currentContext;
+      if (ctx != null && ctx.mounted) {
+        if (scroll && Scrollable.maybeOf(ctx) != null) {
+          Scrollable.ensureVisible(ctx, alignment: 0.3, duration: Duration.zero);
+        }
+        final box = ctx.findRenderObject() as RenderBox?;
+        final me = context.findRenderObject() as RenderBox?;
+        if (box != null && box.attached && box.hasSize && me != null) {
+          var r = me.globalToLocal(box.localToGlobal(Offset.zero)) & box.size;
+          if (parts.length > 1) {
+            final f = _tourRegions[parts[1]];
+            if (f != null) {
+              r = Rect.fromLTWH(
+                r.left + r.width * f.left,
+                r.top + r.height * f.top,
+                r.width * f.width,
+                r.height * f.height,
+              );
+            }
+          }
+          if (r.width > 0 && r.height > 0) hole = r.inflate(8);
+        }
+      }
+    }
+    if (hole != _hole) setState(() => _hole = hole);
+    // A scroll can land a frame late — settle once more.
+    if (scroll && spec != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final last = _i == widget.steps.length - 1;
     final step = widget.steps[_i];
+    final hole = _hole;
+    final size = MediaQuery.of(context).size;
+    final h = size.height;
+    // Keep the card out of the spotlight: top when the target is low, or to
+    // the roomier side when the target is tall (the rocket).
+    final cardTop = hole != null && hole.center.dy > h * 0.55;
+    final tall = hole != null && hole.height > h * 0.4 && hole.left > 40;
+    final leftRoom = hole?.left ?? 0;
+    final rightRoom = hole == null ? 0.0 : size.width - hole.right;
+    final sideLeft = leftRoom >= rightRoom;
+    final cardMax = tall ? (sideLeft ? leftRoom : rightRoom) - 32 : 520.0;
     return Material(
-      color: Colors.black.withOpacity(0.55),
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
+      color: hole == null ? Colors.black.withOpacity(0.55) : Colors.transparent,
+      child: Stack(
+        children: [
+          if (hole != null)
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {},
+                child: AnimatedBuilder(
+                  animation: _pulse,
+                  builder:
+                      (_, __) => CustomPaint(
+                        painter: _SpotlightPainter(hole, _pulse.value),
+                      ),
+                ),
+              ),
+            ),
+          Align(
+            alignment:
+                tall && cardMax >= 280
+                    ? (sideLeft ? Alignment.centerLeft : Alignment.centerRight)
+                    : (cardTop ? Alignment.topCenter : Alignment.bottomCenter),
+            child: ConstrainedBox(
+          constraints: BoxConstraints(
+                maxWidth: tall && cardMax >= 280 ? cardMax.clamp(280.0, 520.0) : 520,
+              ),
           child: Container(
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
@@ -274,25 +404,29 @@ class _CockpitTourOverlayState extends State<CockpitTourOverlay> {
                       IntrinsicWidth(
                         child: MMGhostButton(
                           label: '← Back',
-                          onPressed: () => setState(() => _i--),
+                          onPressed: () => _go(_i - 1),
                         ),
                       ),
                     const Spacer(),
                     if (last) ...[
                       TextButton(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: const Size(0, 36),
+                        ),
                         onPressed: widget.onClose,
                         child: Text(
                           'Later',
                           style: MM.body(color: Colors.white60, size: 13),
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 2),
                       IntrinsicWidth(
                         child: MMPrimaryButton(
                           label: "Let's go 🚀",
                           pulse: true,
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
+                            horizontal: 14,
                             vertical: 12,
                           ),
                           onPressed: widget.onLaunch,
@@ -306,7 +440,7 @@ class _CockpitTourOverlayState extends State<CockpitTourOverlay> {
                             horizontal: 20,
                             vertical: 12,
                           ),
-                          onPressed: () => setState(() => _i++),
+                          onPressed: () => _go(_i + 1),
                         ),
                       ),
                   ],
@@ -316,6 +450,44 @@ class _CockpitTourOverlayState extends State<CockpitTourOverlay> {
           ),
         ),
       ),
+        ],
+      ),
     );
   }
+}
+
+/// Dims everything except [hole], with a pulsing yellow ring around it.
+class _SpotlightPainter extends CustomPainter {
+  _SpotlightPainter(this.hole, this.t);
+  final Rect hole;
+  final double t;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rr = RRect.fromRectAndRadius(hole, const Radius.circular(12));
+    final scrim = Path.combine(
+      PathOperation.difference,
+      Path()..addRect(Offset.zero & size),
+      Path()..addRRect(rr),
+    );
+    canvas.drawPath(scrim, Paint()..color = Colors.black.withOpacity(0.68));
+    canvas.drawRRect(
+      rr.inflate(2 + 4 * t),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = MM.yellow.withOpacity(0.35 + 0.5 * (1 - t))
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 2 + 4 * t),
+    );
+    canvas.drawRRect(
+      rr,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = MM.yellow,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_SpotlightPainter old) => old.hole != hole || old.t != t;
 }

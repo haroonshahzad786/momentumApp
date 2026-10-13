@@ -1,3 +1,4 @@
+import '../../widgets/momentum/phase2_launch.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -103,6 +104,7 @@ class WebCockpit extends StatelessWidget {
           openCommand: openCommand,
         );
         final right = _FlightData(
+          key: tourKey('stats'),
           planet: MM.planets[_planetIdx],
           streakProtection: streakProtection,
           balance: balance,
@@ -114,6 +116,7 @@ class WebCockpit extends StatelessWidget {
         // Phase 1&2 Details (Rocket Dashboard) "Across top: Current Streak with consecutive days and
         // days until reward".
         final streakBar = StreakBar(
+          key: tourKey('streak'),
           streak: streak,
           streakState: streakState,
           streakSavers: streakSavers,
@@ -468,6 +471,7 @@ class _RocketStageState extends State<_RocketStage> {
                     // place when the player reaches a new planet, and the vertical
                     // rail on its right replays any leg on tap.
                     JourneyStage(
+                      key: tourKey('rocket'),
                       planetIdx: planetIdx,
                       activeCores: widget.activeCores,
                       atRiskCores: widget.atRiskCores,
@@ -483,6 +487,7 @@ class _RocketStageState extends State<_RocketStage> {
                     ),
                     const SizedBox(height: 20),
                     FractionallySizedBox(
+                      key: tourKey('checkin'),
                       widthFactor: 0.8,
                       child: MMPrimaryButton(
                         label: 'Daily Check-in →',
@@ -540,6 +545,7 @@ class _RocketStageState extends State<_RocketStage> {
 // ═══════════════════════════════════════════════════════════════
 class _FlightData extends StatelessWidget {
   const _FlightData({
+    super.key,
     required this.planet,
     required this.streakProtection,
     required this.balance,

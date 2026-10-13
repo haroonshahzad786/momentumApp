@@ -1,3 +1,4 @@
+import '../../widgets/momentum/phase2_launch.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -150,11 +151,13 @@ class _DashboardPageState extends State<DashboardPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _IconBtn(
+                        key: tourKey('menu'),
                         icon: Icons.menu,
                         onTap: widget.onMenu,
                       ),
                       const SizedBox(width: 10),
                       _IconBtn(
+                        key: tourKey('trophy'),
                         icon: Icons.emoji_events_outlined,
                         color: MM.yellow,
                         borderColor: MM.yellow.withOpacity(0.35),
@@ -164,6 +167,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       const Spacer(),
                       // Streak + days to the next milestone reward (#20).
                       StreakBar(
+                        key: tourKey('streak'),
                         compact: true,
                         streak: streak,
                         streakState: streakState,
@@ -172,6 +176,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                       const Spacer(),
                       GlassPanel(
+                        key: tourKey('stats'),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 6),
                         child: SizedBox(
@@ -260,6 +265,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
                     child: LayoutBuilder(
                       builder: (context, c) => JourneyStage(
+                        key: tourKey('rocket'),
                         planetIdx: planetIdx,
                         activeCores: activeCores,
                         atRiskCores: widget.atRiskCores,
@@ -290,6 +296,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         children: [
                           Expanded(
                             child: MMPrimaryButton(
+                              key: tourKey('checkin'),
                               label: 'Daily Check-in →',
                               pulse: true,
                               padding: const EdgeInsets.symmetric(
@@ -375,6 +382,7 @@ class _Stat extends StatelessWidget {
 
 class _IconBtn extends StatelessWidget {
   const _IconBtn({
+    super.key,
     required this.icon,
     required this.onTap,
     this.color = Colors.white,

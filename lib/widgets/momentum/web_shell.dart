@@ -1,3 +1,4 @@
+import 'phase2_launch.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -268,6 +269,7 @@ class _WebSidebar extends StatelessWidget {
         ),
       ),
       child: Column(
+        key: tourKey('sidebar'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // ── brand ──
@@ -444,6 +446,7 @@ class _NavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
+      key: item.appKey == 'trophy' ? tourKey('trophy') : null,
       padding: const EdgeInsets.symmetric(vertical: 1.5),
       child: Material(
         color: Colors.transparent,

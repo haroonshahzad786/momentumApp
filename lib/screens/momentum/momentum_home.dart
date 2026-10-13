@@ -608,6 +608,9 @@ class _MomentumHomeState extends State<MomentumHome> {
         web: MediaQuery.of(context).size.width >= kWebBreakpoint,
         activeCores: _profile?.activeCores ?? const [],
       ),
+      targets: cockpitTourTargets(
+        web: MediaQuery.of(context).size.width >= kWebBreakpoint,
+      ),
       onLaunch: () {
         setState(() => _launch = null);
         _startCheckin();
