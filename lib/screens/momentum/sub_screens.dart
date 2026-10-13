@@ -172,22 +172,55 @@ class _ListsScreenState extends State<ListsScreen> {
     final prev = [..._lists];
     final items = [...list.items];
     if (text.trim().isEmpty) {
-      items.removeAt(itemIndex);
+      // Clearing the text archives rather than hard-deletes.
+      final f = itemFlags(items[itemIndex]);
+      items[itemIndex] = withItemFlags(
+        items[itemIndex],
+        ItemFlags(archived: true, done: f.done, source: f.source),
+      );
     } else {
-      items[itemIndex] = encodeListItem(list.name, tag.core, text.trim());
+      // Keep ~done / ~src markers so editing the text doesn't reset them.
+      items[itemIndex] = withItemFlags(
+        encodeListItem(list.name, tag.core, text.trim()),
+        itemFlags(list.items[itemIndex]),
+      );
     }
     final updated = MomentumList(name: list.name, items: items);
     _replaceList(index, updated);
     await _persist(updated, prev);
   }
 
-  Future<void> _deleteItem(int index, int itemIndex) async {
+  // Archive instead of delete (doc 31h): the item keeps its text with a
+  // `~arch` marker; Restore lives in the web Lists view and the snackbar Undo.
+  Future<void> _setArchived(int index, int itemIndex, bool archived) async {
     final prev = [..._lists];
     final list = _lists[index];
-    final items = [...list.items]..removeAt(itemIndex);
+    final items = [...list.items];
+    final f = itemFlags(items[itemIndex]);
+    items[itemIndex] = withItemFlags(
+      items[itemIndex],
+      ItemFlags(archived: archived, done: f.done, source: f.source),
+    );
     final updated = MomentumList(name: list.name, items: items);
     _replaceList(index, updated);
     await _persist(updated, prev);
+  }
+
+  Future<void> _archiveItem(int index, int itemIndex) async {
+    await _setArchived(index, itemIndex, true);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: const Text('Item archived'),
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'UNDO',
+            onPressed: () => _setArchived(index, itemIndex, false),
+          ),
+        ),
+      );
   }
 
   Future<void> _createList() async {
@@ -433,7 +466,7 @@ class _ListsScreenState extends State<ListsScreen> {
               }),
               onAddItem: () => _addItem(i),
               onEditItem: (itemIndex) => _editItem(i, itemIndex),
-              onDeleteItem: (itemIndex) => _deleteItem(i, itemIndex),
+              onDeleteItem: (itemIndex) => _archiveItem(i, itemIndex),
             ),
             const SizedBox(height: 10),
           ],
@@ -490,7 +523,10 @@ class _ListTile extends StatelessWidget {
   /// Item indices, grouped by Core for per-Core lists (header = Core name,
   /// null header = untagged / flat list). Core order follows [kMomentumCores].
   List<(String?, List<int>)> _groups() {
-    final all = [for (var i = 0; i < list.items.length; i++) i];
+    final all = [
+      for (var i = 0; i < list.items.length; i++)
+        if (!isArchivedItem(list.items[i])) i,
+    ];
     if (!isPerCoreList(list.name)) return [(null, all)];
     final byCore = <String?, List<int>>{};
     for (final i in all) {
@@ -536,7 +572,7 @@ class _ListTile extends StatelessWidget {
           ),
           if (expanded) ...[
             const SizedBox(height: 10),
-            if (list.items.isEmpty)
+            if (list.count == 0)
               Padding(
                 padding: const EdgeInsets.only(top: 4, bottom: 2),
                 child: Text(
@@ -588,7 +624,7 @@ class _ListTile extends StatelessWidget {
                       borderRadius: BorderRadius.circular(20),
                       child: Padding(
                         padding: const EdgeInsets.all(4),
-                        child: Icon(Icons.close,
+                        child: Icon(Icons.archive_outlined,
                             size: 15,
                             color: Colors.white.withOpacity(0.35)),
                       ),
