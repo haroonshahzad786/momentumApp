@@ -38,6 +38,7 @@ class MenuDrawer extends StatelessWidget {
         ['journey', 'Journey Map', MM.violet],
         ['checkin', 'Daily Check-in', MM.yellow],
         ['summary', "Today's Recap", MM.violet],
+        ['tour', 'Flight Deck Tour', MM.violet],
       ]
     ],
     [

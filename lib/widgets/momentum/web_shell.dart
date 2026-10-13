@@ -113,6 +113,7 @@ const List<WebNavItem> kWebNav = [
   WebNavItem('lists', 'Lists', 'Manifest', Icons.view_list_outlined, MM.blue),
   WebNavItem('cantina', 'Cantina', 'Social', Icons.local_bar_outlined, MM.violet),
   WebNavItem('trophy', 'Trophy', 'Room', Icons.emoji_events_outlined, MM.yellow),
+  WebNavItem('tour', 'Flight Deck', 'Tour', Icons.explore_outlined, MM.violet),
 ];
 
 // Shown only when [WebShell.isAdmin] is true — see ADMIN_PANEL_BACKEND_PLAN.md

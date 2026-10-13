@@ -407,6 +407,11 @@ class _MomentumHomeState extends State<MomentumHome> {
     _listsExpand = const {};
     _openCommand = key == 'command';
     if (key == 'command') key = 'dashboard';
+    // Replay the Flight Deck tour (Sequence §Your Cockpit) from the menu.
+    if (key == 'tour') {
+      key = 'dashboard';
+      _launch = 'tour';
+    }
     if (key.startsWith('lists:')) {
       _listsExpand = {key.substring(6)};
       key = 'lists';
