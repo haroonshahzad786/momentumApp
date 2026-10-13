@@ -134,8 +134,9 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
     final byName = <String, _Slot>{};
     final custom = <_Slot>[];
     // Finishing Stage 1 leaves at least one Golden Habit behind.
-    final stage1Done =
-        (habitCounts['Routines'] ?? 0) + (habitCounts['Non-Routines'] ?? 0) > 0;
+    final habitTotal =
+        (habitCounts['Routines'] ?? 0) + (habitCounts['Non-Routines'] ?? 0);
+    final stage1Done = habitTotal > 0;
     for (final e in _habitNav.entries) {
       final n = habitCounts[e.key] ?? 0;
       if (n > 0) byName[e.key] = _Slot(e.key, n, nav: e.value);
@@ -162,7 +163,9 @@ class _CommandCenterConsoleState extends State<CommandCenterConsole>
             s.name,
             0,
             nav: _habitNav[s.name],
-            stage1: stage1Done && _stage1Lists.contains(s.name),
+            stage1:
+                (stage1Done && _stage1Lists.contains(s.name)) ||
+                habitTotal >= (_provisionalUnlock[s.name] ?? 1 << 30),
           ),
     ];
   }
@@ -489,6 +492,18 @@ const Set<String> _stage1Lists = {
   'Lifestyle Factors',
 };
 
+/// PROVISIONAL unlock rules (31e) — the doc leaves the milestone TBD, so these
+/// are placeholders: list name -> habits (Routines + Non-Routines) needed.
+/// Strengths/Passions/Weaknesses "usually" unlock after a few habits; One-Time
+/// Actions is a Stage 2 list, approximated here as a second habit. Replace
+/// with the client's real rules by editing this map only.
+const Map<String, int> _provisionalUnlock = {
+  'Strengths': 3,
+  'Passions': 3,
+  'Weaknesses': 3,
+  'One-Time Actions': 2,
+};
+
 const Map<String, String> _habitNav = {
   'Routines': 'routines',
   'Non-Routines': 'nonroutines',
@@ -591,7 +606,7 @@ class _ListButtonState extends State<_ListButton> {
     return Tooltip(
       message:
           on && widget.slot.count == 0
-              ? 'Unlocked by Stage 1 — tap to add your first item'
+              ? 'Unlocked — tap to add your first item'
               : on
               ? '${widget.slot.count} ${widget.slot.nav != null ? 'habit' : 'item'}${widget.slot.count == 1 ? '' : 's'}'
               : '${momentumListSpecFor(widget.slot.name)?.blurb ?? 'A custom list'}\nUnlocks as you and Nova fill it in',
