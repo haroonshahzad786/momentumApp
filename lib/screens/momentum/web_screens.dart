@@ -21,6 +21,10 @@ import '../../services/cantina_service.dart';
 import '../../services/checkin_service.dart';
 import '../../services/core_lists_service.dart';
 import '../../services/habits_service.dart';
+import '../../services/offline.dart' show friendlyError;
+import 'add_habit_page.dart';
+import 'routines_timeline.dart';
+import '../../services/routine_schedule.dart';
 import '../../services/momentum_lists_service.dart';
 import '../../services/onboarding_service.dart';
 import '../../services/profile_service.dart';
@@ -32,10 +36,10 @@ import '../../widgets/momentum/captains_log_archive.dart';
 import '../../services/all_habits.dart';
 import '../../services/formation.dart'
     show FormationProgress, formationProgress, kFormationDays;
+import '../../widgets/momentum/bttf_list_view.dart';
 import '../../widgets/momentum/formation_room.dart';
 import '../../widgets/momentum/habit_detail_view.dart' show abbreviatedVersion;
 import '../../widgets/momentum/habit_color.dart';
-import '../../widgets/momentum/mm_buttons.dart';
 
 const Map<String, String> kCoreIcon = {
   'mindset': '🧠',
@@ -305,6 +309,15 @@ class _WebListsState extends State<WebLists> {
   final _service = MomentumListsService();
   List<MomentumList> _lists = const [];
   late final Set<String> _expanded = {...widget.expand};
+
+  /// Core-tabbed lists (Back to the Future, Passions, Strengths) open as their
+  /// own full-width page (doc: per-Core tabs). Holds the open list's name.
+  late String? _coreOpen = () {
+    for (final n in widget.expand) {
+      if (isCoreTabbedList(n)) return n;
+    }
+    return null;
+  }();
   bool _loading = true;
   String? _error;
 
@@ -317,6 +330,8 @@ class _WebListsState extends State<WebLists> {
       _lists = [
         for (final x in _lists)
           x.name == list.name ? MomentumList(name: x.name, items: items) : x,
+        if (!_lists.any((x) => x.name == list.name))
+          MomentumList(name: list.name, items: items),
       ];
     });
     try {
@@ -478,7 +493,11 @@ class _WebListsState extends State<WebLists> {
                     InkWell(
                       onTap:
                           () => setState(() {
-                            _expanded.add(h.$1);
+                            if (isCoreTabbedList(h.$1)) {
+                              _coreOpen = h.$1;
+                            } else {
+                              _expanded.add(h.$1);
+                            }
                             _query = '';
                           }),
                       child: Padding(
@@ -564,6 +583,10 @@ class _WebListsState extends State<WebLists> {
   }
 
   void _openOther(String specName) {
+    if (isCoreTabbedList(specName)) {
+      setState(() => _coreOpen = specName);
+      return;
+    }
     final spec = momentumListSpecFor(specName);
     final i = _lists.indexWhere((x) => momentumListSpecFor(x.name) == spec);
     setState(() {
@@ -1309,6 +1332,23 @@ class _WebListsState extends State<WebLists> {
 
   @override
   Widget build(BuildContext context) {
+    final open = _coreOpen;
+    if (open != null && !_loading && _error == null) {
+      final spec = momentumListSpecFor(open);
+      final i = _lists.indexWhere((x) => momentumListSpecFor(x.name) == spec);
+      final l = i >= 0 ? _lists[i] : MomentumList(name: open, items: const []);
+      return _ScreenScaffold(
+        loading: false,
+        error: null,
+        onRetry: _load,
+        child: coreListViewFor(
+          l.name,
+          items: l.items,
+          onSave: (items) => _save(l, items),
+          onBack: () => setState(() => _coreOpen = null),
+        )!,
+      );
+    }
     return _ScreenScaffold(
       loading: _loading,
       error: _error,
@@ -1340,12 +1380,15 @@ class _WebListsState extends State<WebLists> {
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(8),
                                 onTap:
-                                    () => setState(
-                                      () =>
-                                          open
-                                              ? _expanded.remove(l.name)
-                                              : _expanded.add(l.name),
-                                    ),
+                                    () => setState(() {
+                                      if (isCoreTabbedList(l.name)) {
+                                        _coreOpen = l.name;
+                                      } else if (open) {
+                                        _expanded.remove(l.name);
+                                      } else {
+                                        _expanded.add(l.name);
+                                      }
+                                    }),
                                 child: WebPanel(
                                   padding: const EdgeInsets.all(18),
                                   leftAccent: MM.blue,
@@ -1550,16 +1593,11 @@ class _WebTasksState extends State<WebTasks> {
 // HABITS — real Golden Habits in a lifecycle grid (read-focused)
 // ═══════════════════════════════════════════════════════════════
 class WebHabits extends StatefulWidget {
-  const WebHabits({
-    super.key,
-    this.coreFilter,
-    this.onClearFilter,
-    this.onOpen,
-  });
+  const WebHabits({super.key, this.coreFilter, this.onOpen});
 
-  /// Short Core id ('physical', …) — a Core tapped on the rocket (#20).
+  /// Short Core id ('physical', …) — a Core tapped on the rocket (#20). Every
+  /// Core is shown; the page scrolls to this one.
   final String? coreFilter;
-  final VoidCallback? onClearFilter;
 
   /// Opens a habit's Detailed View (#22) by habitId.
   final void Function(String habitId)? onOpen;
@@ -1612,7 +1650,8 @@ class _WebHabitsState extends State<WebHabits> {
       } catch (_) {}
       if (!mounted) return;
       setState(() {
-        _habits = res.data;
+        // Formed habits graduate to the Trophy Room.
+        _habits = res.data.where((h) => !h.formed).toList();
         _coreScores = coreScoreSeries(checkins);
         _loading = false;
       });
@@ -1625,61 +1664,196 @@ class _WebHabitsState extends State<WebHabits> {
     }
   }
 
+  static const _cores = [
+    'mindset',
+    'career',
+    'relationships',
+    'physical',
+    'emotional',
+  ];
+  final Map<String, GlobalKey> _keys = {for (final c in _cores) c: GlobalKey()};
+  bool _scrolled = false;
+
+  /// Glides to a Core's section; the page keeps every Core, so this is just a
+  /// scroll stop, not a filter.
+  void _scrollTo(String core, {bool animate = true}) {
+    final ctx = _keys[core]?.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      alignment: 0,
+      duration: animate ? const Duration(milliseconds: 550) : Duration.zero,
+      curve: Curves.easeInOutCubic,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final filter = widget.coreFilter;
-    final shown =
-        filter == null
-            ? _habits
-            : [
-              for (final h in _habits)
-                if (GoldenHabitRef.shortCore(h.coreId) == filter) h,
-            ];
+    final byCore = <String, List<GoldenHabit>>{
+      for (final c in _cores) c: [],
+    };
+    for (final h in _habits) {
+      byCore[GoldenHabitRef.shortCore(h.coreId)]?.add(h);
+    }
+    final formed = _habits.where((h) => h.formed).length;
+    final forming = _habits.length - formed;
+    final focus = widget.coreFilter;
+    if (!_loading && _error == null && focus != null && !_scrolled) {
+      _scrolled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scrollTo(focus);
+      });
+    }
     return _ScreenScaffold(
       loading: _loading,
       error: _error,
       onRetry: _load,
       child: WebSection(
-        title:
-            filter == null
-                ? 'GOLDEN HABITS'
-                : '${kCoreLabel[filter]?.toUpperCase() ?? filter.toUpperCase()} HABITS',
-        meta: () {
-          // "In forge" = still forming; formed ones are counted separately.
-          final formed = shown.where((h) => h.formed).length;
-          final forming = shown.length - formed;
-          return formed == 0
-              ? '$forming IN FORGE'
-              : '$forming IN FORGE · $formed FORMED';
-        }(),
-        accent:
-            filter == null ? MM.magenta : (MM.coreColor[filter] ?? MM.magenta),
-        action:
-            filter == null
-                ? null
-                : MMGhostButton(
-                  label: 'Show all Cores ✕',
-                  onPressed: widget.onClearFilter,
+        title: 'GOLDEN HABITS',
+        meta:
+            formed == 0
+                ? '$forming IN FORGE'
+                : '$forming IN FORGE · $formed FORMED',
+        accent: MM.magenta,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _coreChips(byCore),
+            const SizedBox(height: 28),
+            for (final c in _cores) _coreSection(c, byCore[c]!),
+            // Room so the last Core can also scroll up to the top.
+            SizedBox(height: MediaQuery.of(context).size.height * 0.45),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _coreChips(Map<String, List<GoldenHabit>> byCore) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        for (final c in _cores)
+          InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: () => _scrollTo(c),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                color: coreHex(c).withOpacity(0.12),
+                border: Border.all(color: coreHex(c).withOpacity(0.55)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(kCoreIcon[c] ?? '•', style: const TextStyle(fontSize: 15)),
+                  const SizedBox(width: 8),
+                  Text(
+                    (kCoreLabel[c] ?? c).toUpperCase(),
+                    style: GoogleFonts.orbitron(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.2,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${byCore[c]!.length}',
+                    style: MM.body(size: 11, color: coreHex(c)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _coreSection(String core, List<GoldenHabit> habits) {
+    final color = coreHex(core);
+    return Column(
+      key: _keys[core],
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Row(
+            children: [
+              Text(kCoreIcon[core] ?? '•', style: const TextStyle(fontSize: 24)),
+              const SizedBox(width: 12),
+              Text(
+                (kCoreLabel[core] ?? core).toUpperCase(),
+                style: GoogleFonts.orbitron(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.8,
+                  color: color,
                 ),
-        child:
-            shown.isEmpty
-                ? _empty(
-                  filter == null
-                      ? 'No golden habits yet'
-                      : 'No habits in this Core yet',
-                  'Forge one in Phase 1 to start building momentum.',
-                )
-                : _Grid(
-                  minTileWidth: 300,
-                  children:
-                      shown.map((h) {
-                        // Same truth as Routines / the Detailed View: the
-                        // formed flag, else 14-day formation progress (the
-                        // stored stage/streak/daysFormed are never written).
+              ),
+              const Spacer(),
+              Text(
+                '${habits.length} ${habits.length == 1 ? 'HABIT' : 'HABITS'}',
+                style: GoogleFonts.orbitron(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                  color: Colors.white.withOpacity(0.45),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (habits.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Text(
+              'No habits in this Core yet.',
+              style: MM.body(size: 12, color: Colors.white.withOpacity(0.5)),
+            ),
+          )
+        else
+          _Grid(
+            minTileWidth: 300,
+            children: [for (final h in habits) _card(h)],
+          ),
+        const SizedBox(height: 28),
+        // Colourful end-of-Core divider.
+        Container(
+          height: 3,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(2),
+            gradient: LinearGradient(
+              colors: [color.withOpacity(0), color, color.withOpacity(0)],
+            ),
+            boxShadow: [
+              BoxShadow(color: color.withOpacity(0.45), blurRadius: 10),
+            ],
+          ),
+        ),
+        const SizedBox(height: 34),
+      ],
+    );
+  }
+
+
+  Future<void> _markFormedEarly(GoldenHabit h, int days) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final saved = await markHabitFormedEarly(context,
+        userId: uid,
+        habitId: h.habitId,
+        name: h.habitName.trim().isEmpty ? 'Golden Habit' : h.habitName.trim(),
+        daysLogged: days);
+    if (saved && mounted) _load();
+  }
+
+  Widget _card(GoldenHabit h) {
                         final st = _stage[h.formed ? 'formed' : 'forming']!;
                         final prog = formationProgress(
-                          _coreScores[GoldenHabitRef.shortCore(h.coreId)] ??
-                              const [],
+                          habitCoreScores(_coreScores, h),
                         );
                         final hex = coreHex(h.coreId);
                         final short = abbreviatedVersion(h);
@@ -1801,23 +1975,39 @@ class _WebHabitsState extends State<WebHabits> {
                                   ),
                                 ),
                                 const SizedBox(height: 10),
-                                Text(
-                                  'DETAILED VIEW →',
-                                  style: GoogleFonts.orbitron(
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1.2,
-                                    color: Colors.white.withOpacity(0.5),
-                                  ),
+                                Row(
+                                  children: [
+                                    Text(
+                                      'DETAILED VIEW →',
+                                      style: GoogleFonts.orbitron(
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 1.2,
+                                        color: Colors.white.withOpacity(0.5),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    OutlinedButton(
+                                      onPressed: () =>
+                                          _markFormedEarly(h, prog.days),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: MM.teal,
+                                        side: BorderSide(
+                                            color: MM.teal.withOpacity(0.6)),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 8),
+                                        minimumSize: const Size(0, 36),
+                                      ),
+                                      child: Text('Mark formed early',
+                                          style: MM.body(
+                                              size: 11.5, color: MM.teal)),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
                           ),
                         );
-                      }).toList(),
-                ),
-      ),
-    );
   }
 }
 
@@ -1953,7 +2143,10 @@ class _Formed {
 // ROUTINES — real routine / non-routine core lists
 // ═══════════════════════════════════════════════════════════════
 class WebRoutines extends StatefulWidget {
-  const WebRoutines({super.key, this.onOpen});
+  const WebRoutines({super.key, this.onOpen, this.embedded = false});
+
+  /// Inside the phone's ScreenShell: no own scroll/padding/title.
+  final bool embedded;
 
   /// Opens a Golden Habit's Detailed View (`habit:<id>`).
   final void Function(String habitId)? onOpen;
@@ -1974,6 +2167,14 @@ class _WebRoutinesState extends State<WebRoutines> {
   final Map<String, HabitColor?> _tagged = {};
   bool _loading = true;
   String? _error;
+
+  // Timeline state: anchors, per-habit schedules, the selected day's log.
+  final _schedSvc = RoutineScheduleService();
+  List<Anchor> _anchors = kDefaultAnchors;
+  Map<String, HabitSchedule> _schedules = const {};
+  HabitDayLog _log = const HabitDayLog();
+  List<HabitDayLog> _weekLogs = const [];
+  DateTime _day = DateTime.now();
 
   @override
   void dispose() {
@@ -2054,6 +2255,9 @@ class _WebRoutinesState extends State<WebRoutines> {
       try {
         checkins = await _checkins.getRecent(uid, limit: 30);
       } catch (_) {}
+      final anchors = await _schedSvc.loadAnchors(uid);
+      final schedules = await _schedSvc.loadSchedules(uid);
+      final week = await _schedSvc.loadLogs(uid, _weekDays());
       if (!mounted) return;
       final lists = withGoldenLines(
         routine: res.data.routine,
@@ -2061,6 +2265,10 @@ class _WebRoutinesState extends State<WebRoutines> {
         golden: golden,
       );
       setState(() {
+        _anchors = anchors;
+        _schedules = schedules;
+        _weekLogs = week;
+        _log = week[_idxOf(_day)];
         _routine = lists.routine;
         _nonRoutine = lists.nonRoutine;
         _golden = goldenIndex(golden);
@@ -2077,178 +2285,293 @@ class _WebRoutinesState extends State<WebRoutines> {
     }
   }
 
-  Widget _coreListCard(CoreList l) {
-    // Lists store the long Core id; the icon / colour maps are keyed short.
-    final core = GoldenHabitRef.shortCore(l.coreId);
-    final hex = coreHex(core);
-    return WebPanel(
-      padding: const EdgeInsets.all(18),
-      leftAccent: hex,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Text(
-                kCoreIcon[core] ?? '•',
-                style: const TextStyle(fontSize: 20),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  l.name.trim().isNotEmpty ? l.name.trim() : l.coreLabel,
-                  style: MM.body(
-                    size: 14,
-                    color: Colors.white,
-                    weight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              _chip('${l.items.length}', hex),
-            ],
-          ),
-          if (l.items.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            for (final it in l.items) _line(l, it),
-          ] else ...[
-            const SizedBox(height: 8),
-            Text(
-              'No items yet',
-              style: MM.body(size: 11, color: Colors.white.withOpacity(0.4)),
+  /// Quick add (web twin of the phone Routines "Add a habit"): a dialog with
+  /// name, type, time block and Core, then the same dual-write the phone does
+  /// (per-core list line + Golden Habit) so it shows on Routines and Habits.
+  Future<void> _addHabit({String? core, String? anchorId}) async {
+    final draft = await showDialog<NewHabitDraft>(
+      context: context,
+      barrierColor: const Color(0xCC06070D),
+      builder:
+          (_) => Dialog(
+            backgroundColor: const Color(0xF50D1330),
+            insetPadding: const EdgeInsets.all(24),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: Colors.white.withOpacity(0.12)),
             ),
-          ],
-        ],
-      ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: AddHabitPage(
+                embedded: true,
+                initialCoreId: const {
+                  'mindset': 'mindset_core',
+                  'career': 'career_finance_core',
+                  'relationships': 'relationships_core',
+                  'physical': 'physical_health_core',
+                  'emotional': 'emotional_mental_core',
+                }[core],
+                initialAnchorId: anchorId,
+              ),
+            ),
+          ),
+    );
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (draft == null || !mounted) return;
+    void toast(String m) =>
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+    if (uid == null || uid.isEmpty) {
+      toast('Not signed in — could not save habit');
+      return;
+    }
+    final block =
+        draft.blockId == null || draft.blockId!.isEmpty
+            ? ''
+            : draft.blockId![0].toUpperCase() + draft.blockId!.substring(1);
+    final line =
+        draft.isRoutine && block.isNotEmpty
+            ? '$block · ${draft.name}'
+            : draft.name;
+    toast('Saving ${draft.name}…');
+    try {
+      await _service.addHabit(
+        userId: uid,
+        coreId: draft.coreId,
+        isRoutine: draft.isRoutine,
+        itemLine: line,
+      );
+      await _habits.addGoldenHabit(
+        userId: uid,
+        coreId: draft.coreId,
+        habitName: draft.name,
+        isRoutine: draft.isRoutine,
+        when: draft.isRoutine ? block : null,
+      );
+      // Timeline slot (anchor / set time) or non-routine triggers.
+      final short = GoldenHabitRef.shortCore(draft.coreId);
+      if (draft.anchorId != null ||
+          draft.scheduledTime != null ||
+          draft.triggers.isNotEmpty) {
+        await _schedSvc.saveSchedule(
+          uid,
+          habitKey(short, draft.name),
+          HabitSchedule(
+            slotType: draft.anchorId != null
+                ? 'anchor'
+                : (draft.scheduledTime != null ? 'time' : 'none'),
+            anchorId: draft.anchorId,
+            scheduledTime: draft.scheduledTime,
+            triggers: draft.triggers,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) toast(friendlyError(e, action: 'save your habit'));
+      return;
+    }
+    if (!mounted) return;
+    await _load();
+    if (!mounted) return;
+    toast(
+      draft.isRoutine
+          ? 'Routine saved to ${block.toLowerCase()}'
+          : 'Non-routine saved to your daily check-in',
     );
   }
 
-  /// One stored line: its colour dot, text, and Day X/14 for a Golden Habit.
-  /// Tapping a Golden Habit opens its Detailed View; tapping a player's own
-  /// line opens the colour picker.
-  Widget _line(CoreList l, String raw) {
-    final st = _status(l, raw);
-    final p = st.progress;
-    final sub =
-        p != null
-            ? 'Day ${p.days.clamp(0, 14)}/14 · ${st.color!.label}'
-            : st.golden != null
-            ? st.color!.label
-            : (st.color?.label ?? 'Tap to tag');
-    final detail = st.golden != null && widget.onOpen != null;
-    return Tooltip(
-      message:
-          st.golden != null
-              ? 'Golden Habit — open its Detailed View'
-              : 'Tag with the colour key',
-      child: InkWell(
-        borderRadius: BorderRadius.circular(6),
-        onTap:
-            st.golden != null
-                ? (widget.onOpen == null
-                    ? null
-                    : () => widget.onOpen!(st.golden!.habitId))
-                : () => _tag(l, raw),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 5, right: 9),
-                child: HabitColorDot(st.color),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '$raw${st.golden?.flagged == true ? '  ⚠️' : ''}'
-                      '${st.golden?.experiment != null ? '  🧪' : ''}',
-                      style: MM.body(
-                        size: 12.5,
-                        color: Colors.white.withOpacity(0.85),
-                      ),
-                    ),
-                    Text(
-                      detail ? '$sub · Detailed view →' : sub,
-                      style: MM.body(
-                        size: 10.5,
-                        color:
-                            st.color == null
-                                ? Colors.white.withOpacity(0.35)
-                                : Colors.white.withOpacity(0.5),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  /// History strip: the last 7 days, oldest first, today last.
+  List<DateTime> _weekDays() {
+    final t = DateTime.now();
+    return [
+      for (var i = 6; i >= 0; i--) DateTime(t.year, t.month, t.day - i),
+    ];
+  }
+
+  int _idxOf(DateTime d) {
+    final id = CheckinService.dayId(d);
+    final i = _weekDays().indexWhere((x) => CheckinService.dayId(x) == id);
+    return i < 0 ? 6 : i;
+  }
+
+  Future<void> _selectDay(DateTime d) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final log = _weekLogs.length == 7
+        ? _weekLogs[_idxOf(d)]
+        : await _schedSvc.loadLog(uid, d);
+    if (!mounted) return;
+    setState(() {
+      _day = d;
+      _log = log;
+    });
+  }
+
+  Future<void> _toggleDone(TlHabit h, bool done) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final now = DateTime.now();
+    final hm = fmtHm(now.hour * 60 + now.minute);
+    final prev = _log;
+    final next = {..._log.done};
+    done ? next[h.key] = hm : next.remove(h.key);
+    setState(() {
+      _log = HabitDayLog(done: next, logs: _log.logs);
+      _weekLogs = [..._weekLogs]..[_idxOf(_day)] = _log;
+    });
+    try {
+      await _schedSvc.setDone(uid, _day, h.key, done: done, hm: hm);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _log = prev);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(friendlyError(e, action: 'save that'))),
+      );
+    }
+  }
+
+  Future<void> _logIt(TlHabit h) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final n = DateTime.now();
+    final stamp =
+        '${fmtHm(n.hour * 60 + n.minute)}:${n.second.toString().padLeft(2, '0')}';
+    final prev = _log;
+    setState(() {
+      _log = HabitDayLog(
+        done: _log.done,
+        logs: {
+          ..._log.logs,
+          h.key: [...(_log.logs[h.key] ?? const []), stamp],
+        },
+      );
+    });
+    try {
+      await _schedSvc.logNonRoutine(uid, _day, h.key, hm: stamp);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _log = prev);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(friendlyError(e, action: 'log that'))),
+      );
+    }
+  }
+
+  // habit key → its stored line, so a plain (non-Golden) habit can be tagged.
+  final Map<String, (CoreList, String)> _lineRef = {};
+
+  List<TlHabit> _tlHabits(List<CoreList> lists, bool isRoutine) {
+    final out = <TlHabit>[];
+    for (final l in lists) {
+      final core = GoldenHabitRef.shortCore(l.coreId);
+      for (final raw in l.items) {
+        final st = _status(l, raw);
+        final p = parseHabitLine(raw);
+        final key = habitKey(core, raw);
+        final sched = _schedules[key];
+        final g = st.golden;
+        _lineRef[key] = (l, raw);
+        out.add(TlHabit(
+          key: key,
+          name: p.name,
+          core: core,
+          isRoutine: isRoutine,
+          color: st.color,
+          dayCount: st.progress?.days,
+          flagged: g?.flagged == true,
+          isExperiment: g?.experiment != null,
+          habitId: g?.habitId,
+          slot: isRoutine
+              ? resolveSlot(
+                  schedule: sched,
+                  anchors: _anchors,
+                  blockId: p.blockId,
+                  cue: p.cue,
+                  when: g?.when ?? '',
+                )
+              : null,
+          triggers: (sched?.triggers.isNotEmpty ?? false)
+              ? sched!.triggers
+              : [
+                  if (g != null && g.trigger.trim().isNotEmpty)
+                    g.trigger.trim(),
+                ],
+        ));
+      }
+    }
+    return out;
+  }
+
+  /// Week-strip dot for [d]: teal = every routine done, orange = some,
+  /// red = a past day with none, none for today/future with nothing yet.
+  Color? _dot(DateTime d, HabitDayLog log) {
+    final total = _routine.fold<int>(0, (n, l) => n + l.items.length);
+    if (total == 0) return null;
+    final done = log.done.length;
+    if (done >= total) return const Color(0xFF2EE6C5);
+    if (done > 0) return const Color(0xFFFFA53D);
+    final today = DateTime.now();
+    final past = d.isBefore(DateTime(today.year, today.month, today.day));
+    return past ? const Color(0xFFFF4F6D) : null;
   }
 
   @override
   Widget build(BuildContext context) {
-    final routine = _routineSection;
-    final nonRoutine = _nonRoutineSection;
+    final week = _weekDays();
+    final timeline = RoutinesTimeline(
+        routines: _tlHabits(_routine, true),
+        nonRoutines: _tlHabits(_nonRoutine, false),
+        anchors: _anchors,
+        logFor: _log,
+        weekDots: [
+          for (var i = 0; i < 7; i++)
+            _dot(week[i],
+                i < _weekLogs.length ? _weekLogs[i] : const HabitDayLog()),
+        ],
+        selected: _day,
+        onSelectDay: _selectDay,
+        onToggleDone: _toggleDone,
+        onLog: _logIt,
+        onAdd: ({core, anchorId}) => _addHabit(core: core, anchorId: anchorId),
+        onOpen: (h) {
+          if (h.habitId != null && widget.onOpen != null) {
+            widget.onOpen!(h.habitId!);
+          } else if (_lineRef[h.key] case (final l, final raw)) {
+            _tag(l, raw); // plain line: pick its colour
+          }
+        },
+        onCheckIn: null,
+        showTitle: false, // the shell top bar / phone ScreenShell already titles it
+    );
+    if (widget.embedded) {
+      if (_loading) {
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 48),
+          child: Center(child: CircularProgressIndicator(color: MM.teal)),
+        );
+      }
+      if (_error != null) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 32),
+          child: Center(
+            child: TextButton(
+              onPressed: _load,
+              child: const Text('Could not load routines — retry'),
+            ),
+          ),
+        );
+      }
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 24),
+        child: timeline,
+      );
+    }
     return _ScreenScaffold(
       loading: _loading,
       error: _error,
       onRetry: _load,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Phase 1&2 Details §4C status counter — red / orange / green tallies.
-          Align(
-            alignment: Alignment.centerLeft,
-            child: HabitStatusCounter([
-              for (final l in [..._routine, ..._nonRoutine])
-                for (final it in l.items) _status(l, it).color,
-            ]),
-          ),
-          const SizedBox(height: 18),
-          routine,
-          const SizedBox(height: 30),
-          nonRoutine,
-        ],
-      ),
+      child: timeline,
     );
   }
-
-  Widget get _routineSection => WebSection(
-    title: 'ROUTINE',
-    meta: 'DAILY ORBIT · THE SEA OF GREEN',
-    accent: MM.teal,
-    child:
-        _routine.isEmpty
-            ? _empty(
-              'No routines yet',
-              'Routine habits you build appear here, grouped by Core.',
-            )
-            : _Grid(
-              minTileWidth: 300,
-              children: _routine.map(_coreListCard).toList(),
-            ),
-  );
-
-  Widget get _nonRoutineSection => WebSection(
-    title: 'NON-ROUTINE',
-    meta: 'IDENTITY HABITS → TROPHY ROOM',
-    accent: MM.yellow,
-    child:
-        _nonRoutine.isEmpty
-            ? _empty(
-              'No non-routine habits',
-              'Identity habits graduate to the Trophy Room when formed.',
-            )
-            : _Grid(
-              minTileWidth: 300,
-              children: _nonRoutine.map(_coreListCard).toList(),
-            ),
-  );
 }
 
 // ═══════════════════════════════════════════════════════════════

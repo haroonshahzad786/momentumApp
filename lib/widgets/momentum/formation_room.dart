@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/user_profile.dart';
 import '../../screens/copilot_console_page.dart';
+import '../../services/all_habits.dart' show coreScoreSeries, coreScoresFrom;
 import '../../services/checkin_service.dart';
 import '../../services/formation.dart';
 import '../../services/onboarding_service.dart';
@@ -101,12 +102,14 @@ class _FormationRoomState extends State<FormationRoom> {
       try {
         checkins = await _checkin.getRecent(widget.userId, limit: 30);
       } catch (_) {}
-      final byCore = <String, List<int>>{};
-      for (final c in checkins) {
-        c.scores.forEach((k, v) => (byCore[k] ??= <int>[]).add(v));
-      }
+      final byCore = coreScoreSeries(checkins);
       final habits = [
-        for (final h in await habitsF) _Habit(h, formationProgress(byCore[h.shortCoreId] ?? const []))
+        for (final h in await habitsF)
+          _Habit(
+            h,
+            formationProgress(coreScoresFrom(
+                byCore, h.shortCoreId, habitStartDay(h.createdAt, h.habitId))),
+          )
       ];
       final profile = await profileF;
       if (!mounted) return;
@@ -307,10 +310,13 @@ class _FormationRoomState extends State<FormationRoom> {
       children: [
         _goalCard(),
         for (final r in reviews) _reviewCard(r.$1, r.$2),
-        if (_habits.isEmpty)
+        if (!_habits.any((h) => h.ref.formed))
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 18),
-            child: Text('No Golden Habits yet — forge one in Phase 1 and it starts forming here.',
+            child: Text(
+                _habits.isEmpty
+                    ? 'No Golden Habits yet — forge one in Phase 1 and it starts forming here.'
+                    : 'No formed habits yet — habits you form appear here as trophies.',
                 textAlign: TextAlign.center, style: MM.body(size: 13, color: Colors.white60)),
           ),
         for (final core in _coreMeta.keys) _coreSection(core),
@@ -509,12 +515,13 @@ class _FormationRoomState extends State<FormationRoom> {
   }
 
   Widget _coreSection(String core) {
-    final list = _habits.where((h) => h.ref.shortCoreId == core).toList();
-    if (list.isEmpty) return const SizedBox.shrink();
+    // The Trophy Room shows formed habits only; forming ones live on All Habits.
+    final formed = _habits
+        .where((h) => h.ref.shortCoreId == core && h.ref.formed)
+        .toList();
+    if (formed.isEmpty) return const SizedBox.shrink();
     final meta = _coreMeta[core]!;
-    final formed = list.where((h) => h.ref.formed).toList();
-    final forming = list.where((h) => !h.ref.formed).toList();
-    final tiles = [for (final h in formed) _trophyTile(h, meta.$3), for (final h in forming) _formingTile(h, meta.$3)];
+    final tiles = [for (final h in formed) _trophyTile(h, meta.$3)];
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -627,6 +634,47 @@ class _FormationRoomState extends State<FormationRoom> {
           ),
       ]),
     );
+  }
+}
+
+/// "Mark formed early" from the All Habits screens: confirm, save through the
+/// same endpoint as the Trophy Room, celebrate. Returns true when it was saved.
+Future<bool> markHabitFormedEarly(
+  BuildContext context, {
+  required String userId,
+  required String habitId,
+  required String name,
+  int daysLogged = 0,
+}) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => _Confirm(
+      title: 'MARK AS FORMED EARLY',
+      accent: MM.teal,
+      body: '"$name"\n\nThe 2-week standard: habits usually take 14+ days of consistency to form'
+          '${daysLogged > 0 ? ' (you have $daysLogged logged)' : ''}. '
+          "Mark it formed if it's now simply who you are. It moves to the Trophy Room.",
+      yes: 'Mark Formed',
+    ),
+  );
+  if (ok != true || !context.mounted) return false;
+  final svc = OnboardingService();
+  try {
+    final saved = await svc.setHabitFormed(userId: userId, habitId: habitId, formed: true);
+    if (!context.mounted) return saved;
+    if (saved) {
+      await showDialog<void>(
+        context: context,
+        barrierColor: const Color(0xDD06070D),
+        builder: (_) => FormationCelebration(habitName: name),
+      );
+    } else {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(
+          content: Text("Couldn't save — check your connection and try again.")));
+    }
+    return saved;
+  } finally {
+    svc.dispose();
   }
 }
 

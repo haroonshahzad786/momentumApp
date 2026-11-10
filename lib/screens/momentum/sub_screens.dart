@@ -28,8 +28,10 @@ import '../../services/offline.dart';
 import '../../models/cantina_message.dart';
 import '../../services/cantina_service.dart';
 import 'add_habit_page.dart';
+import 'web_screens.dart' show WebRoutines;
 import '../../services/leaderboard_score.dart';
 import '../../widgets/momentum/captains_log_archive.dart';
+import '../../widgets/momentum/bttf_list_view.dart';
 
 // ─── LISTS ─────────────────────────────────────────────────
 class ListsScreen extends StatefulWidget {
@@ -56,6 +58,15 @@ class _ListsScreenState extends State<ListsScreen> {
   final _service = MomentumListsService();
   List<MomentumList> _lists = const [];
   late final Set<String> _expanded = {...widget.expand};
+
+  /// Core-tabbed lists (Back to the Future, Passions, Strengths) open as their
+  /// own page, not an inline tile. Holds the open list's name.
+  late String? _coreOpen = () {
+    for (final n in widget.expand) {
+      if (isCoreTabbedList(n)) return n;
+    }
+    return null;
+  }();
   String? _uid;
   bool _loading = true;
   bool _offline = false;
@@ -140,6 +151,21 @@ class _ListsScreenState extends State<ListsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), duration: const Duration(seconds: 2)),
     );
+  }
+
+  /// Saves the open Core-tabbed list; appends it locally when it's new.
+  Future<void> _saveCoreList(List<String> items) async {
+    final open = _coreOpen;
+    if (open == null) return;
+    final spec = momentumListSpecFor(open);
+    final i = _lists.indexWhere((l) => momentumListSpecFor(l.name) == spec);
+    final name = i >= 0 ? _lists[i].name : open;
+    final prev = [..._lists];
+    final updated = MomentumList(name: name, items: items);
+    setState(() => _lists = i >= 0
+        ? [for (var k = 0; k < _lists.length; k++) k == i ? updated : _lists[k]]
+        : [..._lists, updated]);
+    await _persist(updated, prev);
   }
 
   Future<void> _addItem(int index) async {
@@ -392,8 +418,27 @@ class _ListsScreenState extends State<ListsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final open = _coreOpen;
+    if (open != null && !_loading && _error == null) {
+      final spec = momentumListSpecFor(open);
+      final i = _lists.indexWhere((l) => momentumListSpecFor(l.name) == spec);
+      return ScreenShell(
+        title: 'Momentum Lists',
+        subtitle: 'MANIFEST · ${_lists.length}',
+        accent: MM.blue,
+        onBack: widget.onBack,
+        onChat: widget.onChat,
+        onNav: widget.onNav,
+        child: coreListViewFor(
+          open,
+          items: i >= 0 ? _lists[i].items : const <String>[],
+          onSave: _saveCoreList,
+          onBack: () => setState(() => _coreOpen = null),
+        )!,
+      );
+    }
     return ScreenShell(
-      title: 'Lists',
+      title: 'Momentum Lists',
       subtitle: 'MANIFEST · ${_lists.length}',
       accent: MM.blue,
       onBack: widget.onBack,
@@ -460,6 +505,10 @@ class _ListsScreenState extends State<ListsScreen> {
               list: _lists[i],
               expanded: _expanded.contains(_lists[i].name),
               onToggle: () => setState(() {
+                if (isCoreTabbedList(_lists[i].name)) {
+                  _coreOpen = _lists[i].name;
+                  return;
+                }
                 if (!_expanded.add(_lists[i].name)) {
                   _expanded.remove(_lists[i].name);
                 }
@@ -863,12 +912,16 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
   Widget build(BuildContext context) {
     return ScreenShell(
       title: 'Routines',
-      subtitle: 'FULL ROUTINES LIST · $_total',
+      subtitle: 'DAILY ORBIT',
       accent: MM.teal,
       onBack: widget.onBack,
       onChat: widget.onChat,
       onNav: widget.onNav,
-      child: _buildBody(),
+      // Timeline + By Core (design/ref/routines-timeline-design), shared with web.
+      child: WebRoutines(
+        embedded: true,
+        onOpen: (id) => widget.onNav?.call('habit:$id'),
+      ),
     );
   }
 
@@ -1606,12 +1659,11 @@ class HabitsScreen extends StatefulWidget {
     this.onChat,
     this.onNav,
     this.coreFilter,
-    this.onClearFilter,
   });
 
-  /// Short Core id ('physical', …) — a Core tapped on the rocket (#20).
+  /// Short Core id ('physical', …) — a Core tapped on the rocket (#20). Every
+  /// Core is shown; the page scrolls to this one.
   final String? coreFilter;
-  final VoidCallback? onClearFilter;
   final VoidCallback? onBack;
   final VoidCallback? onChat;
   final void Function(String key)? onNav;
@@ -1629,10 +1681,36 @@ class _HabitsScreenState extends State<HabitsScreen> {
   String? _error;
   String _uid = '';
 
+  static const _cores = [
+    'mindset',
+    'career',
+    'relationships',
+    'physical',
+    'emotional',
+  ];
+  static const _coreIcons = {
+    'mindset': '🧠',
+    'career': '💰',
+    'relationships': '👥',
+    'physical': '💪',
+    'emotional': '🧘',
+  };
+  final Map<String, GlobalKey> _keys = {for (final c in _cores) c: GlobalKey()};
+  bool _scrolled = false;
+
   @override
   void initState() {
     super.initState();
     _fetch();
+  }
+
+  void _scrollTo(String core) {
+    final ctx = _keys[core]?.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(ctx,
+        alignment: 0,
+        duration: const Duration(milliseconds: 550),
+        curve: Curves.easeInOutCubic);
   }
 
   @override
@@ -1661,7 +1739,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
           'habits (offline=${result.fromCache})');
       if (!mounted) return;
       setState(() {
-        _habits = result.data;
+        // Formed habits graduate to the Trophy Room.
+        _habits = result.data.where((h) => !h.formed).toList();
         _offline = result.fromCache;
         _loading = false;
       });
@@ -1679,10 +1758,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
   @override
   Widget build(BuildContext context) {
     return ScreenShell(
-      title: widget.coreFilter == null
-          ? 'Habits'
-          : (_coreShort[_coreLongId(widget.coreFilter!)] ?? 'Habits'),
-      subtitle: 'GOLDEN HABITS · ${_shown.length}',
+      title: 'All Habits',
+      subtitle: 'GOLDEN HABITS · ${_habits.length}',
       accent: MM.magenta,
       onBack: widget.onBack,
       onChat: widget.onChat,
@@ -1691,19 +1768,88 @@ class _HabitsScreenState extends State<HabitsScreen> {
     );
   }
 
-  List<GoldenHabit> get _shown {
-    final f = widget.coreFilter;
-    if (f == null) return _habits;
-    return [
-      for (final h in _habits)
-        if (GoldenHabitRef.shortCore(h.coreId) == f) h
-    ];
-  }
+  Widget _coreChips(Map<String, List<GoldenHabit>> byCore) => Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final c in _cores)
+            InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: () => _scrollTo(c),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  color: MM.coreColor[c]!.withOpacity(0.12),
+                  border: Border.all(color: MM.coreColor[c]!.withOpacity(0.55)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(_coreIcons[c]!, style: const TextStyle(fontSize: 14)),
+                  const SizedBox(width: 6),
+                  Text('${byCore[c]!.length}',
+                      style: MM.body(size: 11, color: MM.coreColor[c]!)),
+                ]),
+              ),
+            ),
+        ],
+      );
 
-  static String _coreLongId(String short) => _coreShortId.entries
-      .firstWhere((e) => e.value == short,
-          orElse: () => MapEntry(short, short))
-      .key;
+  Widget _coreSection(String core, List<GoldenHabit> habits) {
+    final color = MM.coreColor[core]!;
+    final label = _coreShort.entries
+        .firstWhere((e) => _coreShortId[e.key] == core)
+        .value;
+    return Column(
+      key: _keys[core],
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(children: [
+            Text(_coreIcons[core]!, style: const TextStyle(fontSize: 20)),
+            const SizedBox(width: 8),
+            Text(label.toUpperCase(),
+                style: MM.display(size: 12, color: color, letterSpacing: 1.6)),
+            const Spacer(),
+            Text('${habits.length}',
+                style: MM.body(size: 11, color: Colors.white.withOpacity(0.5))),
+          ]),
+        ),
+        if (habits.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Text('No habits in this Core yet.',
+                style: MM.body(size: 12, color: Colors.white.withOpacity(0.5))),
+          )
+        else
+          ...habits.map((h) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _HabitCard(
+                  h: h,
+                  onOpen: () => widget.onNav?.call('habit:${h.habitId}'),
+                  onMarkFormed: () async {
+                    final saved = await markHabitFormedEarly(context,
+                        userId: _uid, habitId: h.habitId, name: h.habitName);
+                    if (saved && mounted) _fetch();
+                  },
+                ),
+              )),
+        const SizedBox(height: 14),
+        // Colourful end-of-Core divider.
+        Container(
+          height: 3,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(2),
+            gradient: LinearGradient(
+                colors: [color.withOpacity(0), color, color.withOpacity(0)]),
+            boxShadow: [BoxShadow(color: color.withOpacity(0.45), blurRadius: 8)],
+          ),
+        ),
+        const SizedBox(height: 22),
+      ],
+    );
+  }
 
   Widget _body() {
     if (_loading) {
@@ -1737,23 +1883,26 @@ class _HabitsScreenState extends State<HabitsScreen> {
         ),
       );
     }
+    final byCore = <String, List<GoldenHabit>>{for (final c in _cores) c: []};
+    for (final h in _habits) {
+      byCore[GoldenHabitRef.shortCore(h.coreId)]?.add(h);
+    }
+    final focus = widget.coreFilter;
+    if (_habits.isNotEmpty && focus != null && !_scrolled) {
+      _scrolled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scrollTo(focus);
+      });
+    }
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (_offline) OfflineBanner(onRefresh: _fetch),
-        if (widget.coreFilter != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: MMGhostButton(
-                label: 'Show all Cores ✕',
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                onPressed: widget.onClearFilter,
-              ),
-            ),
-          ),
-        if (_shown.isEmpty)
+        if (_habits.isNotEmpty) ...[
+          _coreChips(byCore),
+          const SizedBox(height: 18),
+        ],
+        if (_habits.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 48),
             child: Column(
@@ -1781,13 +1930,7 @@ class _HabitsScreenState extends State<HabitsScreen> {
             ),
           )
         else
-          ..._shown.map((h) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _HabitCard(
-                  h: h,
-                  onOpen: () => widget.onNav?.call('habit:${h.habitId}'),
-                ),
-              )),
+          for (final c in _cores) _coreSection(c, byCore[c]!),
         const SizedBox(height: 6),
         MMGhostButton(
           label: '+ Forge new Golden Habit',
@@ -1810,9 +1953,11 @@ class _HabitsScreenState extends State<HabitsScreen> {
 }
 
 class _HabitCard extends StatelessWidget {
-  const _HabitCard({required this.h, required this.onOpen});
+  const _HabitCard(
+      {required this.h, required this.onOpen, required this.onMarkFormed});
   final GoldenHabit h;
   final VoidCallback onOpen;
+  final VoidCallback onMarkFormed;
 
   @override
   Widget build(BuildContext context) {
@@ -1910,6 +2055,16 @@ class _HabitCard extends StatelessWidget {
                   ),
                 );
               }),
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: MMGhostButton(
+                label: 'Mark formed early',
+                onPressed: onMarkFormed,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
             ),
           ],
         ),

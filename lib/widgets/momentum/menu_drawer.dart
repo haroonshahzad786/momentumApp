@@ -45,9 +45,9 @@ class MenuDrawer extends StatelessWidget {
       'WORK',
       [
         ['command', 'Command Center', MM.blue],
-        ['lists', 'Lists', MM.blue],
+        ['lists', 'Momentum Lists', MM.blue],
         ['routines', 'Routines', MM.teal],
-        ['habits', 'Habits', MM.magenta],
+        ['habits', 'All Habits', MM.magenta],
         ['tasks', 'Tasks', MM.yellow],
       ]
     ],

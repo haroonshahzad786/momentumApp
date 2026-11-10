@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../services/routine_schedule.dart';
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 import '../../widgets/momentum/starfield.dart';
@@ -14,6 +15,9 @@ class NewHabitDraft {
     required this.coreId,
     required this.coreLabel,
     this.blockId,
+    this.anchorId,
+    this.scheduledTime,
+    this.triggers = const [],
   });
 
   final String name;
@@ -21,6 +25,13 @@ class NewHabitDraft {
   final String coreId; // full backend id, e.g. 'physical_health_core'
   final String coreLabel; // short label, e.g. 'Physical'
   final String? blockId; // null for non-routine (no schedule)
+
+  /// Routine slot: an anchor id, or a set time (HH:mm) — never both.
+  final String? anchorId;
+  final String? scheduledTime;
+
+  /// Non-routine: what triggers it ("Stress spikes").
+  final List<String> triggers;
 }
 
 class _Core {
@@ -83,7 +94,20 @@ _Core _coreById(String id) =>
 /// Full-screen "Add a habit" form reached from the Routines ADD button.
 /// Pops a [NewHabitDraft] on save, or null on cancel.
 class AddHabitPage extends StatefulWidget {
-  const AddHabitPage({super.key});
+  const AddHabitPage({
+    super.key,
+    this.embedded = false,
+    this.initialCoreId,
+    this.initialAnchorId,
+  });
+
+  /// Preselects a Core ("+ Add to Physical") / an anchor ("Stack a habit on…").
+  final String? initialCoreId;
+  final String? initialAnchorId;
+
+  /// Inside a web dialog: no Scaffold / starfield / safe area, and the form
+  /// sizes to its content instead of filling the screen.
+  final bool embedded;
 
   @override
   State<AddHabitPage> createState() => _AddHabitPageState();
@@ -94,10 +118,16 @@ class _AddHabitPageState extends State<AddHabitPage> {
   bool _isRoutine = true; // routine | non-routine — the defining choice
   String _block = 'morning';
   String? _core; // null → use the Nova suggestion
+  String? _anchorId = 'after_breakfast';
+  bool _setTime = false;
+  final _timeCtrl = TextEditingController(text: '07:00');
+  final _triggerCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _core = widget.initialCoreId;
+    if (widget.initialAnchorId != null) _anchorId = widget.initialAnchorId;
     // The suggested core tracks the name as it's typed.
     _nameCtrl.addListener(() => setState(() {}));
   }
@@ -105,29 +135,62 @@ class _AddHabitPageState extends State<AddHabitPage> {
   @override
   void dispose() {
     _nameCtrl.dispose();
+    _timeCtrl.dispose();
+    _triggerCtrl.dispose();
     super.dispose();
   }
 
   String get _name => _nameCtrl.text.trim();
-  bool get _canSave => _name.isNotEmpty;
+  bool get _canSave =>
+      _name.isNotEmpty && (!_isRoutine || !_setTime || parseHm(_timeCtrl.text) != null);
   String get _suggested => _suggestCore(_name);
   String get _activeCoreId => _core ?? _suggested;
 
   void _save() {
     if (!_canSave) return;
     final core = _coreById(_activeCoreId);
+    // The per-Core list line still carries a coarse block word (Routines/Habits
+    // read it); derive it from the chosen slot.
+    final mins = !_isRoutine
+        ? null
+        : _setTime
+            ? parseHm(_timeCtrl.text)
+            : kDefaultAnchors
+                .firstWhere((a) => a.id == _anchorId,
+                    orElse: () => kDefaultAnchors[1])
+                .minutes;
+    final block = mins == null
+        ? null
+        : (mins < 720 ? 'morning' : (mins < 1020 ? 'workday' : 'evening'));
     Navigator.of(context).pop(NewHabitDraft(
       name: _name,
       isRoutine: _isRoutine,
       coreId: core.id,
       coreLabel: core.label,
-      blockId: _isRoutine ? _block : null,
+      blockId: block,
+      anchorId: _isRoutine && !_setTime ? _anchorId : null,
+      scheduledTime: _isRoutine && _setTime ? _timeCtrl.text.trim() : null,
+      triggers: _isRoutine
+          ? const []
+          : [
+              for (final t in _triggerCtrl.text.split(','))
+                if (t.trim().isNotEmpty) t.trim(),
+            ],
     ));
   }
 
   @override
   Widget build(BuildContext context) {
     final hex = _coreById(_activeCoreId).hex;
+    if (widget.embedded) {
+      return Material(
+        color: Colors.transparent,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [_header(hex), Flexible(child: _form(hex)), _actions()],
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: MM.pageBg,
       body: Stack(
@@ -137,90 +200,9 @@ class _AddHabitPageState extends State<AddHabitPage> {
           SafeArea(
             child: Column(
               children: [
-                // Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
-                  child: Row(
-                    children: [
-                      InkWell(
-                        onTap: () => Navigator.of(context).maybePop(),
-                        borderRadius: BorderRadius.circular(10),
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: MM.navy.withOpacity(0.55),
-                            border:
-                                Border.all(color: Colors.white.withOpacity(0.12)),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(Icons.close,
-                              color: Colors.white, size: 18),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text('ADD A HABIT',
-                          style: MM.displayX(size: 12, color: hex)),
-                    ],
-                  ),
-                ),
-                // Form
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _label('HABIT NAME'),
-                        const SizedBox(height: 6),
-                        _nameField(hex),
-                        const SizedBox(height: 18),
-                        _label('HABIT TYPE'),
-                        const SizedBox(height: 6),
-                        _typeChooser(hex),
-                        if (_isRoutine) ...[
-                          const SizedBox(height: 18),
-                          _label('WHEN · TIME BLOCK'),
-                          const SizedBox(height: 6),
-                          _blockChooser(),
-                        ],
-                        const SizedBox(height: 18),
-                        _coreHeader(),
-                        const SizedBox(height: 8),
-                        _coreChooser(),
-                        const SizedBox(height: 16),
-                        _forgeNote(),
-                      ],
-                    ),
-                  ),
-                ),
-                // Actions
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: MMGhostButton(
-                          label: 'Cancel',
-                          expand: true,
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14),
-                          onPressed: () => Navigator.of(context).maybePop(),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        flex: 3,
-                        child: MMPrimaryButton(
-                          label: 'Add Habit',
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 15),
-                          onPressed: _canSave ? _save : null,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                _header(hex),
+                Expanded(child: _form(hex)),
+                _actions(),
               ],
             ),
           ),
@@ -228,6 +210,89 @@ class _AddHabitPageState extends State<AddHabitPage> {
       ),
     );
   }
+
+  Widget _header(Color hex) => Padding(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+        child: Row(
+          children: [
+            InkWell(
+              onTap: () => Navigator.of(context).maybePop(),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: MM.navy.withOpacity(0.55),
+                  border: Border.all(color: Colors.white.withOpacity(0.12)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child:
+                    const Icon(Icons.close, color: Colors.white, size: 18),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text('ADD A HABIT', style: MM.displayX(size: 12, color: hex)),
+          ],
+        ),
+      );
+
+  Widget _form(Color hex) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _label('HABIT NAME'),
+            const SizedBox(height: 6),
+            _nameField(hex),
+            const SizedBox(height: 18),
+            _label('HABIT TYPE'),
+            const SizedBox(height: 6),
+            _typeChooser(hex),
+            if (_isRoutine) ...[
+              const SizedBox(height: 18),
+              _label('WHEN · ANCHOR OR SET TIME'),
+              const SizedBox(height: 6),
+              _slotChooser(hex),
+            ] else ...[
+              const SizedBox(height: 18),
+              _label('TRIGGERS WHEN (COMMA-SEPARATED)'),
+              const SizedBox(height: 6),
+              _plainField(_triggerCtrl, 'e.g. Stress spikes, Before a hard conversation', hex),
+            ],
+            const SizedBox(height: 18),
+            _coreHeader(),
+            const SizedBox(height: 8),
+            _coreChooser(),
+            const SizedBox(height: 16),
+            _forgeNote(),
+          ],
+        ),
+      );
+
+  Widget _actions() => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
+        child: Row(
+          children: [
+            Expanded(
+              child: MMGhostButton(
+                label: 'Cancel',
+                expand: true,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 3,
+              child: MMPrimaryButton(
+                label: 'Add Habit',
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                onPressed: _canSave ? _save : null,
+              ),
+            ),
+          ],
+        ),
+      );
 
   Widget _label(String text) => Text(text,
       style: MM.displayX(size: 9, color: Colors.white.withOpacity(0.55)));
@@ -286,6 +351,70 @@ class _AddHabitPageState extends State<AddHabitPage> {
     );
   }
 
+  Widget _plainField(TextEditingController c, String hint, Color hex,
+      {ValueChanged<String>? onChanged}) {
+    return TextField(
+      controller: c,
+      onChanged: onChanged,
+      style: MM.body(color: Colors.white, size: 14),
+      cursorColor: hex,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: MM.body(color: Colors.white.withOpacity(0.4), size: 13),
+        filled: true,
+        fillColor: MM.navy.withOpacity(0.55),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: hex.withOpacity(0.4)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: hex, width: 1.5),
+        ),
+      ),
+    );
+  }
+
+  /// Routine slot: stack on an anchor ("After breakfast") or pin a set time.
+  Widget _slotChooser(Color hex) {
+    Widget pill(String label, bool on, VoidCallback tap) => InkWell(
+          borderRadius: BorderRadius.circular(99),
+          onTap: tap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              color: on ? hex.withOpacity(0.16) : MM.navy.withOpacity(0.45),
+              borderRadius: BorderRadius.circular(99),
+              border: Border.all(
+                  color: on ? hex : Colors.white.withOpacity(0.12)),
+            ),
+            child: Text(label,
+                style: MM.body(
+                    size: 12,
+                    color: on ? Colors.white : Colors.white.withOpacity(0.7))),
+          ),
+        );
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Wrap(spacing: 6, runSpacing: 6, children: [
+        for (final a in kDefaultAnchors)
+          pill(a.label, !_setTime && _anchorId == a.id,
+              () => setState(() {
+                    _setTime = false;
+                    _anchorId = a.id;
+                  })),
+        pill('Set time', _setTime, () => setState(() => _setTime = true)),
+      ]),
+      if (_setTime) ...[
+        const SizedBox(height: 8),
+        _plainField(_timeCtrl, 'HH:mm, e.g. 07:00', hex,
+            onChanged: (_) => setState(() {})),
+      ],
+    ]);
+  }
+
+  // ignore: unused_element
   Widget _blockChooser() {
     return Row(
       children: [

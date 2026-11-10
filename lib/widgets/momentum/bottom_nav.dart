@@ -17,7 +17,7 @@ class _BottomNavState extends State<BottomNav> {
   late final Stream<int> _unread = _svc.watchUnreadTotal();
 
   static const _items = [
-    _NavItem('habits', Icons.all_inclusive, 'Habits'),
+    _NavItem('habits', Icons.all_inclusive, 'All Habits'),
     _NavItem('cantina', Icons.local_bar_outlined, 'Cantina'),
     _NavItem('trophy', Icons.emoji_events_outlined, 'Trophy'),
     _NavItem('profile', Icons.person_outline, 'Profile'),

@@ -8,6 +8,7 @@ import '../../services/admin_service.dart';
 import '../../services/auth_service.dart';
 import '../../models/golden_habit.dart';
 import '../../services/checkin_service.dart';
+import '../../services/core_fuel.dart';
 import '../../services/experiments.dart';
 import '../../services/habits_service.dart';
 import '../../services/notification_service.dart';
@@ -70,6 +71,17 @@ class _MomentumHomeState extends State<MomentumHome> {
   /// Locked Core the player chose to fuel — pre-drafts the HHS opener.
   String? _fuelCore;
 
+  /// How the returning player chose to start fuelling [_fuelCore] on Nova's
+  /// screen (returning_voluntary / returning_guided); read once by Phase 1.
+  String? _phase1Mode;
+
+  /// Locked Core being fuelled: Nova shows the start options instead of chat.
+  String? _novaChooseCore;
+
+  /// Core + start mode of the Habits Hierarchy conversation shown in Nova's
+  /// panel (cleared the next time Nova opens).
+  ({String core, String mode})? _novaFuel;
+
   /// Detailed Habit View (#22): the open Golden Habit, and the screen its
   /// back button returns to.
   String? _habitId;
@@ -85,6 +97,15 @@ class _MomentumHomeState extends State<MomentumHome> {
   /// 'mission' ("The Mission Begins") then 'tour' (cockpit tour); null = none.
   String? _launch;
   bool _menuOpen = false;
+
+  // Nova (Co-Pilot) floats over the current screen instead of replacing it, so
+  // the menu and stats stay on screen. `_novaFull` swaps it for the roomy
+  // full-screen chat. One GlobalKey keeps the same conversation (and any typed
+  // text) alive while it moves between the two layouts.
+  bool _novaOpen = false;
+  bool _novaFull = false;
+  String? _novaDraft;
+  GlobalKey _novaKey = GlobalKey();
 
   /// Menu → Command Center: land on the cockpit with the console open.
   bool _openCommand = false;
@@ -153,6 +174,7 @@ class _MomentumHomeState extends State<MomentumHome> {
   // the check-in flow starts so the data is ready by the time scoring begins.
   Map<String, List<int>> _checkinCoreHistory = const {};
   Map<String, GoldenHabitRef> _checkinHabitByCore = const {};
+  Map<String, List<GoldenHabitRef>> _checkinHabitsByCore = const {};
 
   // Core Balance 5-day alert (#8): each Core's recent daily scores (most-recent-
   // first, incl. today's saved score) and the set out of balance (<3.0 for 5+
@@ -377,6 +399,20 @@ class _MomentumHomeState extends State<MomentumHome> {
       ShipWarningBanner(onCheckIn: _startCheckin, onSnooze: _snoozeShipWarning);
 
   void _go(String key) {
+    // Fuelling a locked Core from the rocket stays on the dashboard: Nova
+    // hangs in and the opener is pre-drafted, instead of leaving for Phase 1.
+    if (key.startsWith('fuel:') &&
+        _screen == 'dashboard' &&
+        _novaAllowed &&
+        _phase1.stage1Completed) {
+      final core = key.substring(5);
+      _novaChooseCore = core;
+      _openChat(
+        draft:
+            "I want to fuel my ${_coreMeta[core]?.$1 ?? core} Core — let's build its first habit.",
+      );
+      return;
+    }
     // Need Help / Rebuild from the Detailed Habit View → the §4C bridge.
     if (key.startsWith('rebuild:')) {
       final parts = key.split(':');
@@ -406,6 +442,7 @@ class _MomentumHomeState extends State<MomentumHome> {
     // Normal navigation always lands Phase 1 on its hub.
     _phase1Entry = null;
     _phase1EntryHabitId = null;
+    _phase1Mode = null;
     _fuelCore = null;
     _habitsCore = null;
     _listsExpand = const {};
@@ -432,6 +469,14 @@ class _MomentumHomeState extends State<MomentumHome> {
       _fuelCore = key.substring(5);
       _phase1Entry = 'hhs';
       key = 'phase1';
+    }
+    // Nova lives on the Cockpit: leaving it closes the chat.
+    if (key != 'dashboard') {
+      _novaOpen = false;
+      _novaFull = false;
+      _novaDraft = null;
+      _novaChooseCore = null;
+      _novaFuel = null;
     }
     _screen = key;
     BehaviorTracker.instance.screen(key);
@@ -697,10 +742,17 @@ class _MomentumHomeState extends State<MomentumHome> {
         .goldenHabits(uid)
         .then((list) {
           final map = <String, GoldenHabitRef>{};
+          final all = <String, List<GoldenHabitRef>>{};
           for (final h in list) {
             map.putIfAbsent(h.shortCoreId, () => h); // newest per Core
+            (all[h.shortCoreId] ??= <GoldenHabitRef>[]).add(h);
           }
-          if (mounted) setState(() => _checkinHabitByCore = map);
+          if (mounted) {
+            setState(() {
+              _checkinHabitByCore = map;
+              _checkinHabitsByCore = all;
+            });
+          }
         })
         .catchError((_) {});
     _checkin
@@ -735,7 +787,9 @@ class _MomentumHomeState extends State<MomentumHome> {
           scores.forEach((core, list) {
             if (isCoreOutOfBalance(list)) atRisk.add(core);
           });
-          final pct = balancePercent(rollingCoreAverages(recent));
+          final avgs = rollingCoreAverages(recent);
+          final pct = balancePercent(avgs);
+          CoreFuel.averages.value = avgs;
           if (mounted) {
             setState(() {
               _coreScores = scores;
@@ -806,9 +860,146 @@ class _MomentumHomeState extends State<MomentumHome> {
   /// [draft] pre-fills Nova's input (e.g. from the iCore Alert) — the player
   /// still chooses to send it.
   void _openChat({String? draft}) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => CopilotConsolePage(draft: draft)));
+    // Opened from another screen (top-bar star): go to the Cockpit first.
+    if (_screen != 'dashboard') _goTo('dashboard');
+    setState(() {
+      if (draft == null) _novaChooseCore = null;
+      _novaFuel = null;
+      // A fresh draft needs a fresh input bar; otherwise keep what's there.
+      if (!_novaOpen || draft != null) _novaKey = GlobalKey();
+      _novaOpen = true;
+      _novaDraft = draft;
+    });
+  }
+
+  /// The mode picked on Nova's "how do you want to start?" screen → on to the
+  /// Habits Hierarchy conversation for the Core being fuelled.
+  void _startFuel(String core, String mode) => setState(() {
+    // The Habits Hierarchy conversation runs inside Nova's panel — the
+    // dashboard (menu, stats) stays put underneath.
+    _novaChooseCore = null;
+    _novaFuel = (core: core, mode: mode);
+    _novaKey = GlobalKey();
+  });
+
+  /// The Habits Hierarchy conversation drawn on Nova's monitor while a Core is
+  /// being fuelled: the Phase 1 flow (pyramid, reward cards, forge) in place of
+  /// the transcript.
+  Widget _fuelScreen() {
+    final fuel = _novaFuel!;
+    final name = _coreMeta[fuel.core]?.$1 ?? fuel.core;
+    return Phase1Flow(
+      state: _phase1,
+      entryStage: 'hhs',
+      entryMode: fuel.mode,
+      embedded: true,
+      entryDraft: "I want to fuel my $name Core — let's build its first habit.",
+      onStateChange: _persistPhase1,
+      onBack: () => setState(() {
+        _novaFuel = null;
+        _novaKey = GlobalKey();
+      }),
+      onExitToCockpit: () {
+        _closeNova();
+        _fetchProfile();
+      },
+      onStartCheckin: () {
+        _closeNova();
+        _startCheckin();
+      },
+    );
+  }
+
+  void _closeNova() => setState(() {
+    _novaOpen = false;
+    _novaFull = false;
+    _novaDraft = null;
+  });
+
+  /// Screens that are immersive flows of their own — Nova steps aside there.
+  bool get _novaAllowed => const {
+    'phase1',
+    'checkin',
+    'checkin_quick',
+    'ritual0',
+    'summary',
+    'admin',
+  }.contains(_screen) == false;
+
+  Widget _novaPage() {
+    // Phone / tablet: a narrower monitor, with its buttons tucked under the
+    // stats card, so the header beside it stays visible.
+    final w = MediaQuery.of(context).size.width;
+    final small = w < kWebBreakpoint;
+    return CopilotConsolePage(
+      key: _novaKey,
+      draft: _novaDraft,
+      layout: _novaFull ? CopilotLayout.full : CopilotLayout.docked,
+      onClose: _closeNova,
+      onExpand: () => setState(() => _novaFull = true),
+      onCollapse: () => setState(() => _novaFull = false),
+      podMaxWidth: small ? (w * 0.64 > 460 ? 460 : w * 0.64) : null,
+      controlsTop: small ? 56 : 4,
+      screenChild: _novaFuel == null ? null : _fuelScreen(),
+      // Back: out of the Habits Hierarchy / start options to Nova's chat; from
+      // the chat itself it closes Nova.
+      onBack:
+          (_novaFuel != null || _novaChooseCore != null)
+              ? () => setState(() {
+                _novaFuel = null;
+                _novaChooseCore = null;
+                _novaKey = GlobalKey();
+              })
+              : _closeNova,
+      onStartPick:
+          _novaChooseCore == null
+              ? null
+              : (mode) => _startFuel(_novaChooseCore!, mode),
+    );
+  }
+
+  /// The Co-Pilot overlay for the current layout; null when closed.
+  /// [desktop] docks it in the content column beside the sidebar; on a phone
+  /// it sits below the top stats and the shortcut row.
+  Widget? _buildNova({required bool desktop}) {
+    // Desktop Cockpit: Nova hangs from the top of the window over the (flipped,
+    // emptied) centre square. The widget animates its own exit, so it stays in
+    // the tree while closed.
+    if (desktop && _screen == 'dashboard' && !_novaFull) {
+      return Positioned.fill(
+        child: _HangingNova(
+          open: _novaOpen && _novaAllowed,
+          snap: false,
+          build: _novaPage,
+        ),
+      );
+    }
+    // Phone / tablet: Nova drops from under the top stats bar and covers the
+    // rest of the screen (the rocket is hidden), so the menu button and stats
+    // stay on screen. Animates its own exit like the desktop one.
+    if (!desktop && !_novaFull) {
+      return Positioned.fill(
+        child: _HangingNova(
+          open: _novaOpen && _novaAllowed,
+          snap: false,
+          mobile: true,
+          cover: _screen != 'dashboard',
+          build: _novaPage,
+        ),
+      );
+    }
+    if (!_novaOpen || !_novaAllowed) return null;
+    // Desktop Cockpit is handled above; other desktop screens float it.
+    if (desktop && _screen == 'dashboard' && !_novaFull) return null;
+    final nova = _novaPage();
+    if (_novaFull) return Positioned.fill(child: nova);
+    return Positioned(
+      top: 96,
+      bottom: 8,
+      left: 264,
+      right: 0,
+      child: Center(child: SizedBox(width: 360, child: nova)),
+    );
   }
 
   // ── Daily Ritual Step 0 (Mantra & Grateful List) ────────────────────────
@@ -957,6 +1148,7 @@ class _MomentumHomeState extends State<MomentumHome> {
         phase1State: _phase1,
         onCheckIn: _startCheckin,
         onMenu: () => setState(() => _menuOpen = true),
+        novaOpen: _novaOpen && _novaAllowed && !_novaFull,
         onChat: _openChat,
         onNav: _go,
         onCoreAlert: _showCoreAlert,
@@ -983,6 +1175,7 @@ class _MomentumHomeState extends State<MomentumHome> {
         state: _phase1,
         entryStage: _phase1Entry,
         entryHabitId: _phase1EntryHabitId,
+        entryMode: _phase1Mode,
         entryDraft:
             _fuelCore == null
                 ? null
@@ -1011,6 +1204,7 @@ class _MomentumHomeState extends State<MomentumHome> {
         atRiskCores: _atRiskCores,
         coreHistory: _checkinCoreHistory,
         habitByCore: _checkinHabitByCore,
+        habitsByCore: _checkinHabitsByCore,
         onClose: () => _go('dashboard'),
         onComplete: _saveCheckin,
         onFlagHabit: _flagHabit,
@@ -1049,8 +1243,8 @@ class _MomentumHomeState extends State<MomentumHome> {
     }
     if (_screen == 'habits') {
       return HabitsScreen(
+        key: ValueKey(_habitsCore),
         coreFilter: _habitsCore,
-        onClearFilter: () => _go('habits'),
         onBack: () => _go('dashboard'),
         onChat: _openChat,
         onNav: _go,
@@ -1236,6 +1430,7 @@ class _MomentumHomeState extends State<MomentumHome> {
     return Stack(
       children: [
         Positioned.fill(child: _buildBody()),
+        if (_buildNova(desktop: false) case final nova?) nova,
         if (_menuOpen)
           Positioned.fill(
             child: MenuDrawer(
@@ -1321,7 +1516,8 @@ class _MomentumHomeState extends State<MomentumHome> {
     final level = p?.level ?? 'cadet';
 
     Widget content;
-    var showTopbar = true;
+    // The Cockpit draws its own title so its right column can start at the top.
+    var showTopbar = _screen != 'dashboard';
     var title = 'Cockpit';
     var subtitle = 'Mission Control';
     var accent = MM.blue;
@@ -1346,6 +1542,9 @@ class _MomentumHomeState extends State<MomentumHome> {
           onCoreAlert: _showCoreAlert,
           phase1Banner: _phase1.finished ? null : _phase1Banner(),
           openCommand: _openCommand,
+          onChat: _openChat,
+          novaOpen: _novaOpen && !_novaFull && _novaAllowed,
+          novaSnap: _novaFull,
         );
         break;
       case 'routines':
@@ -1355,13 +1554,12 @@ class _MomentumHomeState extends State<MomentumHome> {
         content = WebRoutines(onOpen: (id) => _go('habit:$id'));
         break;
       case 'habits':
-        title = 'Habits';
+        title = 'All Habits';
         subtitle = 'Golden Habits';
         accent = MM.magenta;
         content = WebHabits(
           key: ValueKey(_habitsCore),
           coreFilter: _habitsCore,
-          onClearFilter: () => _go('habits'),
           onOpen: (id) => _go('habit:$id'),
         );
         break;
@@ -1416,7 +1614,7 @@ class _MomentumHomeState extends State<MomentumHome> {
         content = const WebTasks();
         break;
       case 'lists':
-        title = 'Lists';
+        title = 'Momentum Lists';
         subtitle = 'Manifest';
         accent = MM.blue;
         content = WebLists(
@@ -1481,11 +1679,13 @@ class _MomentumHomeState extends State<MomentumHome> {
             isAdmin: _isAdmin,
             content: content,
             showTopbar: showTopbar,
+            showTopbarActions: _screen != 'dashboard',
             title: title,
             subtitle: subtitle,
             accent: accent,
           ),
         ),
+        if (_buildNova(desktop: true) case final nova?) nova,
         if (_menuOpen)
           Positioned.fill(
             child: MenuDrawer(
@@ -1641,6 +1841,163 @@ class _CantinaLockedView extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Desktop Cockpit's Nova: lowers from the very top of the window (bounce) over
+/// the centre column, full height, and swings back up on close. No container.
+/// [build] is called while visible or still animating out; the page keeps one
+/// GlobalKey so the conversation survives.
+class _HangingNova extends StatefulWidget {
+  const _HangingNova({
+    required this.open,
+    required this.snap,
+    required this.build,
+    this.mobile = false,
+    this.cover = false,
+  });
+  final bool open;
+  final bool snap;
+
+  /// Phone / tablet on screens other than the dashboard: cover the page below
+  /// the header with the starfield (the dashboard hides its own content).
+  final bool cover;
+
+  /// Phone / tablet: hang below the top stats bar over an opaque backdrop,
+  /// instead of over the desktop's centre column.
+  final bool mobile;
+  final Widget Function() build;
+
+  @override
+  State<_HangingNova> createState() => _HangingNovaState();
+}
+
+class _HangingNovaState extends State<_HangingNova>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+    reverseDuration: const Duration(milliseconds: 500),
+    value: widget.open ? 1 : 0,
+  );
+  late bool _mounted = widget.open;
+
+  @override
+  void didUpdateWidget(covariant _HangingNova old) {
+    super.didUpdateWidget(old);
+    if (widget.open && !old.open) {
+      _mounted = true;
+      _ctl.forward();
+    } else if (!widget.open && old.open) {
+      _ctl.reverse().whenComplete(() {
+        if (mounted && !widget.open) setState(() => _mounted = false);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_mounted) return const SizedBox.shrink();
+    if (widget.mobile) {
+      // Header stays (menu, trophy, streak, phase tag, stats). The monitor
+      // hangs from just below the top of the screen; an opaque backdrop starts
+      // under the phase tag and hides the shortcut row and the rocket.
+      final pad = MediaQuery.of(context).padding.top;
+      final slide = CurvedAnimation(
+        parent: _ctl,
+        curve: Curves.easeOutBack,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return Stack(
+        children: [
+          if (widget.cover)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: pad + 134,
+              bottom: 0,
+              child: FadeTransition(
+                opacity: _ctl,
+                child: const StarfieldBackground(),
+              ),
+            ),
+          Positioned(
+            left: 0,
+            right: 0,
+            top: pad + 40,
+            bottom: 0,
+            child: ClipRect(
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, -1),
+                  end: Offset.zero,
+                ).animate(slide),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 520),
+                    child: widget.build(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    return LayoutBuilder(
+      builder: (context, c) {
+        // Centre column of WebCockpit's 20/30/20 row (40px side padding, 24px
+        // gaps), inside the content column beside the 264px sidebar.
+        final avail = c.maxWidth - 264;
+        final w = avail > kWebContentMaxWidth ? kWebContentMaxWidth : avail;
+        final off = 264 + (avail - w) / 2;
+        double left;
+        double width;
+        // Three-column Cockpit: hang from the very top of the window. Narrower
+        // (tablet): phone logic — the page title stays, the monitor emerges
+        // from the bottom of the title bar and the cockpit shows only icons
+        // (left) and stats (right) beside it.
+        final narrow = w < 1080;
+        if (!narrow) {
+          final unit = (w - 80 - 48) / 70;
+          left = off + 40 + 20 * unit + 24;
+          width = 30 * unit;
+        } else {
+          width = 420;
+          left = off + (w - width) / 2;
+        }
+        final hang = SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, -1),
+            end: Offset.zero,
+          ).animate(
+            CurvedAnimation(
+              parent: _ctl,
+              curve: const Interval(0.25, 1, curve: Curves.easeOutBack),
+              reverseCurve: Curves.easeInCubic,
+            ),
+          ),
+          child: widget.build(),
+        );
+        return Stack(
+          children: [
+            Positioned(
+              left: left,
+              width: width,
+              top: narrow ? 96 : 0,
+              bottom: 0,
+              child: narrow ? ClipRect(child: hang) : hang,
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -678,6 +678,44 @@ on decisions/numbers only you can provide**:
 **Ready to build now:**
 - **Cantina Pillar 3 — anti‑shame Leaderboard** (the multi‑factor 60% momentum / 25% ship / 15% achievements board, recomputed every 6h). *Caveat: the ship‑upgrade weighting depends on the #13d ship numbers below.*
 
+### Habits page by Core + rocket fuel (28 Oct 2026) 🟡
+
+**What this is:** the Habits page (web and phone) now lists all five Cores one after another, each with its icon, its Golden Habits and a divider line in the Core's colour. Tapping a Core on the rocket opens the same page and scrolls to that Core, so scrolling up or down shows the rest. A row of Core chips at the top scrolls to a Core too. On the rocket, each unlocked Core panel now fills with liquid (the original app's technique) up to its 7-day check-in average out of 5, which is the Balance Meter from Gamification Spec §10. A new Core starts at 12%.
+
+**Source:** your request, Gamification Mechanics Spec §10 (Core Balance & "Firing on All Cylinders"), and the original app's liquid-fill tanks.
+
+**Status:** built and compiles clean; browser check pending. Emergency Simplification Mode and the Balance Bonus are not built (their rules are placeholders in the spec).
+
+### Trophy Room audit, non-routine habit and real check-in habits (2 Nov 2026) 🟡
+
+**What this is:** three pieces of work. (1) The Trophy Room was checked line by line against Gamification Spec §8 and tested in the browser on a test account, including a non-routine habit taken through "formed" and un-formed again. (2) A new non-routine habit, Breath-Based Regulation in the Emotional & Mental Core, was built live with Nova to document how non-routines are created and tracked. (3) The Daily Check-in now lists each Core's real Golden Habits and the player's own Back-to-the-Future line, instead of sample habits.
+
+**Source:** your requests, Gamification Mechanics Spec §8 (Trophy Room & Habit Formation Milestones) and §10, and Phase 1 & 2 Details (Routine vs Non-Routine).
+
+**How non-routines work (verified):** Nova decides Routine or Non-Routine in Phase 1 Stage 1 from how predictable the trigger is. The habit is saved as a Golden Habit of type non-routine and shows in the Non-Routine list, the Non-Routines view and its detail page. It is tracked through its Core's daily check-in score (Day x/14, 80% consistency), the Captain's Log and Nova's "Today's Focus". When formed it leaves the Non-Routines list and becomes a trophy. Two other ways to create one: quick add (phone only) and "Make it a non-routine" on a habit's detail page.
+
+**Status:** Trophy Room MVP items built and verified; the check-in change is built, tested (3 new tests, 125 total) and browser-verified (each active Core shows its real habits and the player's own vision line). Open: the formation credit amount (spec placeholder), Captain's Log in the monthly review, a decision on Trophy Room scope (it also lists forming habits and formed routines), and an optional per-habit "used it" tap for non-routines. Ship-upgrade progress and Mystery Box throwbacks wait for those post-MVP systems. Reports: `Trophy Room.docx` and `Non-Routine Habits.docx`.
+
+### Rocket loads whole on the live site (2 Nov 2026) 🟡
+
+**What this is:** on app.habitscoach.ai the rocket no longer appears piece by piece. All rocket images and Core liquid animations are loaded first and the Cockpit waits for them (up to 15 seconds). Missing nose icons and Physical/Career badges were traced to empty (0-byte) copies stored by the browser's offline cache from an earlier incomplete upload; 21 rocket images were re-fingerprinted so browsers fetch fresh copies.
+
+**Status:** built and rebuilt; `moore-momentum-web.zip` is ready and waiting for you to upload it (all files, overwrite). Re-check the live site afterwards; if a part is still missing, clear the site data once.
+
+### Routines redesigned as a timeline (10 Nov 2026) 🟡
+
+**What this is:** the Routines screen (web and phone) is now a day timeline instead of one card per Core. A **TIMELINE | BY CORE** switch (your choice is remembered) sits in the header. **Timeline:** routines are placed by a set time (07:00) or by an anchor moment (Wake up, After breakfast, After lunch, After dinner, Before bed, each with a usual time). Habits sharing a slot stack together; open stretches of 2 hours or more collapse; a red NOW line shows the current time; the next habit is highlighted; an empty anchor offers "Stack a habit". Non-routines sit in their own panel (phone: a tab) with their triggers and a **LOG IT** button that records each time you used one. **By Core:** one card per Core in the order Mindset, Career, Relationships, Physical, Emotional, with a balance warning and an empty-Core state. One continuous rail runs through every node.
+
+**History strip:** the date strip shows the last 7 days with today last. A past day is view-only and greyed: habits you ticked show as done, the rest show **Missed**; a day with nothing recorded shows an empty timeline. Nothing can be ticked, logged or added on a past day.
+
+**Habits page:** formed habits no longer appear on Habits (web and phone); they show only in the Trophy Room.
+
+**Source:** your Claude Desktop design (`design/ref/routines-timeline-design/`) and the "Routine vs Non-Routine Habits" document. Routine = tied to a time or place (set time or anchor); non-routine = fired by an internal trigger, so it has no clock, only triggers and a log.
+
+**Data (client only, no backend change):** per-habit schedules `users/{uid}/habit_schedule`, per-day ticks and non-routine logs `users/{uid}/habit_log/{date}`, and the player's anchors `users/{uid}/settings/routine_anchors`, all written directly from the app. The Daily Check-In is untouched. Older habits are placed on the timeline at display time (a clock time in "when" becomes a set time; breakfast/lunch/dinner/bed/wake words, or Morning / Workday / Evening, map to an anchor; anything else is "Anytime"). Nothing is rewritten in the database. Add Habit can now set an anchor or set time (routines) and triggers (non-routines).
+
+**Status:** built and browser-checked read-only on a test account (desktop and 390 px phone view): no overflow, rail continuous, history strip and empty day verified. **Not yet seen:** a past day that has records (Missed / done states and the dimmed timeline). **Not built:** the Daily Check-In button on this screen, editing the slot or triggers of an existing habit, and an Anchors settings screen (defaults are used).
+
 **Blocked on your input (`[PLACEHOLDER — DETAIL NEEDED]` in your Gamification doc):**
 - **#13b Leveling** — the Cadet → Navigator → Commander thresholds (formed‑habits / planet / streak per transition).
 - **#13c Planet journey** — MP per planet, arrival bonus credits, regression threshold.

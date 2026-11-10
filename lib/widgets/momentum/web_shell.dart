@@ -8,7 +8,9 @@ import 'starfield.dart';
 
 /// Below this viewport width the app keeps its full-bleed mobile screens;
 /// at or above it the desktop [WebShell] (sidebar + topbar + content) renders.
-const double kWebBreakpoint = 900;
+/// Tablets (up to 1343px) use the mobile layout; 1344 = 264px sidebar + the
+/// 1080px the three-column Cockpit needs.
+const double kWebBreakpoint = 1344;
 
 /// The shell's content column is centered and capped at this width so it stays
 /// readable on ultra-wide / maximized screens instead of stretching edge-to-edge.
@@ -109,9 +111,9 @@ class WebNavItem {
 const List<WebNavItem> kWebNav = [
   WebNavItem('dashboard', 'Cockpit', 'Home', Icons.rocket_launch_outlined, MM.blue),
   WebNavItem('routines', 'Routines', 'Daily orbit', Icons.autorenew, MM.teal),
-  WebNavItem('habits', 'Habits', 'Golden', Icons.spa_outlined, MM.magenta),
+  WebNavItem('habits', 'All Habits', 'Golden', Icons.spa_outlined, MM.magenta),
   WebNavItem('tasks', 'Tasks', 'Missions', Icons.checklist_rtl, MM.yellow),
-  WebNavItem('lists', 'Lists', 'Manifest', Icons.view_list_outlined, MM.blue),
+  WebNavItem('lists', 'Momentum Lists', 'Manifest', Icons.view_list_outlined, MM.blue),
   WebNavItem('cantina', 'Cantina', 'Social', Icons.local_bar_outlined, MM.violet),
   WebNavItem('trophy', 'Trophy', 'Room', Icons.emoji_events_outlined, MM.yellow),
   WebNavItem('tour', 'Flight Deck', 'Tour', Icons.explore_outlined, MM.violet),
@@ -139,6 +141,7 @@ class WebShell extends StatelessWidget {
     required this.onSignOut,
     required this.content,
     this.showTopbar = true,
+    this.showTopbarActions = true,
     this.title = 'Cockpit',
     this.subtitle = 'Mission Control',
     this.accent = MM.blue,
@@ -156,6 +159,10 @@ class WebShell extends StatelessWidget {
   final VoidCallback onSignOut;
   final Widget content;
   final bool showTopbar;
+
+  /// Search, Co-Pilot star and Daily Check-in in the topbar. The Cockpit turns
+  /// these off because it hosts them in its own right-hand column.
+  final bool showTopbarActions;
   final String title;
   final String subtitle;
   final Color accent;
@@ -209,6 +216,7 @@ class WebShell extends StatelessWidget {
                                   accent: accent,
                                   onCheckIn: onCheckIn,
                                   onChat: onChat,
+                                  showActions: showTopbarActions,
                                 ),
                               Expanded(child: content),
                             ],
@@ -612,12 +620,14 @@ class _WebTopbar extends StatelessWidget {
     required this.accent,
     required this.onCheckIn,
     required this.onChat,
+    this.showActions = true,
   });
   final String title;
   final String subtitle;
   final Color accent;
   final VoidCallback onCheckIn;
   final VoidCallback onChat;
+  final bool showActions;
 
   @override
   Widget build(BuildContext context) {
@@ -636,7 +646,7 @@ class _WebTopbar extends StatelessWidget {
           // one letter per line. Drop them progressively instead.
           final w = c.maxWidth;
           final hPad = w < 760 ? 20.0 : 40.0;
-          final showSearch = w >= 900;
+          final showSearch = showActions && w >= 900;
           final compactCta = w < 780;
           return Padding(
             padding: EdgeInsets.fromLTRB(hPad, 26, hPad, 20),
@@ -700,17 +710,19 @@ class _WebTopbar extends StatelessWidget {
                     ),
                   ),
                 ],
-                const SizedBox(width: 12),
-                // AI co-pilot
-                _CopilotButton(onTap: onChat),
-                const SizedBox(width: 12),
-                MMPrimaryButton(
-                  label: compactCta ? 'Check-in →' : 'Daily Check-in →',
-                  onPressed: onCheckIn,
-                  expand: false,
-                  padding: EdgeInsets.symmetric(
-                      horizontal: compactCta ? 16 : 22, vertical: 13),
-                ),
+                if (showActions) ...[
+                  const SizedBox(width: 12),
+                  // AI co-pilot
+                  WebCopilotButton(onTap: onChat),
+                  const SizedBox(width: 12),
+                  MMPrimaryButton(
+                    label: compactCta ? 'Check-in →' : 'Daily Check-in →',
+                    onPressed: onCheckIn,
+                    expand: false,
+                    padding: EdgeInsets.symmetric(
+                        horizontal: compactCta ? 16 : 22, vertical: 13),
+                  ),
+                ],
               ],
             ),
           );
@@ -720,8 +732,8 @@ class _WebTopbar extends StatelessWidget {
   }
 }
 
-class _CopilotButton extends StatelessWidget {
-  const _CopilotButton({required this.onTap});
+class WebCopilotButton extends StatelessWidget {
+  const WebCopilotButton({required this.onTap});
   final VoidCallback onTap;
 
   @override
@@ -752,6 +764,37 @@ class _CopilotButton extends StatelessWidget {
           ),
           child: const Icon(Icons.star_border, size: 26, color: Colors.white),
         ),
+      ),
+    );
+  }
+}
+
+/// The (still decorative) search box. Used by the topbar and the Cockpit's
+/// right-hand column.
+class WebSearchField extends StatelessWidget {
+  const WebSearchField({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: MM.navy.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withOpacity(0.12)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.search, size: 16, color: Colors.white.withOpacity(0.5)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text('Search missions, habits, crew…',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: MM.body(size: 13, color: Colors.white.withOpacity(0.4))),
+          ),
+        ],
       ),
     );
   }
