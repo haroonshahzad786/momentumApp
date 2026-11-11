@@ -272,6 +272,24 @@ class RoutineScheduleService {
   }
 
   /// Appends a timestamp to a non-routine's log for [day].
+  /// Removes one logged moment ([hm] exactly as stored) from that day.
+  Future<void> unlogNonRoutine(
+    String uid,
+    DateTime day,
+    String key, {
+    required String hm,
+  }) {
+    return _user(uid)
+        .collection('habit_log')
+        .doc(CheckinService.dayId(day))
+        .set({
+      'logs': {
+        key: FieldValue.arrayRemove([hm]),
+      },
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
   Future<void> logNonRoutine(
     String uid,
     DateTime day,

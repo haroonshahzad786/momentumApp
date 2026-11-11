@@ -99,11 +99,15 @@ class AddHabitPage extends StatefulWidget {
     this.embedded = false,
     this.initialCoreId,
     this.initialAnchorId,
+    this.initialTime,
   });
 
   /// Preselects a Core ("+ Add to Physical") / an anchor ("Stack a habit on…").
   final String? initialCoreId;
   final String? initialAnchorId;
+
+  /// "HH:mm" to open on "Set a time" (an open slot tapped on the timeline).
+  final String? initialTime;
 
   /// Inside a web dialog: no Scaffold / starfield / safe area, and the form
   /// sizes to its content instead of filling the screen.
@@ -128,6 +132,10 @@ class _AddHabitPageState extends State<AddHabitPage> {
     super.initState();
     _core = widget.initialCoreId;
     if (widget.initialAnchorId != null) _anchorId = widget.initialAnchorId;
+    if (widget.initialTime != null) {
+      _setTime = true;
+      _timeCtrl.text = widget.initialTime!;
+    }
     // The suggested core tracks the name as it's typed.
     _nameCtrl.addListener(() => setState(() {}));
   }

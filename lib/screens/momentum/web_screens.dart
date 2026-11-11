@@ -24,6 +24,7 @@ import '../../services/habits_service.dart';
 import '../../services/offline.dart' show friendlyError;
 import 'add_habit_page.dart';
 import 'routines_timeline.dart';
+import '../../services/routine_reminders.dart';
 import '../../services/routine_schedule.dart';
 import '../../services/momentum_lists_service.dart';
 import '../../services/onboarding_service.dart';
@@ -1593,7 +1594,11 @@ class _WebTasksState extends State<WebTasks> {
 // HABITS — real Golden Habits in a lifecycle grid (read-focused)
 // ═══════════════════════════════════════════════════════════════
 class WebHabits extends StatefulWidget {
-  const WebHabits({super.key, this.coreFilter, this.onOpen});
+  const WebHabits(
+      {super.key, this.coreFilter, this.onOpen, this.onShowInRoutine});
+
+  /// "Show in my routine": jump to the habit's spot on Routines.
+  final void Function(String habitId)? onShowInRoutine;
 
   /// Short Core id ('physical', …) — a Core tapped on the rocket (#20). Every
   /// Core is shown; the page scrolls to this one.
@@ -1839,17 +1844,6 @@ class _WebHabitsState extends State<WebHabits> {
   }
 
 
-  Future<void> _markFormedEarly(GoldenHabit h, int days) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    final saved = await markHabitFormedEarly(context,
-        userId: uid,
-        habitId: h.habitId,
-        name: h.habitName.trim().isEmpty ? 'Golden Habit' : h.habitName.trim(),
-        daysLogged: days);
-    if (saved && mounted) _load();
-  }
-
   Widget _card(GoldenHabit h) {
                         final st = _stage[h.formed ? 'formed' : 'forming']!;
                         final prog = formationProgress(
@@ -1975,7 +1969,10 @@ class _WebHabitsState extends State<WebHabits> {
                                   ),
                                 ),
                                 const SizedBox(height: 10),
-                                Row(
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Row(
                                   children: [
                                     Text(
                                       'DETAILED VIEW →',
@@ -1986,23 +1983,24 @@ class _WebHabitsState extends State<WebHabits> {
                                         color: Colors.white.withOpacity(0.5),
                                       ),
                                     ),
-                                    const Spacer(),
+                                    const SizedBox(width: 14),
                                     OutlinedButton(
                                       onPressed: () =>
-                                          _markFormedEarly(h, prog.days),
+                                          widget.onShowInRoutine?.call(h.habitId),
                                       style: OutlinedButton.styleFrom(
-                                        foregroundColor: MM.teal,
+                                        foregroundColor: MM.blue,
                                         side: BorderSide(
-                                            color: MM.teal.withOpacity(0.6)),
+                                            color: MM.blue.withOpacity(0.6)),
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 12, vertical: 8),
                                         minimumSize: const Size(0, 36),
                                       ),
-                                      child: Text('Mark formed early',
+                                      child: Text('Show in my routine',
                                           style: MM.body(
-                                              size: 11.5, color: MM.teal)),
+                                              size: 11.5, color: MM.blue)),
                                     ),
                                   ],
+                                  ),
                                 ),
                               ],
                             ),
@@ -2143,7 +2141,11 @@ class _Formed {
 // ROUTINES — real routine / non-routine core lists
 // ═══════════════════════════════════════════════════════════════
 class WebRoutines extends StatefulWidget {
-  const WebRoutines({super.key, this.onOpen, this.embedded = false});
+  const WebRoutines(
+      {super.key, this.onOpen, this.embedded = false, this.focusHabitId});
+
+  /// "Show in my routine": scroll to and pulse this Golden Habit.
+  final String? focusHabitId;
 
   /// Inside the phone's ScreenShell: no own scroll/padding/title.
   final bool embedded;
@@ -2178,6 +2180,7 @@ class _WebRoutinesState extends State<WebRoutines> {
 
   @override
   void dispose() {
+    RoutineReminders.instance.externalChange.removeListener(_load);
     _service.dispose();
     _habits.dispose();
     super.dispose();
@@ -2229,6 +2232,8 @@ class _WebRoutinesState extends State<WebRoutines> {
   void initState() {
     super.initState();
     _load();
+    // A routine ticked from the reminder popup / bar.
+    RoutineReminders.instance.externalChange.addListener(_load);
   }
 
   Future<void> _load() async {
@@ -2288,7 +2293,7 @@ class _WebRoutinesState extends State<WebRoutines> {
   /// Quick add (web twin of the phone Routines "Add a habit"): a dialog with
   /// name, type, time block and Core, then the same dual-write the phone does
   /// (per-core list line + Golden Habit) so it shows on Routines and Habits.
-  Future<void> _addHabit({String? core, String? anchorId}) async {
+  Future<void> _addHabit({String? core, String? anchorId, String? time}) async {
     final draft = await showDialog<NewHabitDraft>(
       context: context,
       barrierColor: const Color(0xCC06070D),
@@ -2312,6 +2317,7 @@ class _WebRoutinesState extends State<WebRoutines> {
                   'emotional': 'emotional_mental_core',
                 }[core],
                 initialAnchorId: anchorId,
+                initialTime: time,
               ),
             ),
           ),
@@ -2406,6 +2412,9 @@ class _WebRoutinesState extends State<WebRoutines> {
     });
   }
 
+  bool get _isTodayDay =>
+      CheckinService.dayId(_day) == CheckinService.dayId(DateTime.now());
+
   Future<void> _toggleDone(TlHabit h, bool done) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
@@ -2418,6 +2427,7 @@ class _WebRoutinesState extends State<WebRoutines> {
       _log = HabitDayLog(done: next, logs: _log.logs);
       _weekLogs = [..._weekLogs]..[_idxOf(_day)] = _log;
     });
+    if (_isTodayDay) RoutineReminders.instance.syncDone(h.key, done);
     try {
       await _schedSvc.setDone(uid, _day, h.key, done: done, hm: hm);
     } catch (e) {
@@ -2447,11 +2457,47 @@ class _WebRoutinesState extends State<WebRoutines> {
     });
     try {
       await _schedSvc.logNonRoutine(uid, _day, h.key, hm: stamp);
+      if (!mounted) return;
+      final m = ScaffoldMessenger.of(context);
+      m.hideCurrentSnackBar();
+      m.showSnackBar(SnackBar(
+        content: Text('Logged ${h.name} at ${stamp.substring(0, 5)}'),
+        duration: const Duration(seconds: 6),
+        action: SnackBarAction(label: 'UNDO', onPressed: () => _unlogIt(h, stamp)),
+      ));
     } catch (e) {
       if (!mounted) return;
       setState(() => _log = prev);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(friendlyError(e, action: 'log that'))),
+      );
+    }
+  }
+
+  Future<void> _unlogIt(TlHabit h, String stamp) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final prev = _log;
+    setState(() {
+      _log = HabitDayLog(
+        done: _log.done,
+        logs: {
+          ..._log.logs,
+          h.key: [
+            for (final s in _log.logs[h.key] ?? const <String>[])
+              if (s != stamp) s,
+          ],
+        },
+      );
+      _weekLogs = [..._weekLogs]..[_idxOf(_day)] = _log;
+    });
+    try {
+      await _schedSvc.unlogNonRoutine(uid, _day, h.key, hm: stamp);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _log = prev);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(friendlyError(e, action: 'remove that log'))),
       );
     }
   }
@@ -2517,9 +2563,18 @@ class _WebRoutinesState extends State<WebRoutines> {
   @override
   Widget build(BuildContext context) {
     final week = _weekDays();
+    final routines = _tlHabits(_routine, true);
+    final nonRoutines = _tlHabits(_nonRoutine, false);
+    String? focusKey;
+    if (widget.focusHabitId != null) {
+      for (final h in [...routines, ...nonRoutines]) {
+        if (h.habitId == widget.focusHabitId) focusKey = h.key;
+      }
+    }
     final timeline = RoutinesTimeline(
-        routines: _tlHabits(_routine, true),
-        nonRoutines: _tlHabits(_nonRoutine, false),
+        focusKey: focusKey,
+        routines: routines,
+        nonRoutines: nonRoutines,
         anchors: _anchors,
         logFor: _log,
         weekDots: [
@@ -2531,7 +2586,9 @@ class _WebRoutinesState extends State<WebRoutines> {
         onSelectDay: _selectDay,
         onToggleDone: _toggleDone,
         onLog: _logIt,
-        onAdd: ({core, anchorId}) => _addHabit(core: core, anchorId: anchorId),
+        onUnlog: _unlogIt,
+        onAdd: ({core, anchorId, time}) =>
+            _addHabit(core: core, anchorId: anchorId, time: time),
         onOpen: (h) {
           if (h.habitId != null && widget.onOpen != null) {
             widget.onOpen!(h.habitId!);

@@ -1,5 +1,6 @@
 import 'phase2_launch.dart';
 import 'package:flutter/material.dart';
+import 'routine_reminder_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/momentum_tokens.dart';
@@ -218,6 +219,8 @@ class WebShell extends StatelessWidget {
                                   onChat: onChat,
                                   showActions: showTopbarActions,
                                 ),
+                              RoutineReminderBar(
+                                  onOpenRoutines: () => onNav('routines')),
                               Expanded(child: content),
                             ],
                           ),
@@ -478,10 +481,20 @@ class _NavButton extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(item.icon,
-                    size: 20,
-                    color:
-                        on ? item.accent : Colors.white.withOpacity(0.55)),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(item.icon,
+                        size: 20,
+                        color: on
+                            ? item.accent
+                            : Colors.white.withOpacity(0.55)),
+                    // Due-routine count, pinned to the icon so the label keeps its width.
+                    if (item.appKey == 'routines')
+                      const Positioned(
+                          left: 10, top: -9, child: RoutineBadge()),
+                  ],
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(item.label,

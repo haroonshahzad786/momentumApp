@@ -121,11 +121,16 @@ class RoutinesTimeline extends StatefulWidget {
     required this.onSelectDay,
     required this.onToggleDone,
     required this.onLog,
+    required this.onUnlog,
     required this.onAdd,
     required this.onOpen,
     required this.onCheckIn,
     this.showTitle = true,
+    this.focusKey,
   });
+
+  /// A habit key to scroll to and pulse once ("Show in my routine").
+  final String? focusKey;
 
   final List<TlHabit> routines;
   final List<TlHabit> nonRoutines;
@@ -139,8 +144,11 @@ class RoutinesTimeline extends StatefulWidget {
   final void Function(TlHabit h, bool done) onToggleDone;
   final void Function(TlHabit h) onLog;
 
+  /// Remove one logged moment (stored stamp) of a non-routine, today only.
+  final void Function(TlHabit h, String stamp) onUnlog;
+
   /// Opens Add Habit, optionally with a Core / anchor already picked.
-  final void Function({String? core, String? anchorId}) onAdd;
+  final void Function({String? core, String? anchorId, String? time}) onAdd;
   final void Function(TlHabit h) onOpen;
   final VoidCallback? onCheckIn;
 
@@ -157,6 +165,54 @@ class _RoutinesTimelineState extends State<RoutinesTimeline> {
   final Set<int> _openGaps = {};
   Timer? _tick;
   DateTime _now = DateTime.now();
+  final _focusGk = GlobalKey();
+  bool _focusDone = false;
+  bool _pulse = false;
+
+  /// Once the focused habit is in the data: show the Timeline, scroll to it
+  /// and glow for a few seconds.
+  void _maybeFocus() {
+    final f = widget.focusKey;
+    if (f == null || _focusDone) return;
+    final isNon = widget.nonRoutines.any((h) => h.key == f);
+    if (!isNon && !widget.routines.any((h) => h.key == f)) return;
+    _focusDone = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _view = _View.timeline;
+        _tab = isNon ? 1 : 0;
+        _pulse = true;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final ctx = _focusGk.currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(ctx,
+              alignment: 0.3,
+              duration: const Duration(milliseconds: 450),
+              curve: Curves.easeInOut);
+        }
+      });
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) setState(() => _pulse = false);
+      });
+    });
+  }
+
+  Widget _focusWrap(String key, Widget child) {
+    if (widget.focusKey != key) return child;
+    return AnimatedContainer(
+      key: _focusGk,
+      duration: const Duration(milliseconds: 300),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: _pulse
+            ? [BoxShadow(color: MM.teal.withOpacity(0.55), blurRadius: 22, spreadRadius: 2)]
+            : const [],
+      ),
+      child: child,
+    );
+  }
 
   @override
   void initState() {
@@ -176,7 +232,9 @@ class _RoutinesTimelineState extends State<RoutinesTimeline> {
   Future<void> _loadPref() async {
     try {
       final p = await SharedPreferences.getInstance();
-      if (p.getString('routines_view') == 'core' && mounted) {
+      if (p.getString('routines_view') == 'core' &&
+          mounted &&
+          widget.focusKey == null) {
         setState(() => _view = _View.byCore);
       }
     } catch (_) {}
@@ -207,6 +265,7 @@ class _RoutinesTimelineState extends State<RoutinesTimeline> {
 
   @override
   Widget build(BuildContext context) {
+    _maybeFocus();
     return LayoutBuilder(builder: (context, c) {
       final narrow = c.maxWidth < 760;
       final all = widget.routines.length + widget.nonRoutines.length;
@@ -543,7 +602,11 @@ class _RoutinesTimelineState extends State<RoutinesTimeline> {
 
   Widget _routineColumn(bool narrow) {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+      // Wrap: on a tablet-width column the legend drops below instead of overflowing.
+      Wrap(
+          crossAxisAlignment: WrapCrossAlignment.end,
+          runSpacing: 6,
+          children: [
         Text('ROUTINE', style: MM.display(size: 20)),
         const SizedBox(width: 12),
         Padding(
@@ -551,7 +614,7 @@ class _RoutinesTimelineState extends State<RoutinesTimeline> {
           child: Text('DAILY ORBIT · THE SEA OF GREEN',
               style: MM.display(size: 10.5, color: _kDone, weight: FontWeight.w600)),
         ),
-        const Spacer(),
+        const SizedBox(width: 24),
         _legendMini(Icons.access_time, 'Set time', MM.blue),
         const SizedBox(width: 18),
         _legendMini(Icons.link, 'Anchored to a moment', _kAnchor),
@@ -605,7 +668,8 @@ class _RoutinesTimelineState extends State<RoutinesTimeline> {
         case _Kind.emptyAnchor:
           rows.add(_emptyAnchorRow(e.anchor!, narrow));
         case _Kind.habit:
-          rows.add(_habitRow(e, narrow, e.habit!.key == nextKey, prevDone));
+          rows.add(_focusWrap(e.habit!.key,
+              _habitRow(e, narrow, e.habit!.key == nextKey, prevDone)));
       }
     }
     return Container(
@@ -642,7 +706,7 @@ class _RoutinesTimelineState extends State<RoutinesTimeline> {
                     .copyWith(letterSpacing: 3)),
           ),
           for (final h in unscheduled) ...[
-            _habitCard(h, narrow, h.key == nextKey, null),
+            _focusWrap(h.key, _habitCard(h, narrow, h.key == nextKey, null)),
             const SizedBox(height: 10),
           ],
         ],
@@ -772,11 +836,29 @@ class _RoutinesTimelineState extends State<RoutinesTimeline> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (var m = e.gapStart!; m <= e.gapEnd!; m += 60)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Text('${fmtHm(m)}   open',
-                            style: MM.body(size: 11.5, color: _kFaint)),
+                    // End is exclusive: the next routine owns that hour.
+                    for (var m = e.gapStart!; m < e.gapEnd!; m += 60)
+                      InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: _isFuture
+                            ? null
+                            : () => widget.onAdd(time: fmtHm(m)),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 6, horizontal: 6),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Text('${fmtHm(m)}   open',
+                                style: MM.body(size: 12, color: _kFaint)),
+                            if (!_isFuture) ...[
+                              const SizedBox(width: 12),
+                              Text('+ Add a routine',
+                                  style: MM.body(
+                                      size: 12,
+                                      color: MM.blue,
+                                      weight: FontWeight.w600)),
+                            ],
+                          ]),
+                        ),
                       ),
                   ],
                 ),
@@ -966,13 +1048,20 @@ class _RoutinesTimelineState extends State<RoutinesTimeline> {
     final nodeSize = narrow ? 28.0 : 44.0;
     final first = e.firstInSlot;
     final missed = _isFuture && !done;
-    const missRed = Color(0xFFFF4F6D);
+    const missRed = Color(0xFF8A90A8); // grey, not alarming
     final node = done
-        ? Container(
-            width: nodeSize,
-            height: nodeSize,
-            decoration: const BoxDecoration(color: _kDone, shape: BoxShape.circle),
-            child: Icon(Icons.check, color: Colors.white, size: nodeSize * 0.5),
+        ? Tooltip(
+            message: _isToday ? 'Tap to undo' : '',
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: _isToday ? () => widget.onToggleDone(h, false) : null,
+              child: Container(
+                width: nodeSize,
+                height: nodeSize,
+                decoration: const BoxDecoration(color: _kDone, shape: BoxShape.circle),
+                child: Icon(Icons.check, color: Colors.white, size: nodeSize * 0.5),
+              ),
+            ),
           )
         : Container(
             width: nodeSize,
@@ -981,7 +1070,7 @@ class _RoutinesTimelineState extends State<RoutinesTimeline> {
               shape: BoxShape.circle,
               color: _kPanel, // opaque: the rail must not show through the ring
               border: Border.all(
-                  color: missed ? missRed.withOpacity(0.7) : isNext ? c : (h.slot!.isAnchored ? c.withOpacity(0.8) : c.withOpacity(0.9)),
+                  color: missed ? missRed.withOpacity(0.8) : isNext ? c : (h.slot!.isAnchored ? c.withOpacity(0.8) : c.withOpacity(0.9)),
                   width: 2.5),
             ),
             child: isNext
@@ -992,7 +1081,7 @@ class _RoutinesTimelineState extends State<RoutinesTimeline> {
                         decoration: BoxDecoration(color: c, shape: BoxShape.circle)))
                 : (missed
                     ? Icon(Icons.close,
-                        size: nodeSize * 0.45, color: missRed.withOpacity(0.8))
+                        size: nodeSize * 0.45, color: missRed)
                     : null),
           );
     // No IntrinsicHeight: the card holds a Wrap, whose intrinsic height is wrong
@@ -1057,11 +1146,8 @@ class _RoutinesTimelineState extends State<RoutinesTimeline> {
         child: Text(h.name,
             style: MM.body(
                 size: 16,
-                color: done ? _kMuted : Colors.white,
-                weight: FontWeight.w600)
-                .copyWith(
-                    decoration: done ? TextDecoration.lineThrough : null,
-                    decorationColor: _kMuted)),
+                color: Colors.white,
+                weight: FontWeight.w600)),
       ),
       if (h.flagged)
         const Padding(
@@ -1205,7 +1291,7 @@ class _RoutinesTimelineState extends State<RoutinesTimeline> {
         const SizedBox(height: 12),
       ],
       for (final h in widget.nonRoutines) ...[
-        _nonRoutineCard(h, narrow),
+        _focusWrap(h.key, _nonRoutineCard(h, narrow)),
         const SizedBox(height: 12),
       ],
       if (!_isFuture)
@@ -1350,6 +1436,35 @@ class _RoutinesTimelineState extends State<RoutinesTimeline> {
           ),
           logBtn,
         ]),
+        if (logs.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final s in logs)
+              Container(
+                padding: EdgeInsets.fromLTRB(10, 4, _isToday ? 4 : 10, 4),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(color: _kLine2),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(s.substring(0, math.min(5, s.length)),
+                      style: MM.body(size: 12, color: _kMuted)),
+                  if (_isToday)
+                    Tooltip(
+                      message: 'Remove this log',
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: () => widget.onUnlog(h, s),
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.close, size: 14, color: _kMuted),
+                        ),
+                      ),
+                    ),
+                ]),
+              ),
+          ]),
+        ],
       ]),
     );
   }
@@ -1575,10 +1690,7 @@ class _RoutinesTimelineState extends State<RoutinesTimeline> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(h.name,
-                  style: MM.body(size: 13.5, color: done ? _kMuted : Colors.white, weight: FontWeight.w600)
-                      .copyWith(
-                          decoration: done ? TextDecoration.lineThrough : null,
-                          decorationColor: _kMuted)),
+                  style: MM.body(size: 13.5, color: Colors.white, weight: FontWeight.w600)),
               if (h.statusLabel != null)
                 Text(h.statusText, style: MM.body(size: 11, color: h.statusColor)),
             ]),

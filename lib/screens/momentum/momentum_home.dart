@@ -12,6 +12,8 @@ import '../../services/core_fuel.dart';
 import '../../services/experiments.dart';
 import '../../services/habits_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/routine_reminders.dart';
+import '../../widgets/momentum/routine_reminder_ui.dart';
 import '../../services/offline.dart';
 import '../../services/onboarding_service.dart';
 import '../../services/points_service.dart';
@@ -64,6 +66,7 @@ class _MomentumHomeState extends State<MomentumHome> {
   /// Short Core id the Habits screen is filtered to (a Core tapped on the
   /// rocket, #20); null shows every Core.
   String? _habitsCore;
+  String? _routinesFocus; // Golden Habit id to show on Routines
 
   /// List opened from a Command Center console button (`lists:<name>`).
   Set<String> _listsExpand = const {};
@@ -203,6 +206,7 @@ class _MomentumHomeState extends State<MomentumHome> {
       ..start()
       ..screen(_screen);
     _fetchProfile();
+    RoutineReminders.instance.start();
     // Admin-controlled planet route (config/journey, #42) — rebuild the app
     // chrome when an admin publishes a new set of planets.
     JourneyConfigService.ensureLoaded();
@@ -232,6 +236,7 @@ class _MomentumHomeState extends State<MomentumHome> {
   @override
   void dispose() {
     NotificationService.instance.pendingThread.removeListener(_onPendingThread);
+    RoutineReminders.instance.stop();
     _profileService.dispose();
     _onboarding.dispose();
     _points.dispose();
@@ -445,6 +450,7 @@ class _MomentumHomeState extends State<MomentumHome> {
     _phase1Mode = null;
     _fuelCore = null;
     _habitsCore = null;
+    _routinesFocus = null;
     _listsExpand = const {};
     _openCommand = key == 'command';
     if (key == 'command') key = 'dashboard';
@@ -460,6 +466,9 @@ class _MomentumHomeState extends State<MomentumHome> {
       _habitId = key.substring(6);
       if (_screen != 'habit') _habitReturn = _screen;
       key = 'habit';
+    } else if (key.startsWith('routines:')) {
+      _routinesFocus = key.substring(9);
+      key = 'routines';
     } else if (key.startsWith('habits:')) {
       _habitsCore = key.substring(7);
       key = 'habits';
@@ -1236,6 +1245,8 @@ class _MomentumHomeState extends State<MomentumHome> {
     }
     if (_screen == 'routines') {
       return RoutinesScreen(
+        key: ValueKey(_routinesFocus),
+        focusHabitId: _routinesFocus,
         onBack: () => _go('dashboard'),
         onChat: _openChat,
         onNav: _go,
@@ -1429,8 +1440,38 @@ class _MomentumHomeState extends State<MomentumHome> {
   Widget _buildMobile() {
     return Stack(
       children: [
-        Positioned.fill(child: _buildBody()),
+        // The reminder bar sits above the screen (not over its title); while it
+        // shows, the screen below drops its own top inset.
+        Positioned.fill(
+          child: ListenableBuilder(
+            listenable: RoutineReminders.instance,
+            builder: (context, _) {
+              final show = RoutineReminders.instance.count > 0;
+              return Column(
+                children: [
+                  if (show)
+                    SafeArea(
+                      bottom: false,
+                      child: RoutineReminderBar(
+                          onOpenRoutines: () => _go('routines')),
+                    ),
+                  Expanded(
+                    // Same widget either way, so the screen keeps its state
+                    // when the bar appears or goes.
+                    child: MediaQuery.removePadding(
+                        context: context,
+                        removeTop: show,
+                        child: _buildBody()),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
         if (_buildNova(desktop: false) case final nova?) nova,
+        RoutineDuePopup(
+            onOpenRoutines: () => _go('routines'),
+            alignment: Alignment.topCenter),
         if (_menuOpen)
           Positioned.fill(
             child: MenuDrawer(
@@ -1551,7 +1592,11 @@ class _MomentumHomeState extends State<MomentumHome> {
         title = 'Routines';
         subtitle = 'Daily Orbit';
         accent = MM.teal;
-        content = WebRoutines(onOpen: (id) => _go('habit:$id'));
+        content = WebRoutines(
+          key: ValueKey(_routinesFocus),
+          focusHabitId: _routinesFocus,
+          onOpen: (id) => _go('habit:$id'),
+        );
         break;
       case 'habits':
         title = 'All Habits';
@@ -1561,6 +1606,7 @@ class _MomentumHomeState extends State<MomentumHome> {
           key: ValueKey(_habitsCore),
           coreFilter: _habitsCore,
           onOpen: (id) => _go('habit:$id'),
+          onShowInRoutine: (id) => _go('routines:$id'),
         );
         break;
       case 'habit':
@@ -1686,6 +1732,7 @@ class _MomentumHomeState extends State<MomentumHome> {
           ),
         ),
         if (_buildNova(desktop: true) case final nova?) nova,
+        RoutineDuePopup(onOpenRoutines: () => _go('routines')),
         if (_menuOpen)
           Positioned.fill(
             child: MenuDrawer(

@@ -805,11 +805,15 @@ class RoutinesScreen extends StatefulWidget {
     this.onBack,
     this.onChat,
     this.onNav,
+    this.focusHabitId,
   });
 
   final VoidCallback? onBack;
   final VoidCallback? onChat;
   final void Function(String key)? onNav;
+
+  /// "Show in my routine" target (Golden Habit id).
+  final String? focusHabitId;
 
   @override
   State<RoutinesScreen> createState() => _RoutinesScreenState();
@@ -920,6 +924,7 @@ class _RoutinesScreenState extends State<RoutinesScreen> {
       // Timeline + By Core (design/ref/routines-timeline-design), shared with web.
       child: WebRoutines(
         embedded: true,
+        focusHabitId: widget.focusHabitId,
         onOpen: (id) => widget.onNav?.call('habit:$id'),
       ),
     );
@@ -1828,11 +1833,8 @@ class _HabitsScreenState extends State<HabitsScreen> {
                 child: _HabitCard(
                   h: h,
                   onOpen: () => widget.onNav?.call('habit:${h.habitId}'),
-                  onMarkFormed: () async {
-                    final saved = await markHabitFormedEarly(context,
-                        userId: _uid, habitId: h.habitId, name: h.habitName);
-                    if (saved && mounted) _fetch();
-                  },
+                  onShowInRoutine: () =>
+                      widget.onNav?.call('routines:${h.habitId}'),
                 ),
               )),
         const SizedBox(height: 14),
@@ -1954,10 +1956,12 @@ class _HabitsScreenState extends State<HabitsScreen> {
 
 class _HabitCard extends StatelessWidget {
   const _HabitCard(
-      {required this.h, required this.onOpen, required this.onMarkFormed});
+      {required this.h,
+      required this.onOpen,
+      required this.onShowInRoutine});
   final GoldenHabit h;
   final VoidCallback onOpen;
-  final VoidCallback onMarkFormed;
+  final VoidCallback onShowInRoutine;
 
   @override
   Widget build(BuildContext context) {
@@ -2060,8 +2064,8 @@ class _HabitCard extends StatelessWidget {
             Align(
               alignment: Alignment.centerRight,
               child: MMGhostButton(
-                label: 'Mark formed early',
-                onPressed: onMarkFormed,
+                label: 'Show in my routine',
+                onPressed: onShowInRoutine,
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
