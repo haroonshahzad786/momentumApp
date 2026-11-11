@@ -1,13 +1,17 @@
+import 'dart:math' as math;
+
 import '../../widgets/momentum/phase2_launch.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/momentum_tokens.dart';
 import '../../widgets/momentum/command_center_console.dart';
+import '../../widgets/momentum/info_tip.dart';
 import '../../widgets/momentum/journey_stage.dart';
 import '../../widgets/momentum/mm_buttons.dart';
 import '../../widgets/momentum/starfield.dart';
 import '../../widgets/momentum/streak_bar.dart';
+import '../../widgets/momentum/web_shell.dart';
 
 /// Desktop flagship: the 3-column Cockpit (5 Cores · rocket stage · flight
 /// data), wired to the real profile data MomentumHome already holds. Mirrors
@@ -31,9 +35,21 @@ class WebCockpit extends StatelessWidget {
     required this.onNav,
     required this.onCheckIn,
     required this.onCoreAlert,
+    required this.onChat,
+    this.novaOpen = false,
+    this.novaSnap = false,
     this.phase1Banner,
     this.openCommand = false,
   });
+
+  /// Opens the Co-Pilot (the star button).
+  final VoidCallback onChat;
+
+  /// While [novaOpen] the centre square flips over and goes empty; Nova itself
+  /// hangs from the top of the window (see `_HangingNova` in momentum_home).
+  /// [novaSnap] skips the flip-back (Nova moved to the full-screen chat).
+  final bool novaOpen;
+  final bool novaSnap;
 
   /// "Continue Phase 1" banner while Phase 1 is unfinished — the phone has
   /// the Phase 1 pill; web had no way back in (P1-10 #5).
@@ -93,7 +109,7 @@ class WebCockpit extends StatelessWidget {
           activeCores: activeCores,
           onNav: onNav,
         );
-        final center = _RocketStage(
+        final centerStage = _RocketStage(
           planetIdx: _planetIdx,
           activeCores: activeCores,
           atRiskCores: atRiskCores,
@@ -102,6 +118,53 @@ class WebCockpit extends StatelessWidget {
           onCheckIn: onCheckIn,
           onCoreAlert: onCoreAlert,
           openCommand: openCommand,
+          novaOpen: novaOpen,
+          novaSnap: novaSnap,
+        );
+        final center = novaOpen
+            ? centerStage
+            : WithInfo(
+                text:
+                    'Your journey. Each active Core fuels the rocket and Momentum moves it '
+                    'to the next planet. On its tip: steering wheel = Command Center, '
+                    'clock = Routines, ∞ = All Habits, checklist = Non-Routines.',
+                top: 10,
+                right: 10,
+                child: centerStage,
+              );
+        // Top of the right-hand column: Co-Pilot star + Daily Check-in, with
+        // the search box beneath them.
+        final actions = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                HoverHint(
+                  text: 'Co-Pilot: chat with Nova, your AI guide, for help or a nudge.',
+                  child: WebCopilotButton(onTap: onChat),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SizedBox(
+                    key: tourKey('checkin'),
+                    child: HoverHint(
+                      text:
+                          'Your Daily Check-In: one press every morning. It starts scoring and '
+                          'keeps your streak, rocket progress and rewards moving.',
+                      child: MMPrimaryButton(
+                        label: 'Daily Check-in →',
+                        pulse: true,
+                        expand: true,
+                        onPressed: onCheckIn,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const WebSearchField(),
+          ],
         );
         final right = _FlightData(
           key: tourKey('stats'),
@@ -115,34 +178,124 @@ class WebCockpit extends StatelessWidget {
         );
         // Phase 1&2 Details (Rocket Dashboard) "Across top: Current Streak with consecutive days and
         // days until reward".
-        final streakBar = StreakBar(
-          key: tourKey('streak'),
-          streak: streak,
-          streakState: streakState,
-          streakSavers: streakSavers,
-          onTap: onStreakTap,
+        final streakBar = WithInfo(
+          text:
+              'Your streak: consecutive days you complete the Daily Check-In. '
+              'Check in today to keep it going.',
+          top: 4,
+          right: 4,
+          child: StreakBar(
+            key: tourKey('streak'),
+            streak: streak,
+            streakState: streakState,
+            streakSavers: streakSavers,
+            onTap: onStreakTap,
+          ),
+        );
+
+        // Narrow (tablet) Cockpit with Nova hanging: phone logic. Icons on the
+        // left, stats on the right, everything else hidden (kept mounted).
+        final narrowNova = novaOpen && !wide;
+        final novaHeader = Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    WebCopilotButton(onTap: onChat),
+                    const SizedBox(width: 10),
+                    _CheckInIcon(onTap: onCheckIn),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                StreakBar(
+                  compact: true,
+                  slim: true,
+                  streak: streak,
+                  streakState: streakState,
+                  streakSavers: streakSavers,
+                  onTap: onStreakTap,
+                ),
+              ],
+            ),
+            const Spacer(),
+            _NovaStats(
+              planetName: (MM.planets[_planetIdx]['name'] as String),
+              planetColor: MM.planets[_planetIdx]['color'] as Color,
+              score: momentumScore,
+              credits: spaceCredits,
+              balance: balance,
+            ),
+          ],
         );
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(40, 4, 40, 56),
+          // Wide: the shell's topbar is off, so the right column can start at
+          // the very top, level with the title.
+          padding: EdgeInsets.fromLTRB(40, wide ? 26 : 4, 40, 56),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (narrowNova) novaHeader,
+              Offstage(
+                offstage: narrowNova,
+                child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (phase1Banner != null) ...[
                 phase1Banner!,
                 const SizedBox(height: 14),
               ],
-              streakBar,
-              const SizedBox(height: 20),
+              if (!wide) ...[
+                streakBar,
+                const SizedBox(height: 16),
+                actions,
+                const SizedBox(height: 20),
+              ],
               wide
                   ? Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(flex: 20, child: left),
+                      Expanded(
+                        flex: 20,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const SizedBox(
+                              height: _headerH,
+                              child: _CockpitTitle(),
+                            ),
+                            streakBar,
+                            const SizedBox(height: 20),
+                            left,
+                          ],
+                        ),
+                      ),
                       const SizedBox(width: 24),
-                      Expanded(flex: 30, child: center),
+                      Expanded(
+                        flex: 30,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const SizedBox(height: _headerH),
+                            center,
+                          ],
+                        ),
+                      ),
                       const SizedBox(width: 24),
-                      Expanded(flex: 20, child: right),
+                      Expanded(
+                        flex: 20,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            actions,
+                            const SizedBox(height: 20),
+                            right,
+                          ],
+                        ),
+                      ),
                     ],
                   )
                   : Column(
@@ -161,8 +314,45 @@ class WebCockpit extends StatelessWidget {
                   ),
             ],
           ),
+              ),
+            ],
+          ),
         );
       },
+    );
+  }
+}
+
+/// Height reserved for the title row above the left and centre columns.
+const double _headerH = 80;
+
+/// "MISSION CONTROL / Cockpit" heading (the shell topbar is off on the
+/// Cockpit so the right-hand column can start at the top of the page).
+class _CockpitTitle extends StatelessWidget {
+  const _CockpitTitle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.start,
+      children: [
+        Text('MISSION CONTROL',
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.orbitron(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 2.4,
+                color: MM.blue)),
+        const SizedBox(height: 4),
+        Text('Cockpit',
+            maxLines: 1,
+            softWrap: false,
+            style: MM.display(
+                size: 30, color: Colors.white, weight: FontWeight.w700)),
+      ],
     );
   }
 }
@@ -218,7 +408,14 @@ class _CoresColumn extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _sectionLabel('THE 5 CORES'),
+        Row(children: [
+          _sectionLabel('THE 5 CORES'),
+          const SizedBox(width: 4),
+          const InfoTip(
+              'Your 5 life Cores. An active Core holds your Golden Habit; a locked '
+              'one lights up once you create a Golden Habit with at least one MBM '
+              'for it in Phase 1. Tap a Core to open its habits (or fuel it).'),
+        ]),
         const SizedBox(height: 12),
         for (final core in cores) ...[
           _CoreCard(
@@ -367,7 +564,11 @@ class _RocketStage extends StatefulWidget {
     required this.onCheckIn,
     required this.onCoreAlert,
     this.openCommand = false,
+    this.novaOpen = false,
+    this.novaSnap = false,
   });
+  final bool novaOpen;
+  final bool novaSnap;
   final int planetIdx;
   final List<String> activeCores;
   final Set<String> atRiskCores;
@@ -381,14 +582,32 @@ class _RocketStage extends StatefulWidget {
   State<_RocketStage> createState() => _RocketStageState();
 }
 
-class _RocketStageState extends State<_RocketStage> {
+class _RocketStageState extends State<_RocketStage>
+    with SingleTickerProviderStateMixin {
   /// The Command Center console is open in the stage — it takes the panel.
   late bool _commandOpen = widget.openCommand;
+
+  /// 0 = rocket face, 1 = flipped away (empty) while Nova hangs.
+  late final AnimationController _novaCtl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 800),
+    reverseDuration: const Duration(milliseconds: 600),
+    value: widget.novaOpen ? 1 : 0,
+  );
 
   @override
   void didUpdateWidget(covariant _RocketStage old) {
     super.didUpdateWidget(old);
     if (widget.openCommand && !old.openCommand) _commandOpen = true;
+    if (widget.novaOpen && !old.novaOpen) {
+      _novaCtl.forward();
+    } else if (!widget.novaOpen && old.novaOpen) {
+      if (widget.novaSnap) {
+        _novaCtl.value = 0;
+      } else {
+        _novaCtl.reverse();
+      }
+    }
   }
 
   /// Shared between the journey stage (which drives it) and the panel-wide
@@ -399,16 +618,43 @@ class _RocketStageState extends State<_RocketStage> {
 
   @override
   void dispose() {
+    _novaCtl.dispose();
     _warp.dispose();
     super.dispose();
   }
 
+  /// The whole stage square flips over and is gone (nothing of the rocket
+  /// shows); Nova hangs over the space it leaves, from the top of the window.
   @override
   Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _novaCtl,
+      builder: (context, _) {
+        final t = Curves.easeInOutCubic.transform(_novaCtl.value);
+        final back = t > 0.5;
+        final angle = t * math.pi;
+        return Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.0012)
+            ..rotateX(back ? angle - math.pi : angle),
+          child: Visibility(
+            visible: !back,
+            maintainState: true,
+            maintainAnimation: true,
+            maintainSize: true,
+            child: _front(context, 0),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _front(BuildContext context, double extra) {
     final planetIdx = widget.planetIdx;
     final planetColor = MM.planets[planetIdx]['color'] as Color;
     return Container(
-      constraints: const BoxConstraints(minHeight: 620),
+      constraints: BoxConstraints(minHeight: 620 + extra),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         color: const Color(0xFF0A1136).withOpacity(0.35),
@@ -484,17 +730,6 @@ class _RocketStageState extends State<_RocketStage> {
                       onCoreAlert: widget.onCoreAlert,
                       onOpenCommandCenter:
                           () => setState(() => _commandOpen = true),
-                    ),
-                    const SizedBox(height: 20),
-                    FractionallySizedBox(
-                      key: tourKey('checkin'),
-                      widthFactor: 0.8,
-                      child: MMPrimaryButton(
-                        label: 'Daily Check-in →',
-                        pulse: true,
-                        expand: true,
-                        onPressed: widget.onCheckIn,
-                      ),
                     ),
                   ],
                 ),
@@ -577,6 +812,7 @@ class _FlightData extends StatelessWidget {
                 label: 'Planet',
                 value: (planet['name'] as String).toUpperCase(),
                 valueSize: 20,
+                tip: 'Your current planet on the route. Momentum Score carries you to the next stop.',
                 accent: planet['color'] as Color,
                 sub:
                     nextPlanetName == null
@@ -589,6 +825,8 @@ class _FlightData extends StatelessWidget {
               child: _Stat(
                 label: 'Balance',
                 value: balance == null ? '—' : '$balance%',
+                tip: 'How evenly your last 7 days covered all 5 Cores. '
+                    'Aim to Fire On All Cylinders 🚀.',
                 accent: MM.teal,
                 sub: '5-Core, 7 days',
               ),
@@ -599,6 +837,7 @@ class _FlightData extends StatelessWidget {
         _Stat(
           label: 'Momentum Score',
           value: _fmt(momentumScore),
+          tip: 'Points you earn from check-ins and habits. They propel your rocket forward.',
           accent: MM.yellow,
           sub: 'Propels the rocket forward',
         ),
@@ -606,12 +845,18 @@ class _FlightData extends StatelessWidget {
         _Stat(
           label: 'Space Credits',
           value: _fmt(spaceCredits),
+          tip: 'Your currency. Spend it in the Space Cantina.',
           accent: MM.yellow,
           sub: 'Spend in the Cantina',
         ),
         if (streakProtection != null) ...[
           const SizedBox(height: 12),
-          streakProtection!,
+          WithInfo(
+            text:
+                'Streak Savers and Vacation Mode protect your streak on days '
+                "you can't check in.",
+            child: streakProtection!,
+          ),
         ],
       ],
     );
@@ -635,7 +880,9 @@ class _Stat extends StatelessWidget {
     required this.accent,
     this.sub,
     this.valueSize = 28,
+    this.tip,
   });
+  final String? tip;
   final String label;
   final String value;
   final Color accent;
@@ -650,15 +897,20 @@ class _Stat extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label.toUpperCase(),
-            style: GoogleFonts.orbitron(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.5,
-              color: Colors.white.withOpacity(0.5),
+          Row(children: [
+            Expanded(
+              child: Text(
+                label.toUpperCase(),
+                style: GoogleFonts.orbitron(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                  color: Colors.white.withOpacity(0.5),
+                ),
+              ),
             ),
-          ),
+            if (tip != null) InfoTip(tip!, size: 14),
+          ]),
           const SizedBox(height: 6),
           Text(
             value,
@@ -674,6 +926,100 @@ class _Stat extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Check-in as an icon (the tablet Nova header has no room for the long
+/// "Daily Check-in" button).
+class _CheckInIcon extends StatelessWidget {
+  const _CheckInIcon({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Daily Check-in',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF3A8DFF), Color(0xFF1F5FB8)],
+            ),
+            boxShadow: [BoxShadow(color: MM.blue.withOpacity(0.4), blurRadius: 12)],
+          ),
+          child: const Icon(Icons.task_alt, size: 24, color: Colors.white),
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact planet / score / credits / balance card (same four values as the
+/// phone's top-right card).
+class _NovaStats extends StatelessWidget {
+  const _NovaStats({
+    required this.planetName,
+    required this.planetColor,
+    required this.score,
+    required this.credits,
+    required this.balance,
+  });
+  final String planetName;
+  final Color planetColor;
+  final int score;
+  final int credits;
+  final int? balance;
+
+  static String _fmt(int n) {
+    final s = n.toString();
+    final b = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) b.write(',');
+      b.write(s[i]);
+    }
+    return b.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget row(String l, String v, Color c) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(l,
+                  style: GoogleFonts.orbitron(
+                      fontSize: 9,
+                      letterSpacing: 1.2,
+                      color: Colors.white.withOpacity(0.55))),
+              Text(v,
+                  style: GoogleFonts.orbitron(
+                      fontSize: 12, fontWeight: FontWeight.w700, color: c)),
+            ],
+          ),
+        );
+    return SizedBox(
+      width: 170,
+      child: _Panel(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            row('PLANET', planetName.toUpperCase(), planetColor),
+            row('SCORE', _fmt(score), Colors.white),
+            row('CREDITS', '${_fmt(credits)} 💎', MM.yellow),
+            row('BALANCE', balance == null ? '—' : '$balance%', MM.teal),
+          ],
+        ),
       ),
     );
   }
